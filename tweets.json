@@ -1,20 +1,2900 @@
-{
-  "category_counts": {
-    "codex_related": 6,
-    "quota_information": 4,
-    "reset_announcement": 4,
-    "reset_confirmed": 3,
-    "reset_hint": 3,
-    "unrelated": 104
+[
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-08-30T19:26:57.862350Z",
+      "confidence": 0.98,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit reset announcement pattern.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T19:24:37.000000Z",
+    "discovered_at": "2026-08-30T19:26:57.811000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Your Codex and ChatGPT Work reset will land at 6pm PST. I challenge you to burn as much usage as you can and discover and the latest awesome features. Time to go /fast",
+    "tweet_id": "2094144275957350900",
+    "url": "https://x.com/thsottiaux/status/2094144275957350900"
   },
-  "classified_tweet_count": 124,
-  "files": [
-    "health.json",
-    "radar.json",
-    "tweets.json"
-  ],
-  "generated_at": "2026-08-30T19:46:49Z",
-  "schema_version": 1,
-  "source": "@thsottiaux",
-  "tweet_count": 124
-}
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T19:21:57.601611Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T19:21:04.000000Z",
+    "discovered_at": "2026-08-30T19:21:57.440000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "More ultra, more fast",
+    "tweet_id": "2094143384273461546",
+    "url": "https://x.com/thsottiaux/status/2094143384273461546"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T19:21:57.640165Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T19:19:46.000000Z",
+    "discovered_at": "2026-08-30T19:21:57.440000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Yes",
+    "tweet_id": "2094143054039183573",
+    "url": "https://x.com/thsottiaux/status/2094143054039183573"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T17:34:42.925748Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T04:20:22.000000Z",
+    "discovered_at": "2026-08-30T17:34:42.873000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "with_replies"
+    ],
+    "text": "@thsottiaux subagents are draining limits so much faster now. I had sol high used 4-7 sub agents for 3 hours it took away 80% usage on my 200$ sub. Task itself was just a code audit and a bit web search.",
+    "tweet_id": "2093916713087897970",
+    "url": "https://x.com/thsottiaux/status/2093916713087897970"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T04:13:05.264979Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T04:11:55.000000Z",
+    "discovered_at": "2026-08-30T04:13:04.277000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Open another modal",
+    "tweet_id": "2093914587645247967",
+    "url": "https://x.com/thsottiaux/status/2093914587645247967"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T04:11:50.747263Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T04:10:56.000000Z",
+    "discovered_at": "2026-08-30T04:11:50.628000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Team is cooking like never before",
+    "tweet_id": "2093914342551101782",
+    "url": "https://x.com/thsottiaux/status/2093914342551101782"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T03:56:51.157100Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T03:53:20.000000Z",
+    "discovered_at": "2026-08-30T03:56:51.008000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Fair is fair",
+    "tweet_id": "2093909909553525066",
+    "url": "https://x.com/thsottiaux/status/2093909909553525066"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-30T01:26:59.475613Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T18:21:09.000000Z",
+    "discovered_at": "2026-08-30T01:26:59.329000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Welcome Kenneth!",
+    "tweet_id": "2093765917021004007",
+    "url": "https://x.com/thsottiaux/status/2093765917021004007"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T21:56:58.346427Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T21:52:06.000000Z",
+    "discovered_at": "2026-08-29T21:56:58.219000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Efficiency",
+    "tweet_id": "2093819003286556908",
+    "url": "https://x.com/thsottiaux/status/2093819003286556908"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T21:46:57.296380Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T21:46:38.000000Z",
+    "discovered_at": "2026-08-29T21:46:57.250000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "2026 is the year of efficiency",
+    "tweet_id": "2093817627504447898",
+    "url": "https://x.com/thsottiaux/status/2093817627504447898"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T21:27:00.310950Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T21:23:38.000000Z",
+    "discovered_at": "2026-08-29T21:27:00.216000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "This celebration is moved to tomorrow as the button was already pressed today.",
+    "tweet_id": "2093811840258293947",
+    "url": "https://x.com/thsottiaux/status/2093811840258293947"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T21:11:57.443520Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T21:11:42.000000Z",
+    "discovered_at": "2026-08-29T21:11:57.371000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Tell them Chris. Tell them! You're vindicated",
+    "tweet_id": "2093808835488325954",
+    "url": "https://x.com/thsottiaux/status/2093808835488325954"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T20:46:56.927680Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T20:43:53.000000Z",
+    "discovered_at": "2026-08-29T20:46:56.843000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search",
+      "with_replies"
+    ],
+    "text": "Landing 2:30pm PST",
+    "tweet_id": "2093801838504186008",
+    "url": "https://x.com/thsottiaux/status/2093801838504186008"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "quota_information",
+      "classified_at": "2026-08-29T20:46:57.035132Z",
+      "confidence": 0.94,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched quota or usage-limit terminology without a confirmed reset action.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T20:43:34.000000Z",
+    "discovered_at": "2026-08-29T20:46:56.843000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search",
+      "with_replies"
+    ],
+    "text": "We are reseting usage for all paid users of Codex and ChatGPT Work. Please continue reading for an update on Codex usage limits. The team has been working around the clock, going through thousands of reports and shipping fixes. Depending on how you use Codex, you should see",
+    "tweet_id": "2093801758665715784",
+    "url": "https://x.com/thsottiaux/status/2093801758665715784"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T19:36:57.098331Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T19:34:15.000000Z",
+    "discovered_at": "2026-08-29T19:36:56.989000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "I've enjoyed working with Cursor pre-acquisition and have respect for the team and what they have built. The 5% here should have come with strong caveat and I would love for Michael to share the math. Tokens are not a proxy for revenue nor value created and the OpenAI models are",
+    "tweet_id": "2093784314714657110",
+    "url": "https://x.com/thsottiaux/status/2093784314714657110"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T18:11:58.394184Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T18:07:20.000000Z",
+    "discovered_at": "2026-08-29T18:11:58.278000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "It was time",
+    "tweet_id": "2093762439645176020",
+    "url": "https://x.com/thsottiaux/status/2093762439645176020"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:48:34.846189Z",
+      "confidence": 0.68,
+      "explicitness": "unclear",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet discusses using Codex subscriptions in Cursor with CLIProxyAPI, with no mention of reset events or timing.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T02:56:33.000000Z",
+    "discovered_at": "2026-08-29T15:48:28.928000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "with_replies"
+    ],
+    "text": "good news is you can still just use Codex subscriptions in Cursor 1. install CLIProxyAPI 2. open Cursor > Settings > Models > put your CPA instance public url and API key Tibo himself shared this method a while ago, so i guess it's safe: https:// x.com/thsottiaux/sta tus/2076119366647894371 …",
+    "tweet_id": "2076119366647894371",
+    "url": "https://x.com/thsottiaux/status/2076119366647894371"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:35:02.665869Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T12:28:42.000000Z",
+    "discovered_at": "2026-08-29T12:31:28.396000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Appreciate you too Jediah",
+    "tweet_id": "2093677219508048295",
+    "url": "https://x.com/thsottiaux/status/2093677219508048295"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_hint",
+      "classified_at": "2026-08-29T15:35:02.583355Z",
+      "confidence": 0.544,
+      "explicitness": "implicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Rule/AI conflict: rule=codex_related; AI=reset_hint. The tweet indirectly hints at a reset through a milestone celebration tomorrow, without explicitly mentioning reset. 'Hold on to your Codex' suggests an upcoming event, and prior context ties milestones to resets.",
+      "urgency": "within_24h"
+    },
+    "created_at": "2026-08-29T05:38:31.000000Z",
+    "discovered_at": "2026-08-29T05:41:28.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Looking at the dashboard we might hit a new milestone to celebrate tomorrow. Hold on to your Codex",
+    "tweet_id": "2093573991965557198",
+    "url": "https://x.com/thsottiaux/status/2093573991965557198"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:35:02.634173Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T05:36:51.000000Z",
+    "discovered_at": "2026-08-29T05:41:28.235000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "This will indeed continue to be supported",
+    "tweet_id": "2093573575869698091",
+    "url": "https://x.com/thsottiaux/status/2093573575869698091"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_hint",
+      "classified_at": "2026-08-29T15:34:53.175366Z",
+      "confidence": 0.72,
+      "explicitness": "implicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet implies a reset will happen soon but does not specify a schedule or confirm an event, making it a playful hint rather than an announcement. It mentions resets indirectly with 'there is a place and a time' and 'soon, but not today'.",
+      "urgency": "within_3d"
+    },
+    "created_at": "2026-08-29T04:07:10.000000Z",
+    "discovered_at": "2026-08-29T04:11:26.660000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "There is a place and a time for resets. Soon, but not today",
+    "tweet_id": "2093551005711679557",
+    "url": "https://x.com/thsottiaux/status/2093551005711679557"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:44.139940Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-29T01:47:44.000000Z",
+    "discovered_at": "2026-08-29T01:51:29.237000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "We unfortunately have decided that we cannot continue providing access to our models through Cursor and are ending our partnership. It boils down to trust and we’ve asked that this takes effect on November 12 to give you some time to plan. Many have used the GPT models through",
+    "tweet_id": "2093515916076343774",
+    "url": "https://x.com/thsottiaux/status/2093515916076343774"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_confirmed",
+      "classified_at": "2026-08-29T15:34:43.844981Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched language stating that the reset or limits are complete.",
+      "urgency": "now"
+    },
+    "created_at": "2026-08-22T00:50:36.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "The banked reset has landed, I repeat, the banked reset has landed. Have an amazing weekend.",
+    "tweet_id": "2090964822422949999",
+    "url": "https://x.com/thsottiaux/status/2090964822422949999"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-08-29T15:34:43.877575Z",
+      "confidence": 0.98,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit reset announcement pattern.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T23:40:34.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "The banked reset will be there by 8pm PST. For all paid users of ChatGPT Work and Codex. Do with this information what you may.",
+    "tweet_id": "2090947196107764189",
+    "url": "https://x.com/thsottiaux/status/2090947196107764189"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.911573Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T23:38:38.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "GPTChat",
+    "tweet_id": "2090946712647106988",
+    "url": "https://x.com/thsottiaux/status/2090946712647106988"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.955348Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T19:43:11.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Sol shines brighter today. Efficiency, reliability and performance are the name of the game.",
+    "tweet_id": "2090887457915232269",
+    "url": "https://x.com/thsottiaux/status/2090887457915232269"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.989352Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T12:16:15.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Congrats!!",
+    "tweet_id": "2090774982271848809",
+    "url": "https://x.com/thsottiaux/status/2090774982271848809"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:44.037949Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T11:45:12.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Banked my friend, banked",
+    "tweet_id": "2090767169889992755",
+    "url": "https://x.com/thsottiaux/status/2090767169889992755"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-08-29T15:34:44.072369Z",
+      "confidence": 0.98,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit reset announcement pattern.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T11:43:19.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "It's me again. I come bearing great news. First of all, we have hit 20M active users for Codex some time this week. Second of all, this is cause for celebration and during the day we will credit every Codex and ChatGPT Work user with a BANKED reset that you can use at your own",
+    "tweet_id": "2090766694897619318",
+    "url": "https://x.com/thsottiaux/status/2090766694897619318"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:34:44.106931Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-21T05:49:02.000000Z",
+    "discovered_at": "2026-08-28T21:56:16.346000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Codex has nothing to hide",
+    "tweet_id": "2090677537072652418",
+    "url": "https://x.com/thsottiaux/status/2090677537072652418"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.811378Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T18:03:10.000000Z",
+    "discovered_at": "2026-08-28T18:06:29.160000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Bugs are just software",
+    "tweet_id": "2093399001358065720",
+    "url": "https://x.com/thsottiaux/status/2093399001358065720"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.777348Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T17:50:07.000000Z",
+    "discovered_at": "2026-08-28T17:51:26.177000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Tibo@thsottiaux·回复 @OpenRouter731",
+    "tweet_id": "2093395719805960389",
+    "url": "https://x.com/thsottiaux/status/2093395719805960389"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.744348Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T18:34:03.000000Z",
+    "discovered_at": "2026-08-28T15:56:36.337000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Agreed. We're working to squash all of it and make sure it doesn't happen again.",
+    "tweet_id": "2091957224302092394",
+    "url": "https://x.com/thsottiaux/status/2091957224302092394"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "quota_information",
+      "classified_at": "2026-08-29T15:34:43.596997Z",
+      "confidence": 0.92,
+      "explicitness": "explicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet explicitly announces reinstating a 5-hour usage limit for Plus accounts, which is a quota/usage-limit policy change rather than a reset event.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T01:16:43.000000Z",
+    "discovered_at": "2026-08-28T15:56:35.244000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Tomorrow we will bring back the 5h limit for Plus accounts across ChatGPT Work and Codex. I had mentioned this a while ago, but then postponed it. This is necessary as (a) the 5h limit allows us to smoothen the load on our compute, allowing to keep the plan generous in terms of",
+    "tweet_id": "2092058556707344708",
+    "url": "https://x.com/thsottiaux/status/2092058556707344708"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.645996Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T01:09:20.000000Z",
+    "discovered_at": "2026-08-28T15:56:35.244000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Looks like Claude saw Sol",
+    "tweet_id": "2092056698240536746",
+    "url": "https://x.com/thsottiaux/status/2092056698240536746"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.676995Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T22:35:03.000000Z",
+    "discovered_at": "2026-08-28T15:56:35.244000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "What are they shipping over there",
+    "tweet_id": "2092017873023819856",
+    "url": "https://x.com/thsottiaux/status/2092017873023819856"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:43.711998Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T19:03:07.000000Z",
+    "discovered_at": "2026-08-28T15:56:35.244000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "It's now 4/20, because that's a nice number",
+    "tweet_id": "2091964537385656335",
+    "url": "https://x.com/thsottiaux/status/2091964537385656335"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.708047Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T14:40:12.000000Z",
+    "discovered_at": "2026-08-28T15:56:34.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Hair grows and can (optionally) be cut",
+    "tweet_id": "2092260761313890500",
+    "url": "https://x.com/thsottiaux/status/2092260761313890500"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.741054Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T05:20:57.000000Z",
+    "discovered_at": "2026-08-28T15:56:34.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Hello!!! How did we all miss this?! You can now share your threads and just load them in a browser?! Why aren’t we all talking about this",
+    "tweet_id": "2092120021074133269",
+    "url": "https://x.com/thsottiaux/status/2092120021074133269"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.785082Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T05:10:47.000000Z",
+    "discovered_at": "2026-08-28T15:56:34.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "OpenAI DevDay 2026 will be our best DevDay in the history of the company. It will not be close.",
+    "tweet_id": "2092117461646856505",
+    "url": "https://x.com/thsottiaux/status/2092117461646856505"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.591978Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T00:43:48.000000Z",
+    "discovered_at": "2026-08-28T15:56:29.311000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Some people will believe you",
+    "tweet_id": "2091687884919349406",
+    "url": "https://x.com/thsottiaux/status/2091687884919349406"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.632048Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T17:41:21.000000Z",
+    "discovered_at": "2026-08-28T15:56:29.311000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "2026 is the year companies start seriously caring about model efficiency and reliability as it becomes critical infrastructure",
+    "tweet_id": "2091581575108653374",
+    "url": "https://x.com/thsottiaux/status/2091581575108653374"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.668054Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T16:29:39.000000Z",
+    "discovered_at": "2026-08-28T15:56:29.311000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "A better analogy would be to say that your brain suddenly gets placed in the pencil for it to moved around when you need to do the exam. These are entirely different things you are comparing. The harness is much more similar to the body than it is to the classroom and",
+    "tweet_id": "2091563530189521277",
+    "url": "https://x.com/thsottiaux/status/2091563530189521277"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.362338Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T02:09:50.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Any time",
+    "tweet_id": "2091709537451687948",
+    "url": "https://x.com/thsottiaux/status/2091709537451687948"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.417976Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T02:09:29.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Where are you getting your news from",
+    "tweet_id": "2091709448817701117",
+    "url": "https://x.com/thsottiaux/status/2091709448817701117"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.447977Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T02:09:04.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "It does include business accounts! Just checked and it was still propagating, but should be all done in 5 minutes for business accounts too.",
+    "tweet_id": "2091709346371838240",
+    "url": "https://x.com/thsottiaux/status/2091709346371838240"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.482978Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T00:50:31.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Adam hurt itself in its confusion!",
+    "tweet_id": "2091689575878189547",
+    "url": "https://x.com/thsottiaux/status/2091689575878189547"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_confirmed",
+      "classified_at": "2026-08-29T15:34:35.525977Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched language stating that the reset or limits are complete.",
+      "urgency": "now"
+    },
+    "created_at": "2026-08-24T00:46:51.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Good Sunday. Reset has been propagated to accounts and we landed some fixes to usage for things mentioned yesterday as issues we found. You should feel a positive difference. More to come tomorrow and will keep communicating.",
+    "tweet_id": "2091688655828246890",
+    "url": "https://x.com/thsottiaux/status/2091688655828246890"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.555977Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-24T00:45:01.000000Z",
+    "discovered_at": "2026-08-28T15:56:28.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "We are hard at work.",
+    "tweet_id": "2091688192240226784",
+    "url": "https://x.com/thsottiaux/status/2091688192240226784"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.210766Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T22:26:43.000000Z",
+    "discovered_at": "2026-08-28T15:56:22.232000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "That's an odd comparison. Computer History is just a feature. Bot is the entire output of Cursor + XAI",
+    "tweet_id": "2091290999381184620",
+    "url": "https://x.com/thsottiaux/status/2091290999381184620"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.246830Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T22:22:49.000000Z",
+    "discovered_at": "2026-08-28T15:56:22.232000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Astra who?",
+    "tweet_id": "2091290020388716914",
+    "url": "https://x.com/thsottiaux/status/2091290020388716914"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.289835Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T22:22:37.000000Z",
+    "discovered_at": "2026-08-28T15:56:22.232000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "露娜",
+    "tweet_id": "2091289970153533592",
+    "url": "https://x.com/thsottiaux/status/2091289970153533592"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.320828Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T20:35:18.000000Z",
+    "discovered_at": "2026-08-28T15:56:22.232000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "露娜",
+    "tweet_id": "2091262962480898537",
+    "url": "https://x.com/thsottiaux/status/2091262962480898537"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.891617Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:39:43.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Chat is this true",
+    "tweet_id": "2091415069540401373",
+    "url": "https://x.com/thsottiaux/status/2091415069540401373"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.926610Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:35:30.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "No beef, lots of respect for Cursor and friends",
+    "tweet_id": "2091414006145908899",
+    "url": "https://x.com/thsottiaux/status/2091414006145908899"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.960611Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:32:27.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Meant 2pm obviously",
+    "tweet_id": "2091413240337326588",
+    "url": "https://x.com/thsottiaux/status/2091413240337326588"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-08-29T15:34:35.000612Z",
+      "confidence": 0.98,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit reset announcement pattern.",
+      "urgency": "within_24h"
+    },
+    "created_at": "2026-08-23T06:29:05.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Reset will land around 14pm PST tomorrow.",
+    "tweet_id": "2091412393368945027",
+    "url": "https://x.com/thsottiaux/status/2091412393368945027"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.035611Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:25:01.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "See you there",
+    "tweet_id": "2091411370243936661",
+    "url": "https://x.com/thsottiaux/status/2091411370243936661"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.070612Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:15:20.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Posted",
+    "tweet_id": "2091408930635436341",
+    "url": "https://x.com/thsottiaux/status/2091408930635436341"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "quota_information",
+      "classified_at": "2026-08-29T15:34:35.106254Z",
+      "confidence": 0.94,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched quota or usage-limit terminology without a confirmed reset action.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:11:36.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Update on rate limits in Codex. We’ve found (a) some inefficiencies when using images in long sessions with multiple compactions (b) high p95+ usage for Computer History (c) a feature that was meant to generate conversation titles that was draining a bit more usage than",
+    "tweet_id": "2091407991736332689",
+    "url": "https://x.com/thsottiaux/status/2091407991736332689"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.136252Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:04:01.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "We don’t support sub2api",
+    "tweet_id": "2091406082497552557",
+    "url": "https://x.com/thsottiaux/status/2091406082497552557"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:35.171252Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-23T06:01:13.000000Z",
+    "discovered_at": "2026-08-28T15:56:19.949000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "20M people nodded in unison",
+    "tweet_id": "2091405381235019793",
+    "url": "https://x.com/thsottiaux/status/2091405381235019793"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.815977Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T04:00:54.000000Z",
+    "discovered_at": "2026-08-28T15:56:17.229000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Well done Ishan",
+    "tweet_id": "2091012711970906611",
+    "url": "https://x.com/thsottiaux/status/2091012711970906611"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.859632Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T00:54:46.000000Z",
+    "discovered_at": "2026-08-28T15:56:17.229000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Hmmm. That’s unfortunate. We have this feature because it’s a nicer user experience overall. Of course you can abuse it and trick the system somewhat, but if done at scale then it will force us to revisit this nice feature.",
+    "tweet_id": "2090965871456026686",
+    "url": "https://x.com/thsottiaux/status/2090965871456026686"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.664971Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T04:57:43.000000Z",
+    "discovered_at": "2026-08-28T15:56:16.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "ai ai ai as we say in French",
+    "tweet_id": "2091027012832125027",
+    "url": "https://x.com/thsottiaux/status/2091027012832125027"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.706970Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T04:16:52.000000Z",
+    "discovered_at": "2026-08-28T15:56:16.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Favorite is",
+    "tweet_id": "2091016731020169488",
+    "url": "https://x.com/thsottiaux/status/2091016731020169488"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.740975Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T04:08:37.000000Z",
+    "discovered_at": "2026-08-28T15:56:16.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "You can make your own sites (and share them!) in ChatGPT Work or on the ChatGPT desktop app if you are on the Plus plan or above.",
+    "tweet_id": "2091014652574732563",
+    "url": "https://x.com/thsottiaux/status/2091014652574732563"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.782971Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T04:06:48.000000Z",
+    "discovered_at": "2026-08-28T15:56:16.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "@ajambrosino thought it was too hard to upload music to twitter, so he just prompted a whole music app hosted on ChatGPT Sites into existence just to share his album",
+    "tweet_id": "2091014197144596734",
+    "url": "https://x.com/thsottiaux/status/2091014197144596734"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.437925Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T06:35:15.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "?",
+    "tweet_id": "2091051557983015302",
+    "url": "https://x.com/thsottiaux/status/2091051557983015302"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.471925Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T06:32:05.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Which model?",
+    "tweet_id": "2091050758091477274",
+    "url": "https://x.com/thsottiaux/status/2091050758091477274"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.505926Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T06:11:01.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Should be all propagated",
+    "tweet_id": "2091045457158103247",
+    "url": "https://x.com/thsottiaux/status/2091045457158103247"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.546925Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T06:00:05.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Never let a good crisis go to waste",
+    "tweet_id": "2091042707334742221",
+    "url": "https://x.com/thsottiaux/status/2091042707334742221"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.597971Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T05:50:42.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "That's quite intense. Let me know how I can communicate better, trying to keep you informed and currently with the team looking at logs and dashboards.",
+    "tweet_id": "2091040344943288474",
+    "url": "https://x.com/thsottiaux/status/2091040344943288474"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "quota_information",
+      "classified_at": "2026-08-29T15:34:34.629969Z",
+      "confidence": 0.94,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched quota or usage-limit terminology without a confirmed reset action.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-22T05:24:01.000000Z",
+    "discovered_at": "2026-08-28T15:56:15.235000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Update on rate limits in Codex. We do see that for some users the cache hit rate has been worse this week than the stable state the weeks before. This could explain that usage is draining somewhat faster for those users as hitting the cache consistently is an important component",
+    "tweet_id": "2091033630147854385",
+    "url": "https://x.com/thsottiaux/status/2091033630147854385"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.395923Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T15:04:29.000000Z",
+    "discovered_at": "2026-08-28T15:06:36.247000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "What is the most ambitious task you’ve given ChatGPT Work?",
+    "tweet_id": "2093354037198696932",
+    "url": "https://x.com/thsottiaux/status/2093354037198696932"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.295224Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T14:55:35.000000Z",
+    "discovered_at": "2026-08-28T14:56:29.245000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Always improving. Team working hard on infra and usage optimizations",
+    "tweet_id": "2093351797830422812",
+    "url": "https://x.com/thsottiaux/status/2093351797830422812"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.329237Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T14:54:21.000000Z",
+    "discovered_at": "2026-08-28T14:56:29.245000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Luna is used to give the session a title. A bit of a pass “you pass the butter” situation",
+    "tweet_id": "2093351485090496801",
+    "url": "https://x.com/thsottiaux/status/2093351485090496801"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.361923Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T14:52:38.000000Z",
+    "discovered_at": "2026-08-28T14:56:29.245000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "I do wonder what the record will be of most connected accounts",
+    "tweet_id": "2093351054834598354",
+    "url": "https://x.com/thsottiaux/status/2093351054834598354"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.184508Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T20:28:49.000000Z",
+    "discovered_at": "2026-08-28T10:06:30.185000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Lowkey you say",
+    "tweet_id": "2093073267749982303",
+    "url": "https://x.com/thsottiaux/status/2093073267749982303"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:34:34.227219Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T15:25:56.000000Z",
+    "discovered_at": "2026-08-28T10:06:30.185000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Come to Codex, you know you should",
+    "tweet_id": "2092997044512378931",
+    "url": "https://x.com/thsottiaux/status/2092997044512378931"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.261225Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T15:13:11.000000Z",
+    "discovered_at": "2026-08-28T10:06:30.185000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I always deliver",
+    "tweet_id": "2092993835953787255",
+    "url": "https://x.com/thsottiaux/status/2092993835953787255"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.153256Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T06:33:34.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.564000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Luna is real",
+    "tweet_id": "2092863071748583492",
+    "url": "https://x.com/thsottiaux/status/2092863071748583492"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.940273Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T03:38:08.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "卢娜！",
+    "tweet_id": "2092818923075092957",
+    "url": "https://x.com/thsottiaux/status/2092818923075092957"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.974274Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T03:37:10.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "OpenAI",
+    "tweet_id": "2092818680698802511",
+    "url": "https://x.com/thsottiaux/status/2092818680698802511"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.008273Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T03:34:20.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Spacial thing you mean",
+    "tweet_id": "2092817965318308284",
+    "url": "https://x.com/thsottiaux/status/2092817965318308284"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.043418Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T03:33:36.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Anthony, since when did you become funny",
+    "tweet_id": "2092817781565935980",
+    "url": "https://x.com/thsottiaux/status/2092817781565935980"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.076424Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T18:08:56.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Dear Viktor, it's all forgiven. Glad you found your usage back. Let's build!",
+    "tweet_id": "2092675679724978506",
+    "url": "https://x.com/thsottiaux/status/2092675679724978506"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:34.110265Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T18:06:46.000000Z",
+    "discovered_at": "2026-08-28T10:01:21.296000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Interesting",
+    "tweet_id": "2092675134666760216",
+    "url": "https://x.com/thsottiaux/status/2092675134666760216"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.740243Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T18:00:04.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.939000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Ah yeah, forgot to say",
+    "tweet_id": "2092311059197808936",
+    "url": "https://x.com/thsottiaux/status/2092311059197808936"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.790636Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T17:56:46.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.939000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "It's Tuesday Jason, it's Tuesday",
+    "tweet_id": "2092310229216338050",
+    "url": "https://x.com/thsottiaux/status/2092310229216338050"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.832273Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T14:49:26.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.939000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "No leaks",
+    "tweet_id": "2092263085574950946",
+    "url": "https://x.com/thsottiaux/status/2092263085574950946"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.865273Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T14:43:04.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.939000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Uncle or father, you have to decide",
+    "tweet_id": "2092261483619192975",
+    "url": "https://x.com/thsottiaux/status/2092261483619192975"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.908273Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T14:41:22.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.939000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Let’s go!",
+    "tweet_id": "2092261054361543127",
+    "url": "https://x.com/thsottiaux/status/2092261054361543127"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.663737Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T18:20:36.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.604000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Not so random, but yes",
+    "tweet_id": "2092316228497063958",
+    "url": "https://x.com/thsottiaux/status/2092316228497063958"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.705208Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T18:19:42.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.604000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "@cerebras ftw!",
+    "tweet_id": "2092315999769117053",
+    "url": "https://x.com/thsottiaux/status/2092315999769117053"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.552658Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T01:25:22.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.208000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I would be pretty happy if that's how I look like one day",
+    "tweet_id": "2092423122360340611",
+    "url": "https://x.com/thsottiaux/status/2092423122360340611"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.586733Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T01:23:34.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.208000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I need two cool slices of cucumber and a piña colada",
+    "tweet_id": "2092422669987963081",
+    "url": "https://x.com/thsottiaux/status/2092422669987963081"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.620745Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T21:14:39.000000Z",
+    "discovered_at": "2026-08-28T10:01:17.208000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "DevDay is 35 days away",
+    "tweet_id": "2092360027013296458",
+    "url": "https://x.com/thsottiaux/status/2092360027013296458"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.377389Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:58:32.000000Z",
+    "discovered_at": "2026-08-28T10:01:16.215000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Open ChatGPT. Click \"Work\". Enjoy.",
+    "tweet_id": "2092491868189929771",
+    "url": "https://x.com/thsottiaux/status/2092491868189929771"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.410103Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:56:05.000000Z",
+    "discovered_at": "2026-08-28T10:01:16.215000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Both",
+    "tweet_id": "2092491252449366355",
+    "url": "https://x.com/thsottiaux/status/2092491252449366355"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.452614Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:53:43.000000Z",
+    "discovered_at": "2026-08-28T10:01:16.215000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Reseted you mean?",
+    "tweet_id": "2092490655864127909",
+    "url": "https://x.com/thsottiaux/status/2092490655864127909"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.486133Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:51:21.000000Z",
+    "discovered_at": "2026-08-28T10:01:16.215000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Best job in the world",
+    "tweet_id": "2092490058146414598",
+    "url": "https://x.com/thsottiaux/status/2092490058146414598"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.519657Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:30:06.000000Z",
+    "discovered_at": "2026-08-28T10:01:16.215000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Other tools you say",
+    "tweet_id": "2092484711851700478",
+    "url": "https://x.com/thsottiaux/status/2092484711851700478"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.309349Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T21:07:38.000000Z",
+    "discovered_at": "2026-08-28T09:39:32.854000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Teach me",
+    "tweet_id": "2093083036795715817",
+    "url": "https://x.com/thsottiaux/status/2093083036795715817"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.344346Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T21:07:07.000000Z",
+    "discovered_at": "2026-08-28T09:39:32.854000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Hi",
+    "tweet_id": "2093082909163098306",
+    "url": "https://x.com/thsottiaux/status/2093082909163098306"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.225343Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T01:54:05.000000Z",
+    "discovered_at": "2026-08-28T09:39:21.995000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "I've enjoyed the two decades of work together",
+    "tweet_id": "2093155124558569939",
+    "url": "https://x.com/thsottiaux/status/2093155124558569939"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.270346Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T01:48:19.000000Z",
+    "discovered_at": "2026-08-28T09:39:21.995000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Honestly? That's profound",
+    "tweet_id": "2093153676269629734",
+    "url": "https://x.com/thsottiaux/status/2093153676269629734"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.192290Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T05:48:11.000000Z",
+    "discovered_at": "2026-08-28T09:39:20.187000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Just in a good mood",
+    "tweet_id": "2093214036972474405",
+    "url": "https://x.com/thsottiaux/status/2093214036972474405"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.061045Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T06:21:51.000000Z",
+    "discovered_at": "2026-08-28T09:39:13.187000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "People are usually very nice",
+    "tweet_id": "2093222512155091040",
+    "url": "https://x.com/thsottiaux/status/2093222512155091040"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.092510Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T06:19:36.000000Z",
+    "discovered_at": "2026-08-28T09:39:13.187000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "It’s DevDay soon",
+    "tweet_id": "2093221946712592474",
+    "url": "https://x.com/thsottiaux/status/2093221946712592474"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.126245Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T06:19:04.000000Z",
+    "discovered_at": "2026-08-28T09:39:13.187000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "High praise",
+    "tweet_id": "2093221811169513931",
+    "url": "https://x.com/thsottiaux/status/2093221811169513931"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:33.159244Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T06:18:42.000000Z",
+    "discovered_at": "2026-08-28T09:39:13.187000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Always improving",
+    "tweet_id": "2093221718903160832",
+    "url": "https://x.com/thsottiaux/status/2093221718903160832"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:34:33.007027Z",
+      "confidence": 0.8,
+      "explicitness": "unclear",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet consists solely of the word 'Codex' with no additional context or reset-related language. It is a generic mention of Codex without implying or announcing a reset.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T06:24:06.000000Z",
+    "discovered_at": "2026-08-28T09:39:11.302000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "search",
+      "with_replies"
+    ],
+    "text": "Codex",
+    "tweet_id": "2093223078323196204",
+    "url": "https://x.com/thsottiaux/status/2093223078323196204"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:22.531046Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T18:01:05.000000Z",
+    "discovered_at": "2026-08-28T09:37:28.328000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Excited about our Jalapeno results today. An incredible achievement from the team, taking a new chip from concept all the way to very impressive performance on real workloads in the lab. Tomorrow’s fast will feel like today’s ultrafast. As I’ve mentioned before, we’re pushing to",
+    "tweet_id": "2092311315545239771",
+    "url": "https://x.com/thsottiaux/status/2092311315545239771"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:22.484052Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T21:13:02.000000Z",
+    "discovered_at": "2026-08-28T09:37:25.212000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "I want to see the polymarket",
+    "tweet_id": "2092359619075314102",
+    "url": "https://x.com/thsottiaux/status/2092359619075314102"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_hint",
+      "classified_at": "2026-08-29T15:34:22.282928Z",
+      "confidence": 0.72,
+      "explicitness": "implicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "User metaphorically refers to pressing the reset button and looking for it tomorrow, implying a possible reset without explicit statement.",
+      "urgency": "within_24h"
+    },
+    "created_at": "2026-08-27T06:31:31.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.321000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "A good thing about having aged is that I feel that it’s been 20 years since I’ve pressed the reset button. Intrigued to see if I can find it tomorrow and dust it up",
+    "tweet_id": "2092862554632826968",
+    "url": "https://x.com/thsottiaux/status/2092862554632826968"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:22.329876Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T23:30:54.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.321000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "A few weeks at OpenAI feel like years at other companies in terms of how much gets done. Crazy how much you can age in a few days",
+    "tweet_id": "2092756702349398036",
+    "url": "https://x.com/thsottiaux/status/2092756702349398036"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:22.363937Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-26T05:41:51.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.321000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Good products take time. At least 34 days.",
+    "tweet_id": "2092487667426738179",
+    "url": "https://x.com/thsottiaux/status/2092487667426738179"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:34:22.406936Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T20:16:15.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.321000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "So much demand for this one. Works similar to the Pro $100 plan but designed for teams and small companies. All ChatGPT, ChatGPT Work, and Codex features Connect to Google Workspace, Slack, GitHub, Microsoft 365, and more Secure workspace with SAML, SSO, and MFA",
+    "tweet_id": "2092345330272780499",
+    "url": "https://x.com/thsottiaux/status/2092345330272780499"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:22.440048Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-25T18:19:29.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.321000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Do I need a haircut",
+    "tweet_id": "2092315945700381084",
+    "url": "https://x.com/thsottiaux/status/2092315945700381084"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:04.485964Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T05:21:16.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.106000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search",
+      "with_replies"
+    ],
+    "text": "But flying close to Sol doesn't make it faster, sorry.",
+    "tweet_id": "2093207264194892263",
+    "url": "https://x.com/thsottiaux/status/2093207264194892263"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-08-29T15:34:04.439440Z",
+      "confidence": 0.95,
+      "explicitness": "unclear",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet discusses the growing number of Codex users in public places, noting the tool's mainstream adoption. There is no mention of resets, quotas, or limits.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-28T05:21:12.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.106000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search",
+      "with_replies"
+    ],
+    "text": "Starting to see more and more Codex users on airplanes and in cafés. Underdog energy gone mainstream.",
+    "tweet_id": "2093207246977318928",
+    "url": "https://x.com/thsottiaux/status/2093207246977318928"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-29T15:34:04.517975Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-27T20:34:34.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.106000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "ChatGPT can now do your groceries, book an Uber, get you that haircut appointment (hint hint), and much more. All without ever seeing your actual credentials and keeping it secure.",
+    "tweet_id": "2093074717590921245",
+    "url": "https://x.com/thsottiaux/status/2093074717590921245"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_confirmed",
+      "classified_at": "2026-08-29T15:34:13.447657Z",
+      "confidence": 0.85,
+      "explicitness": "explicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "The tweet uses 'reseted' and states 'brand new usage for all ChatGPT Work and Codex users', indicating the reset has already taken effect.",
+      "urgency": "now"
+    },
+    "created_at": "2026-08-27T16:35:05.000000Z",
+    "discovered_at": "2026-08-28T09:30:56.106000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "profile_dom",
+      "search"
+    ],
+    "text": "Never slept better and feeling reseted. Brand new me and brand new usage for all ChatGPT Work and Codex users. Regaining my youth one button press at a time. Happy Thursday",
+    "tweet_id": "2093014447833116908",
+    "url": "https://x.com/thsottiaux/status/2093014447833116908"
+  }
+]
