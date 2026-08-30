@@ -1,6 +1,6 @@
 # Codex Reset Radar — Phase E 进度报告
 
-报告时间：2026-08-31 03:15（Asia/Shanghai）  
+报告时间：2026-08-31 03:27（Asia/Shanghai）  
 当前阶段：Phase E — GitHub Pages Dashboard
 
 ## 1. 阶段结论
@@ -30,6 +30,7 @@ Dashboard 是纯静态前端，只读取仓库中的 `public-data/` 快照，不
 - Basic Timeline：最近 reset 信号时间线；
 - 缺少 JSON、字段缺失、空信号或缺少 Health 组件时优雅降级；
 - 请求失败时显示 `Data unavailable`，页面不白屏。
+- 首次访问默认显示中文；右上角可切换 English，选择保存在浏览器本地；Tweet 原文保持不翻译。
 
 ## 3. GitHub Pages 部署
 

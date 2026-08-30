@@ -46,6 +46,7 @@ describe("dashboard data", () => {
     expect(signalTweets([])).toEqual([]);
     expect(healthState(undefined, NOW)).toBe("unknown");
     expect(ageLabel("2026-08-30T17:59:00Z", NOW)).toBe("1m ago");
+    expect(ageLabel("2026-08-30T17:59:00Z", NOW, "zh")).toBe("1 分钟前");
   });
 
   it("weakens quota information without dropping reset signals", () => {
