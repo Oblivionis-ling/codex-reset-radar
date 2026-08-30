@@ -1,7 +1,7 @@
 {
   "confidence": 0.99,
   "expires_at": null,
-  "generated_at": "2026-08-30T19:46:49Z",
+  "generated_at": "2026-08-30T20:03:04Z",
   "reason": "Matched language stating that the reset or limits are complete.",
   "schema_version": 1,
   "state": "CONFIRMED",
