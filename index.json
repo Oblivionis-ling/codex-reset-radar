@@ -1,0 +1,20 @@
+{
+  "category_counts": {
+    "codex_related": 6,
+    "quota_information": 4,
+    "reset_announcement": 4,
+    "reset_confirmed": 3,
+    "reset_hint": 3,
+    "unrelated": 104
+  },
+  "classified_tweet_count": 124,
+  "files": [
+    "health.json",
+    "radar.json",
+    "tweets.json"
+  ],
+  "generated_at": "2026-08-30T19:46:49Z",
+  "schema_version": 1,
+  "source": "@thsottiaux",
+  "tweet_count": 124
+}
