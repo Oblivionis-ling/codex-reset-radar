@@ -1,0 +1,26 @@
+{
+  "components": [
+    {
+      "component": "backend",
+      "last_heartbeat": "2026-08-30T17:59:33.432044Z",
+      "state": "healthy"
+    },
+    {
+      "component": "profile_monitor",
+      "last_heartbeat": "2026-08-30T17:59:42.588000Z",
+      "state": "healthy"
+    },
+    {
+      "component": "replies_monitor",
+      "last_heartbeat": "2026-08-30T17:59:42.599000Z",
+      "state": "healthy"
+    },
+    {
+      "component": "search_backfill",
+      "last_heartbeat": "2026-08-30T17:57:02.444757Z",
+      "state": "healthy"
+    }
+  ],
+  "generated_at": "2026-08-30T17:59:43Z",
+  "schema_version": 1
+}

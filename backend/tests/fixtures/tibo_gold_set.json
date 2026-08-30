@@ -1,0 +1,157 @@
+[
+  {
+    "tweet_id": "2093677219508048295",
+    "text": "Appreciate you too Jediah",
+    "expected_category": "unrelated",
+    "source": "real",
+    "notes": "Short social reply with no Codex, quota, or reset signal."
+  },
+  {
+    "tweet_id": "2093573575869698091",
+    "text": "This will indeed continue to be supported",
+    "expected_category": "unrelated",
+    "source": "real",
+    "notes": "Generic support statement."
+  },
+  {
+    "tweet_id": "2093515916076343774",
+    "text": "We unfortunately have decided that we cannot continue providing access to our models through Cursor.",
+    "expected_category": "unrelated",
+    "source": "real",
+    "notes": "Partnership announcement unrelated to reset or quota."
+  },
+  {
+    "tweet_id": "2093399001358065720",
+    "text": "Bugs are just software",
+    "expected_category": "unrelated",
+    "source": "real",
+    "notes": "Ordinary unrelated statement."
+  },
+  {
+    "tweet_id": "2093354037198696932",
+    "text": "What is the most ambitious task you’ve given ChatGPT Work?",
+    "expected_category": "unrelated",
+    "source": "real",
+    "notes": "ChatGPT Work mention without a reset or quota signal."
+  },
+  {
+    "tweet_id": "2093223078323196204",
+    "text": "Codex",
+    "expected_category": "codex_related",
+    "source": "real",
+    "notes": "Codex-only post; semantic context may still require AI."
+  },
+  {
+    "tweet_id": "2093207246977318928",
+    "text": "Starting to see more and more Codex users on airplanes and in cafés. Underdog energy gone mainstream.",
+    "expected_category": "codex_related",
+    "source": "real",
+    "notes": "Codex usage observation without quota or reset semantics."
+  },
+  {
+    "tweet_id": "2092997044512378931",
+    "text": "Come to Codex, you know you should",
+    "expected_category": "codex_related",
+    "source": "real",
+    "notes": "Codex promotion without reset semantics."
+  },
+  {
+    "tweet_id": "2091407991736332689",
+    "text": "Update on rate limits in Codex. We’ve found some inefficiencies when using images in long sessions.",
+    "expected_category": "quota_information",
+    "source": "real",
+    "notes": "Rate-limit policy explanation without an actual reset event."
+  },
+  {
+    "tweet_id": "2091033630147854385",
+    "text": "Update on rate limits in Codex. Usage is draining somewhat faster for some users.",
+    "expected_category": "quota_information",
+    "source": "real",
+    "notes": "Quota/usage behavior without a reset event."
+  },
+  {
+    "tweet_id": "2092058556707344708",
+    "text": "Tomorrow we will bring back the 5h limit for Plus accounts across ChatGPT Work and Codex.",
+    "expected_category": "quota_information",
+    "source": "real",
+    "notes": "Future limit policy change, not a reset event."
+  },
+  {
+    "tweet_id": "2092862554632826968",
+    "text": "I’ve pressed the reset button. Intrigued to see if I can find it tomorrow and dust it up.",
+    "expected_category": "reset_hint",
+    "source": "real",
+    "notes": "Known reset-button metaphor; AI review expected."
+  },
+  {
+    "tweet_id": "2093573991965557198",
+    "text": "Looking at the dashboard we might hit a new milestone to celebrate tomorrow. Hold on to your Codex",
+    "expected_category": "reset_hint",
+    "rule_expected_category": "codex_related",
+    "source": "real",
+    "notes": "AI-sensitive milestone hint; Rule alone should remain conservative."
+  },
+  {
+    "tweet_id": "2093551005711679557",
+    "text": "There is a place and a time for resets. Soon, but not today",
+    "expected_category": "reset_hint",
+    "source": "real",
+    "notes": "Reset vocabulary with future timing, but no explicit event."
+  },
+  {
+    "tweet_id": "2093014447833116908",
+    "text": "Feeling reseted. Brand new usage for all ChatGPT Work and Codex users, one button press at a time.",
+    "expected_category": "reset_confirmed",
+    "source": "real",
+    "notes": "Non-standard reset spelling plus restored/new usage indicates an event."
+  },
+  {
+    "tweet_id": "2091688655828246890",
+    "text": "Reset has been propagated to accounts and we landed some fixes to usage.",
+    "expected_category": "reset_confirmed",
+    "source": "real",
+    "notes": "Propagation to accounts is treated as completed/applied."
+  },
+  {
+    "tweet_id": "2091412393368945027",
+    "text": "Reset will land around 14pm PST tomorrow.",
+    "expected_category": "reset_announcement",
+    "source": "real",
+    "notes": "Explicit future reset schedule."
+  },
+  {
+    "tweet_id": "2090947196107764189",
+    "text": "The banked reset will be there by 8pm PST for all paid users.",
+    "expected_category": "reset_announcement",
+    "source": "real",
+    "notes": "Banked reset distribution is a reset announcement, not generic quota."
+  },
+  {
+    "tweet_id": "2090964822422949999",
+    "text": "The banked reset has landed, I repeat, the banked reset has landed.",
+    "expected_category": "reset_confirmed",
+    "source": "real",
+    "notes": "Banked reset has landed and is therefore confirmed."
+  },
+  {
+    "tweet_id": "2090766694897619318",
+    "text": "We will credit every Codex and ChatGPT Work user with a BANKED reset during the day.",
+    "expected_category": "reset_announcement",
+    "source": "real",
+    "notes": "Future banked-reset crediting plan."
+  },
+  {
+    "tweet_id": "manual-in-progress",
+    "text": "The reset is rolling out to accounts now.",
+    "expected_category": "reset_in_progress",
+    "source": "manual",
+    "notes": "Synthetic regression case for active rollout."
+  },
+  {
+    "tweet_id": "manual-denial",
+    "text": "There will be no reset today.",
+    "expected_category": "reset_denial",
+    "source": "manual",
+    "notes": "Synthetic regression case for denial-first protection."
+  }
+]

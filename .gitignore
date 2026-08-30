@@ -1,0 +1,19 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+backend/data/
+backend/*.db
+backend/*.db-*
+extension/node_modules/
+extension/dist/
+dashboard/node_modules/
+dashboard/dist/
+*.log
+.coverage
+htmlcov/
+.DS_Store
+
+# Public mirror is intentionally tracked. Keep local mirror scratch files out.
+public-data/*.tmp
