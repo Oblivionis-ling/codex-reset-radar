@@ -96,6 +96,7 @@ async def classify_tweet(
     provider: AIProvider | None = None,
     settings: Settings | None = None,
     force: bool = False,
+    mirror_event: Any | None = None,
 ) -> dict[str, Any]:
     settings = settings or get_settings()
     tweet = session.get(Tweet, tweet_id)
@@ -184,6 +185,18 @@ async def classify_tweet(
             radar.state,
             radar.trigger_tweet_id,
         )
+    if mirror_event is not None and (
+        radar.changed
+        or decision.result.category in {
+            "reset_hint",
+            "reset_announcement",
+            "reset_in_progress",
+            "reset_confirmed",
+            "reset_denial",
+            "quota_information",
+        }
+    ):
+        mirror_event.set()
     return {
         "tweet_id": tweet_id,
         "skipped": False,
@@ -202,6 +215,7 @@ async def classify_tweet_ids(
     *,
     force: bool = False,
     settings: Settings | None = None,
+    mirror_event: Any | None = None,
 ) -> dict[str, int]:
     settings = settings or get_settings()
     provider = provider_from_settings(settings)
@@ -209,7 +223,14 @@ async def classify_tweet_ids(
     with session_factory() as session:
         for tweet_id in dict.fromkeys(tweet_ids):
             try:
-                result = await classify_tweet(session, tweet_id, provider=provider, settings=settings, force=force)
+                result = await classify_tweet(
+                    session,
+                    tweet_id,
+                    provider=provider,
+                    settings=settings,
+                    force=force,
+                    mirror_event=mirror_event,
+                )
                 counts["skipped" if result.get("skipped") else "classified"] += 1
             except Exception:
                 session.rollback()

@@ -43,9 +43,11 @@ h2 { font-size: 1.05rem; letter-spacing: -0.02em; }
 .radar-card.state-WATCH::before { background: var(--yellow); }
 .radar-card.state-QUIET::before { background: var(--green); }
 .radar-card-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.radar-card-badges { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: 8px; }
 .radar-card h2 { margin-top: 5px; font-size: clamp(1.8rem, 5vw, 3rem); letter-spacing: -0.06em; }
 .state-pill, .status-dot, .category-tag, .panel-count { border: 1px solid var(--border); border-radius: 999px; padding: 5px 9px; color: var(--text); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 .state-pill { background: #172a43; }
+.stale-badge { border: 1px solid #735d2c; border-radius: 999px; padding: 5px 9px; color: #ffe9a7; background: #44391d; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
 .radar-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
 .radar-facts div { border-top: 1px solid var(--border); padding-top: 10px; }
 .radar-facts span, .monitor-row .muted { display: block; color: var(--muted); font-size: 0.72rem; }
@@ -71,13 +73,18 @@ h2 { font-size: 1.05rem; letter-spacing: -0.02em; }
 .signal-footer { justify-content: space-between; }
 .monitor-list { padding: 5px 18px 12px; }
 .monitor-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid rgba(38, 57, 83, 0.75); }
-.monitor-row:last-child { border-bottom: 0; }
+.monitor-row:last-child, .mirror-row:last-child { border-bottom: 0; }
 .monitor-row strong { display: block; font-size: 0.86rem; }
 .monitor-row .muted { margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mirror-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 13px 0; border-bottom: 1px solid rgba(38, 57, 83, 0.75); }
+.mirror-row strong { display: block; font-size: 0.86rem; }
+.mirror-row .muted { display: block; margin-top: 3px; color: var(--muted); font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .status-dot { padding: 4px 7px; letter-spacing: 0; text-transform: lowercase; }
 .status-healthy { color: #9bf2cc; border-color: #276b51; background: #123c31; }
 .status-warning { color: #ffe9a7; border-color: #735d2c; background: #44391d; }
 .status-offline { color: #ffd2d9; border-color: #7a3a52; background: #462333; }
+.status-fresh { color: #9bf2cc; border-color: #276b51; background: #123c31; }
+.status-stale { color: #ffe9a7; border-color: #735d2c; background: #44391d; }
 .status-unknown { color: #c3cfdd; border-color: #40536d; background: #1b2a3d; }
 .age { min-width: 54px; color: var(--muted); font-size: 0.72rem; text-align: right; }
 .recent-panel { grid-column: 1 / 2; }
@@ -107,6 +114,7 @@ code { color: #a9c9f8; }
   .panel { margin-bottom: 14px; }
   .signal-list { max-height: none; }
   .footer { display: block; line-height: 1.7; }
+  .radar-card-badges { justify-content: start; }
 }
 
 @media (max-width: 420px) {
@@ -114,6 +122,8 @@ code { color: #a9c9f8; }
   .radar-facts div:last-child { grid-column: 1 / -1; }
   .monitor-row { grid-template-columns: minmax(0, 1fr) auto; }
   .monitor-row .age { grid-column: 1 / 2; grid-row: 2; text-align: left; }
+  .mirror-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .mirror-row .age { grid-column: 1 / 2; grid-row: 2; text-align: left; }
   .status-dot { grid-row: 1 / 3; }
   .signal-meta { gap: 6px; }
 }
