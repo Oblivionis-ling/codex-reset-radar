@@ -15,3 +15,5 @@ npm run dev
 ```
 
 The Vite plugin serves the root `public-data/` directory at `/public-data/` during development and emits the same files into the production artifact. `base: "./"` and URL resolution against `document.baseURI` keep the app working at `/codex-reset-radar/` on GitHub Pages.
+
+The dashboard defaults to Chinese on first visit. Use the top-right language button to switch to English; the choice is kept locally in the browser. Tweet text remains the original source text.

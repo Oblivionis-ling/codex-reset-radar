@@ -189,11 +189,20 @@ export function healthState(
   return reported === "healthy" || reported === "warning" ? reported : "unknown";
 }
 
-export function ageLabel(timestamp: string | null | undefined, now = Date.now()): string {
-  if (!timestamp) return "unknown";
+export function ageLabel(timestamp: string | null | undefined, now = Date.now(), language: "zh" | "en" = "en"): string {
+  const unknown = language === "zh" ? "未知" : "unknown";
+  if (!timestamp) return unknown;
   const parsed = Date.parse(timestamp);
-  if (!Number.isFinite(parsed)) return "unknown";
+  if (!Number.isFinite(parsed)) return unknown;
   const seconds = Math.max(0, Math.floor((now - parsed) / 1000));
+  if (language === "zh") {
+    if (seconds < 60) return `${seconds} 秒前`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} 分钟前`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} 小时前`;
+    return `${Math.floor(hours / 24)} 天前`;
+  }
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
