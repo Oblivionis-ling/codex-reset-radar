@@ -3,8 +3,10 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from scripts.public_export import build_snapshot, write_snapshot
+import app.main as backend_main
 
 
 def create_mirror_fixture(path) -> None:
@@ -87,6 +89,7 @@ def test_public_export_uses_allow_list_and_redacts_known_secret(tmp_path, monkey
 
     assert snapshot["index"]["tweet_count"] == 1
     assert snapshot["radar"]["state"] == "WATCH"
+    assert snapshot["health"]["components"][0]["state"] == "healthy"
     assert tweet["url"] == "https://x.com/thsottiaux/status/123"
     assert tweet["text"].endswith("[redacted]")
     assert tweet["classification"]["category"] == "reset_hint"
@@ -108,3 +111,32 @@ def test_public_export_writes_only_contract_files(tmp_path) -> None:
         "radar.json",
         "tweets.json",
     ]
+
+
+def test_public_export_preserves_reported_health_state_when_snapshot_is_old(tmp_path) -> None:
+    database_path = tmp_path / "radar.db"
+    create_mirror_fixture(database_path)
+    connection = sqlite3.connect(database_path)
+    connection.execute(
+        "INSERT INTO monitor_health VALUES (?, ?, ?)",
+        ("profile_monitor", "offline", "2026-08-30 01:04:00"),
+    )
+    connection.commit()
+    connection.close()
+
+    snapshot = build_snapshot(database_path, generated_at=datetime(2026, 8, 30, 2, 0, tzinfo=timezone.utc))
+    states = {entry["component"]: entry["state"] for entry in snapshot["health"]["components"]}
+
+    assert states["backend"] == "healthy"
+    assert states["profile_monitor"] == "offline"
+    assert states["replies_monitor"] == "unknown"
+
+
+def test_github_mirror_failure_is_reported_without_escaping(monkeypatch) -> None:
+    monkeypatch.setattr(
+        backend_main.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="network down"),
+    )
+
+    assert backend_main._run_public_mirror_sync(SimpleNamespace(github_mirror_interval_seconds=300)) is False

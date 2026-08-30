@@ -1,0 +1,8 @@
+{
+  "data_branch": "data",
+  "generated_at": "2026-08-30T18:00:32Z",
+  "last_sync_status": "sample",
+  "mirror_synced_at": "2026-08-30T18:00:32Z",
+  "schema_version": 1,
+  "source": "local-radar"
+}

@@ -121,13 +121,12 @@ def _health_snapshot(connection: sqlite3.Connection, generated_at: datetime) -> 
         if row is None:
             components.append({"component": component, "state": "unknown", "last_heartbeat": None})
             continue
-        heartbeat = _parse_utc(row["last_heartbeat"])
-        age_seconds = max(0, int((generated_at - heartbeat).total_seconds())) if heartbeat else None
-        state = str(row["state"])
-        if state == "offline" or (age_seconds is not None and age_seconds > 30 * 60):
-            state = "offline"
-        elif state == "healthy" and age_seconds is not None and age_seconds > 15 * 60:
-            state = "warning"
+        # Preserve the locally reported state. The Dashboard must combine
+        # this state with snapshot freshness; an old snapshot cannot prove
+        # that a monitor is offline right now.
+        state = str(row["state"] or "unknown").strip().lower()
+        if state not in {"healthy", "warning", "offline", "unknown"}:
+            state = "unknown"
         components.append(
             {
                 "component": component,

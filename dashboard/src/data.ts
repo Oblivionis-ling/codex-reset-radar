@@ -1,4 +1,4 @@
-export const PUBLIC_DATA_FILES = ["index", "tweets", "radar", "health"] as const;
+export const PUBLIC_DATA_FILES = ["index", "tweets", "radar", "health", "meta"] as const;
 export const SIGNAL_CATEGORIES = new Set([
   "reset_hint",
   "reset_announcement",
@@ -14,9 +14,7 @@ export const RESET_CATEGORIES = new Set([
   "reset_confirmed",
   "reset_denial"
 ]);
-export const DATA_STALE_MS = 30 * 60 * 1000;
-export const HEALTH_WARNING_MS = 15 * 60 * 1000;
-export const HEALTH_OFFLINE_MS = 30 * 60 * 1000;
+export const DATA_STALE_MS = 15 * 60 * 1000;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -67,11 +65,21 @@ export interface PublicHealth {
   components?: PublicHealthComponent[];
 }
 
+export interface PublicMeta {
+  schema_version?: number;
+  generated_at?: string;
+  mirror_synced_at?: string;
+  source?: string;
+  data_branch?: string;
+  last_sync_status?: string;
+}
+
 export interface DashboardData {
   index: PublicIndex | null;
   tweets: PublicTweet[];
   radar: PublicRadar | null;
   health: PublicHealth | null;
+  meta: PublicMeta | null;
   errors: string[];
 }
 
@@ -152,6 +160,18 @@ function normalizeHealth(value: unknown): PublicHealth | null {
   return { generated_at: asString(value.generated_at), components };
 }
 
+function normalizeMeta(value: unknown): PublicMeta | null {
+  if (!isRecord(value)) return null;
+  return {
+    schema_version: asNumber(value.schema_version),
+    generated_at: asString(value.generated_at),
+    mirror_synced_at: asString(value.mirror_synced_at),
+    source: asString(value.source),
+    data_branch: asString(value.data_branch),
+    last_sync_status: asString(value.last_sync_status)
+  };
+}
+
 export function sortByTweetTime(tweets: PublicTweet[]): PublicTweet[] {
   return [...tweets].sort((left, right) => {
     const leftTime = Date.parse(left.created_at ?? left.discovered_at ?? "") || 0;
@@ -169,24 +189,56 @@ export function resetSignalTweets(tweets: PublicTweet[]): PublicTweet[] {
 }
 
 export function isDataStale(generatedAt: string | undefined, now = Date.now(), thresholdMs = DATA_STALE_MS): boolean {
-  if (!generatedAt) return true;
-  const timestamp = Date.parse(generatedAt);
-  return !Number.isFinite(timestamp) || now - timestamp > thresholdMs;
+  return deriveDataFreshness(generatedAt, now, thresholdMs) === "stale";
 }
 
-export function healthState(
+export type DisplayHealth = "healthy" | "offline" | "stale" | "unknown";
+
+export type DataFreshness = "fresh" | "stale" | "unknown";
+
+export function deriveDataFreshness(
+  generatedAt: string | undefined,
+  now = Date.now(),
+  thresholdMs = DATA_STALE_MS
+): DataFreshness {
+  if (!generatedAt) return "unknown";
+  const timestamp = Date.parse(generatedAt);
+  if (!Number.isFinite(timestamp)) return "unknown";
+  return now - timestamp > thresholdMs ? "stale" : "fresh";
+}
+
+export function deriveDisplayHealth(
   component: PublicHealthComponent | undefined,
+  snapshotGeneratedAt: string | undefined,
   now = Date.now()
-): "healthy" | "warning" | "offline" | "unknown" {
+): DisplayHealth {
   if (!component) return "unknown";
+  const freshness = deriveDataFreshness(snapshotGeneratedAt, now);
+  if (freshness === "unknown") return "unknown";
+  if (freshness === "stale") return "stale";
   const reported = component.state?.toLowerCase();
+  if (reported === "healthy") return "healthy";
   if (reported === "offline") return "offline";
-  const timestamp = component.last_heartbeat ? Date.parse(component.last_heartbeat) : Number.NaN;
-  if (!Number.isFinite(timestamp)) return reported === "healthy" ? "warning" : "unknown";
-  const age = Math.max(0, now - timestamp);
-  if (age > HEALTH_OFFLINE_MS) return "offline";
-  if (age > HEALTH_WARNING_MS && reported === "healthy") return "warning";
-  return reported === "healthy" || reported === "warning" ? reported : "unknown";
+  return "unknown";
+}
+
+export function deriveMirrorState(
+  syncedAt: string | undefined,
+  now = Date.now()
+): DataFreshness {
+  return deriveDataFreshness(syncedAt, now);
+}
+
+export function mergeDashboardData(previous: DashboardData, next: DashboardData): DashboardData {
+  const failedFiles = new Set(next.errors.map((error) => error.split(":", 1)[0]));
+  return {
+    index: failedFiles.has("index") ? previous.index : next.index,
+    tweets: failedFiles.has("tweets") ? previous.tweets : next.tweets,
+    radar: failedFiles.has("radar") ? previous.radar : next.radar,
+    health: failedFiles.has("health") ? previous.health : next.health,
+    meta: failedFiles.has("meta") ? previous.meta : next.meta,
+    errors: next.errors
+  };
 }
 
 export function ageLabel(timestamp: string | null | undefined, now = Date.now(), language: "zh" | "en" = "en"): string {
@@ -215,11 +267,11 @@ export async function loadDashboardData(
   fetcher: FetchJson = fetch,
   baseUrl = document.baseURI
 ): Promise<DashboardData> {
-  const result: DashboardData = { index: null, tweets: [], radar: null, health: null, errors: [] };
+  const result: DashboardData = { index: null, tweets: [], radar: null, health: null, meta: null, errors: [] };
   const values = await Promise.all(
     PUBLIC_DATA_FILES.map(async (file) => {
       try {
-        const response = await fetcher(new URL(`public-data/${file}.json`, baseUrl));
+        const response = await fetcher(new URL(`${file}.json`, baseUrl), { cache: "no-store" });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return { file, value: await response.json() as unknown };
       } catch (error) {
@@ -233,6 +285,7 @@ export async function loadDashboardData(
     if (item.file === "tweets") result.tweets = normalizeTweets(item.value);
     if (item.file === "radar") result.radar = normalizeRadar(item.value);
     if (item.file === "health") result.health = normalizeHealth(item.value);
+    if (item.file === "meta") result.meta = normalizeMeta(item.value);
   }
   return result;
 }

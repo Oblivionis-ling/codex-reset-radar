@@ -17,9 +17,10 @@ Personal, local-first monitoring of Tibo (`@thsottiaux`) on X. Phase A provides 
 - [x] Phase C acceptance — WxPusher delivery and Windows Toast verified locally
 - [x] Profile / Replies SPA Route Fix — context-preserving status navigation verified
 - [x] Phase D local mirror — allow-listed public data export and GitHub sync script
-- [ ] GitHub Pages Dashboard — intentionally deferred
+- [x] GitHub Pages Dashboard — static UI on GitHub Pages
+- [x] Phase E.5 live data branch and freshness-aware Health semantics
 
-The Dashboard is intentionally not included yet. GitHub is a source-code host and best-effort public data mirror; the local Collector, Backend, SQLite, Radar, and notifications do not depend on it.
+GitHub Pages hosts the static Dashboard. Live public JSON is published to the independent `data` branch; the local Collector, Backend, SQLite, Radar, and notifications continue to run on the Windows machine and do not depend on GitHub.
 
 ## Quick start on Windows
 
@@ -50,17 +51,21 @@ cd ..\backend
 
 See [docs/architecture.md](docs/architecture.md), [docs/data-model.md](docs/data-model.md), and [docs/operations.md](docs/operations.md) for the current implementation and known collector limits.
 
+The live mirror design and Phase E.5 acceptance record are documented in [docs/live-data-mirror.md](docs/live-data-mirror.md) and [docs/phase-e5-progress-report.md](docs/phase-e5-progress-report.md).
+
 ## Public data mirror
 
 The tracked `public-data/` directory contains only sanitized Tweet, final classification, Radar summary, and component health snapshots. It does not contain the local SQLite database, diagnostic telemetry, notification records, AI usage, or credentials.
 
-After the Backend has produced current data and the repository remote is configured, update the mirror with:
+After the Backend has produced current data and the repository remote is configured, update the live data branch with:
 
 ```powershell
-.\scripts\sync-github-mirror.ps1
+.\scripts\sync-github-data.ps1
 ```
 
-The sync script reads SQLite in read-only mode, stages only `public-data/`, and pushes through the authenticated Git remote. A GitHub outage does not interrupt the local radar.
+The sync script reads SQLite in read-only mode, stages only the five sanitized JSON files in a temporary data-branch worktree, and pushes through the authenticated Git remote. It never switches the active development worktree or updates `main/public-data/`. A GitHub outage does not interrupt the local radar.
+
+The Backend runs the same sync in a lightweight 5-minute background loop, with event-triggered sync requests for new Tweets, high-value classifications, Radar changes, and monitor state changes. GitHub failures are logged and retried at most three times per sync cycle; they do not interrupt collection, classification, Radar, SQLite, or notifications.
 
 Collector verification and the current leak-risk assessment are recorded in [docs/collector-test-results.md](docs/collector-test-results.md).
 

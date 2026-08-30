@@ -6,7 +6,7 @@ import { defineConfig, type Plugin } from "vite";
 const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(dashboardDir, "..");
 const publicDataDir = path.join(projectRoot, "public-data");
-const publicDataFiles = ["index.json", "tweets.json", "radar.json", "health.json"] as const;
+const publicDataFiles = ["index.json", "tweets.json", "radar.json", "health.json", "meta.json"] as const;
 
 function publicDataPlugin(): Plugin {
   return {

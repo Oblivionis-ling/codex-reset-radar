@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import shutil
+import subprocess
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -63,6 +65,8 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
     async def lifespan(app: FastAPI):
         app.state.heartbeat_stop = asyncio.Event()
         app.state.monitor_alert_stop = asyncio.Event()
+        app.state.mirror_stop = asyncio.Event()
+        app.state.mirror_event = asyncio.Event()
         with session_factory() as session:
             record_heartbeat(session, HeartbeatPayload(component="backend", state="healthy"))
             update_radar(session)
@@ -73,13 +77,19 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
         monitor_task = asyncio.create_task(
             _monitor_alert_loop(session_factory, app.state.monitor_alert_stop, app.state.alert_manager)
         )
+        mirror_task = asyncio.create_task(
+            _public_mirror_loop(settings, app.state.mirror_stop, app.state.mirror_event)
+        ) if settings.github_mirror_enabled else None
         try:
             yield
         finally:
             app.state.heartbeat_stop.set()
             app.state.monitor_alert_stop.set()
+            app.state.mirror_stop.set()
             task.cancel()
             monitor_task.cancel()
+            if mirror_task:
+                mirror_task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
@@ -88,6 +98,11 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
                 await monitor_task
             except asyncio.CancelledError:
                 pass
+            if mirror_task:
+                try:
+                    await mirror_task
+                except asyncio.CancelledError:
+                    pass
             engine.dispose()
 
     app = FastAPI(title="Codex Reset Radar", version="0.1.0", lifespan=lifespan)
@@ -117,7 +132,14 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
         session = request.app.state.session_factory()
         try:
             created, deduplicated = ingest_batch(session, payload.tweets)
-            background_tasks.add_task(classify_tweet_ids, request.app.state.session_factory, [tweet.tweet_id for tweet in payload.tweets])
+            background_tasks.add_task(
+                classify_tweet_ids,
+                request.app.state.session_factory,
+                [tweet.tweet_id for tweet in payload.tweets],
+                mirror_event=request.app.state.mirror_event,
+            )
+            if created:
+                request.app.state.mirror_event.set()
             return {"ok": True, "created": created, "deduplicated": deduplicated, "received": len(payload.tweets)}
         except Exception:
             session.rollback()
@@ -130,9 +152,13 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
     def heartbeat(payload: HeartbeatPayload, request: Request) -> dict[str, Any]:
         session = request.app.state.session_factory()
         try:
+            previous = session.get(MonitorHealth, payload.component)
+            previous_state = previous.state if previous else None
             health_record = record_heartbeat(session, payload)
             request.app.state.alert_manager.evaluate_monitor_health(session)
             session.commit()
+            if previous_state != payload.state:
+                request.app.state.mirror_event.set()
             return {
                 "ok": True,
                 "component": health_record.component,
@@ -299,7 +325,12 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
             tweet_ids = session.scalars(select(Tweet.tweet_id).order_by(Tweet.discovered_at.asc()).limit(limit)).all()
         finally:
             session.close()
-        return await classify_tweet_ids(request.app.state.session_factory, list(tweet_ids), force=force)
+        return await classify_tweet_ids(
+            request.app.state.session_factory,
+            list(tweet_ids),
+            force=force,
+            mirror_event=request.app.state.mirror_event,
+        )
 
     @app.get("/api/radar")
     def radar(request: Request) -> dict[str, Any]:
@@ -308,6 +339,8 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
             decision = update_radar(session)
             request.app.state.alert_manager.handle_radar_transition(session, decision)
             session.commit()
+            if decision.changed:
+                request.app.state.mirror_event.set()
             record = session.get(RadarState, 1)
             return {
                 "state": record.state,
@@ -393,6 +426,45 @@ async def _monitor_alert_loop(
             await asyncio.to_thread(_evaluate_monitor_alerts, session_factory, alert_manager)
         except Exception:
             logger.exception("Monitor alert evaluation failed")
+
+
+async def _public_mirror_loop(settings, stop_event: asyncio.Event, mirror_event: asyncio.Event) -> None:
+    """Run the GitHub mirror on a 5-minute cadence without blocking the API."""
+    interval = max(60, settings.github_mirror_interval_seconds)
+    while not stop_event.is_set():
+        try:
+            await asyncio.wait_for(mirror_event.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass
+        if stop_event.is_set():
+            return
+        mirror_event.clear()
+        await asyncio.to_thread(_run_public_mirror_sync, settings)
+
+
+def _run_public_mirror_sync(settings) -> bool:
+    script = Path(__file__).resolve().parents[2] / "scripts" / "sync-github-data.ps1"
+    powershell = shutil.which("pwsh") or shutil.which("powershell.exe") or "powershell.exe"
+    command = [powershell, "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script)]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=script.parents[1],
+            capture_output=True,
+            text=True,
+            timeout=max(120, settings.github_mirror_interval_seconds),
+            check=False,
+        )
+    except Exception as exc:
+        logger.warning("PUBLIC_MIRROR_SYNC_FAILED reason=%s", str(exc)[:300])
+        return False
+    output = " ".join((result.stdout or "").split())[-500:]
+    error = " ".join((result.stderr or "").split())[-500:]
+    if result.returncode != 0:
+        logger.warning("PUBLIC_MIRROR_SYNC_FAILED exit_code=%s output=%s error=%s", result.returncode, output, error)
+        return False
+    logger.info("PUBLIC_MIRROR_SYNC_COMPLETED output=%s", output)
+    return True
 
 
 def _evaluate_monitor_alerts(session_factory, alert_manager: AlertManager) -> None:

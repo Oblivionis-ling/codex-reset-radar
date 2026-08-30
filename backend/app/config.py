@@ -30,6 +30,8 @@ class Settings:
     wxpusher_app_token: str = ""
     wxpusher_uid: str = ""
     windows_notifications_enabled: bool = False
+    github_mirror_enabled: bool = True
+    github_mirror_interval_seconds: int = 300
 
     @property
     def database_url(self) -> str:
@@ -55,6 +57,8 @@ def get_settings() -> Settings:
         wxpusher_app_token=os.getenv("WXPUSHER_APP_TOKEN", "").strip(),
         wxpusher_uid=os.getenv("WXPUSHER_UID", "").strip(),
         windows_notifications_enabled=_env_bool("WINDOWS_NOTIFICATIONS_ENABLED", False),
+        github_mirror_enabled=_env_bool("GITHUB_MIRROR_ENABLED", True),
+        github_mirror_interval_seconds=max(60, int(os.getenv("GITHUB_MIRROR_INTERVAL_SECONDS", "300"))),
     )
 
 
