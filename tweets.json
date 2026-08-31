@@ -2,6 +2,29 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-08-31T04:26:53.214125Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-08-30T19:22:19.000000Z",
+    "discovered_at": "2026-08-31T04:26:53.068000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Brent is one of the best things that happened to the quality and polish of the desktop app. Relentless improvements day after day.",
+    "tweet_id": "2094143696656867723",
+    "url": "https://x.com/thsottiaux/status/2094143696656867723"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "quota_information",
       "classified_at": "2026-08-31T02:46:54.086236Z",
       "confidence": 0.94,
