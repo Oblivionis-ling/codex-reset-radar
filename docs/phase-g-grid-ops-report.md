@@ -18,7 +18,8 @@ Phase G 的 Dashboard 视觉重构已在本地完成，业务数据与路由保�
 | 本地 Backend | `http://127.0.0.1:8787/health` 返回 200；现有常驻进程仍在运行 |
 | Backend 重启 | 本阶段未强制终止现有进程；不影响本次前端构建，翻译运行时是否已切换仍按 Phase F 运行说明处理 |
 | 本地公开快照 | 当前 `public-data/meta.json` 为旧样本快照，页面正确显示“数据镜像过期 / 最后已知状态” |
-| Phase G Pages | 本报告提交前线上仍为 Phase F 旧版，待本次 `main` push 后由 Pages workflow 部署 |
+| Phase G Pages | 已部署；远程 `main` 为 `7551779`，`Deploy dashboard` workflow 成功 |
+| Git push | Git transport 两次因当前环境连接 `github.com:443` 超时；使用已登录 GitHub CLI API 创建等价远程 commit 完成发布 |
 
 当前真实前端 fixture 保持：Radar `CONFIRMED`、confidence `99%`、urgency `now`、Usage Advice `GREEN`、最近一次确认 Reset 为北京时间 2026-08-31 10:34、下一次周期估算为 2026-09-07 10:34。
 
@@ -112,7 +113,16 @@ Phase G 的 Dashboard 视觉重构已在本地完成，业务数据与路由保�
 
 目标地址：[https://oblivionis-ling.github.io/codex-reset-radar/](https://oblivionis-ling.github.io/codex-reset-radar/)
 
-在 Phase G `main` push 前，线上入口已确认 HTTP 200，但仍展示 Phase F 旧版。Phase G push 后需等待 `Deploy dashboard` workflow 成功，再复核中文首页、English、`/#/tweets`、`/#/resets` 和移动端。Dashboard 运行时继续从 `data` branch 的 Raw JSON 读取公开数据，不访问本机，不携带任何 Secret；data branch 更新不要求 Pages 重新部署。
+线上验收已完成：
+
+- 根页 HTTP 200，确认加载 Phase G Grid Ops shell；首次验收浏览器以中文默认加载。
+- 中文首页：Radar、Confidence、Urgency、Usage Advice、四路 Monitor Health 和 Data Mirror 均可读取。
+- English 切换：`lang=en`、`REFRESH DATA` 和英文页面标题正常。
+- `/#/tweets`：中文标题、20 条 Tweet、20 个真实 X 原帖链接正常。
+- `/#/resets`：中文标题、31 个日历日期格、4 条 Reset History 记录和 `sample_count=4` 正常。
+- 线上当前 data branch 快照为 fresh，四路 Monitor 显示正常；页面仍从 Raw JSON 读取公开数据，不访问本机，不携带任何 Secret。
+
+GitHub Actions：`tests` run `33372153913` success；`Deploy dashboard` run `33372153912` success。data branch 更新仍不要求 Pages 重新部署。
 
 ## 停止点
 
