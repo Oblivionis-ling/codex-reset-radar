@@ -99,6 +99,8 @@ h2 { font-size: 1.12rem; letter-spacing: -0.02em; }
 .status-healthy, .status-fresh { color: #9bf2cc; border-color: #276b51; background: #123c31; }
 .status-warning, .status-stale { color: #ffe9a7; border-color: #735d2c; background: #44391d; }
 .status-offline { color: #ffd2d9; border-color: #7a3a52; background: #462333; }
+.status-fresh { color: #9bf2cc; border-color: #276b51; background: #123c31; }
+.status-stale { color: #ffe9a7; border-color: #735d2c; background: #44391d; }
 .status-unknown { color: #c3cfdd; border-color: #40536d; background: #1b2a3d; }
 .age { min-width: 54px; color: var(--muted); font-size: .72rem; text-align: right; }
 .home-links { margin-top: 14px; }
@@ -153,6 +155,7 @@ code { color: #a9c9f8; }
   .reset-facts, .stats-grid { gap: 9px; }
   .fact-card, .stat-card { padding: 14px; }
   .footer { display: block; line-height: 1.7; }
+  .radar-card-badges { justify-content: start; }
 }
 @media (max-width: 460px) {
   .topbar-actions { display: block; }
@@ -163,6 +166,8 @@ code { color: #a9c9f8; }
   .reset-facts, .stats-grid { grid-template-columns: 1fr; }
   .monitor-row { grid-template-columns: minmax(0, 1fr) auto; }
   .monitor-row .age { grid-column: 1 / 2; grid-row: 2; text-align: left; }
+  .mirror-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .mirror-row .age { grid-column: 1 / 2; grid-row: 2; text-align: left; }
   .status-dot { grid-row: 1 / 3; }
   .signal-meta { gap: 6px; }
   .tweet-card { padding: 15px; }

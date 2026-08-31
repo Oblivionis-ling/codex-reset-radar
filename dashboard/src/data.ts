@@ -147,6 +147,18 @@ function normalizeResets(value: unknown): PublicResets | null {
   return { generated_at: asString(value.generated_at), timezone: asString(value.timezone), sample_count: asNumber(value.sample_count), events, time_distribution: distribution };
 }
 
+function normalizeMeta(value: unknown): PublicMeta | null {
+  if (!isRecord(value)) return null;
+  return {
+    schema_version: asNumber(value.schema_version),
+    generated_at: asString(value.generated_at),
+    mirror_synced_at: asString(value.mirror_synced_at),
+    source: asString(value.source),
+    data_branch: asString(value.data_branch),
+    last_sync_status: asString(value.last_sync_status)
+  };
+}
+
 export function sortByTweetTime(tweets: PublicTweet[]): PublicTweet[] {
   return [...tweets].sort((left, right) => (Date.parse(right.created_at ?? right.discovered_at ?? "") || 0) - (Date.parse(left.created_at ?? left.discovered_at ?? "") || 0));
 }

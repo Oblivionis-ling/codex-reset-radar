@@ -261,6 +261,7 @@ async def translate_tweet_ids(
     *,
     force: bool = False,
     settings: Settings | None = None,
+    mirror_event: Any | None = None,
 ) -> dict[str, int]:
     settings = settings or get_settings()
     provider = provider_from_settings(settings)
