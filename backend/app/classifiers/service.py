@@ -15,7 +15,7 @@ from app.models import AIUsage, Classification, Tweet
 from app.notifications.alert_manager import AlertManager
 from app.schemas import ClassificationOutput, RuleClassification
 
-from .providers import AIProvider, DeepSeekProvider, DeepSeekProviderError, ProviderResult
+from .providers import AIProvider, DeepSeekProvider, DeepSeekProviderError, ProviderResult, TranslationResult
 from .rule_classifier import classify_rule
 
 
@@ -74,7 +74,7 @@ def record_ai_usage(
     session: Session,
     provider: AIProvider,
     outcome: str,
-    result: ProviderResult | None = None,
+    result: ProviderResult | TranslationResult | None = None,
     error: str | None = None,
 ) -> None:
     session.add(
@@ -119,17 +119,7 @@ async def translate_tweet(
             session,
             provider,
             "translation_success",
-            ProviderResult(
-                result=ClassificationOutput(
-                    category="unrelated",
-                    confidence=0.0,
-                    urgency="unknown",
-                    explicitness="unclear",
-                    reason="translation",
-                ),
-                input_tokens=result.input_tokens,
-                output_tokens=result.output_tokens,
-            ),
+            result,
         )
         session.flush()
         logger.info("TWEET_TRANSLATED tweet_id=%s", tweet_id)
