@@ -43,6 +43,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "What should we ship next week?",
@@ -124,6 +125,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "For clarity, while both are called 20X, in Codex they apply specifically to weekly usage limits. And we also don't have 5h limits for both Pro plans. The Pro 20X is quite precisely 20X the usage of the Plus subscription, so it does exactly what it says on the tin.",
@@ -151,6 +153,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "What I wanted to say yesterday is that we hit 25M active users and to celebrate we have now reset usage for all paid subscriptions for ChatGPT Work and Codex. See you soon for more news from The Reset Company.",
@@ -205,6 +208,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Brent is incredible and one of the main forces behind the desktop app polish, performance and reliability. Relentless improvements day after day.",
@@ -232,6 +236,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Your Codex and ChatGPT Work reset will land at 6pm PST. I challenge you to burn as much usage as you can and discover and the latest awesome features. Time to go /fast",
