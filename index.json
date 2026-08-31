@@ -3,18 +3,18 @@
     "codex_related": 6,
     "quota_information": 4,
     "reset_announcement": 4,
-    "reset_confirmed": 3,
+    "reset_confirmed": 5,
     "reset_hint": 3,
     "unrelated": 105
   },
-  "classified_tweet_count": 125,
+  "classified_tweet_count": 127,
   "files": [
     "health.json",
     "radar.json",
     "tweets.json"
   ],
-  "generated_at": "2026-08-31T02:27:07Z",
+  "generated_at": "2026-08-31T02:37:28Z",
   "schema_version": 1,
   "source": "@thsottiaux",
-  "tweet_count": 125
+  "tweet_count": 127
 }
