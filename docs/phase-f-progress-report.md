@@ -8,7 +8,7 @@
 
 Phase F 的代码、数据契约、翻译 backfill、静态页面和本地验收已完成。Dashboard 已改为中文优先，保留英文切换，并新增 `#/tweets` 与 `#/resets` 两个 GitHub Pages 兼容页面。
 
-GitHub `data` 分支已由现有 mirror scheduler 成功同步新数据；本次 `main` push 两次均因当前环境连接 GitHub:443 失败，Pages 的代码部署尚未能由本轮完成。当前线上 Pages URL 仍可能展示上一版 Dashboard，待 `main` commit `ef2b677`（含后续报告修订）成功推送后，等待 Pages workflow 完成即可。
+GitHub `data` 分支已由现有 mirror scheduler 成功同步新数据；本轮 `main` push 因当前环境连接 GitHub:443 失败，Pages 的代码部署尚未能由本轮完成。当前线上 Pages URL 仍可能展示上一版 Dashboard，待 `main` commit `ba2062c` 成功推送后，等待 Pages workflow 完成即可。
 
 ## Translation
 
