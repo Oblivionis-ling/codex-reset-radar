@@ -1,11 +1,11 @@
 {
   "confidence": 0.99,
   "expires_at": null,
-  "generated_at": "2026-08-31T04:37:44Z",
+  "generated_at": "2026-08-31T04:57:37Z",
   "reason": "Matched language stating that the reset or limits are complete.",
   "schema_version": 1,
   "state": "CONFIRMED",
   "trigger_tweet_id": "2091688655828246890",
-  "updated_at": "2026-08-31T04:26:53.219125Z",
+  "updated_at": "2026-08-31T04:41:52.774538Z",
   "urgency": "now"
 }
