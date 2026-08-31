@@ -140,4 +140,36 @@ def test_github_mirror_failure_is_reported_without_escaping(monkeypatch) -> None
         lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="network down"),
     )
 
-    assert backend_main._run_public_mirror_sync(SimpleNamespace(github_mirror_interval_seconds=300)) is False
+    assert backend_main._run_public_mirror_sync(SimpleNamespace(github_mirror_interval_seconds=300)) == "failed"
+
+
+def test_github_mirror_forwards_cadence_context_and_distinguishes_no_changes(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        backend_main.subprocess,
+        "run",
+        lambda command, **kwargs: (
+            calls.append((command, kwargs))
+            or SimpleNamespace(
+                returncode=0,
+                stdout=(
+                    "PUBLIC_MIRROR_SYNC_SKIPPED cycle_started_at=2026-08-30T01:00:00Z "
+                    "sync_finished_at=2026-08-30T01:00:01Z result=skipped reason=no_changes\n"
+                ),
+                stderr="",
+            )
+        ),
+    )
+
+    outcome = backend_main._run_public_mirror_sync(
+        SimpleNamespace(github_mirror_interval_seconds=300),
+        trigger="scheduled",
+        cycle_started_at=datetime(2026, 8, 30, 1, 0, tzinfo=timezone.utc),
+        previous_success_at=datetime(2026, 8, 30, 0, 55, tzinfo=timezone.utc),
+    )
+
+    assert outcome == "skipped"
+    command = calls[0][0]
+    assert command[command.index("-Trigger") + 1] == "scheduled"
+    assert command[command.index("-CycleStartedAt") + 1] == "2026-08-30T01:00:00Z"
+    assert command[command.index("-PreviousSuccessAt") + 1] == "2026-08-30T00:55:00Z"
