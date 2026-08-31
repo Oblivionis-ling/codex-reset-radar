@@ -6,9 +6,9 @@ from typing import Any
 import httpx
 from pydantic import ValidationError
 
-from app.schemas import ClassificationOutput, RuleClassification
+from app.schemas import ClassificationOutput, RuleClassification, TranslationOutput
 
-from .base import ProviderResult
+from .base import ProviderResult, TranslationResult
 
 
 SYSTEM_PROMPT = """You classify one public Tweet by Tibo (@thsottiaux) for Codex Reset Radar.
@@ -43,6 +43,16 @@ Allowed category: unrelated, codex_related, quota_information, reset_hint,
 reset_announcement, reset_in_progress, reset_confirmed, reset_denial.
 Allowed urgency: now, within_6h, within_24h, within_3d, unknown.
 Allowed explicitness: explicit, implicit, unclear.
+"""
+
+TRANSLATION_SYSTEM_PROMPT = """Translate one public Tweet by Tibo (@thsottiaux) into natural Simplified Chinese.
+Return JSON only with exactly one field: translation_zh.
+Preserve the original meaning, tone, uncertainty, jokes, metaphors, names, product names,
+numbers, URLs, and line breaks when useful. Understand the Codex Reset Radar context,
+including Codex, quota, limits, reset, reset button, banked reset, milestone, usage,
+Plus, and ChatGPT Work. Do not add facts that are not present in the original.
+For metaphors such as 'dust off the button', keep the metaphor understandable in Chinese
+instead of translating it into a literal but misleading sentence.
 """
 
 
@@ -110,6 +120,58 @@ class DeepSeekProvider:
         usage = payload.get("usage") or {}
         return ProviderResult(
             result=result,
+            input_tokens=usage.get("prompt_tokens"),
+            output_tokens=usage.get("completion_tokens"),
+        )
+
+    async def translate(self, text: str, *, context: dict[str, Any] | None = None) -> TranslationResult:
+        user_payload = {
+            "original_text": text,
+            "context": context or {},
+        }
+        body = {
+            "model": self.model_name,
+            "temperature": 0,
+            "messages": [
+                {"role": "system", "content": TRANSLATION_SYSTEM_PROMPT},
+                {"role": "user", "content": json.dumps(user_payload, ensure_ascii=False)},
+            ],
+            "response_format": {"type": "json_object"},
+        }
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+                response = await client.post(
+                    f"{self.base_url}/chat/completions",
+                    headers={"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"},
+                    json=body,
+                )
+                response.raise_for_status()
+                payload = response.json()
+        except httpx.TimeoutException as exc:
+            raise DeepSeekProviderError("DeepSeek translation timeout") from exc
+        except httpx.HTTPStatusError as exc:
+            raise DeepSeekProviderError(f"DeepSeek translation HTTP {exc.response.status_code}") from exc
+        except httpx.HTTPError as exc:
+            raise DeepSeekProviderError("DeepSeek translation connection error") from exc
+        except ValueError as exc:
+            raise DeepSeekProviderError("DeepSeek translation returned invalid JSON") from exc
+
+        try:
+            message = payload["choices"][0]["message"]["content"]
+            if isinstance(message, dict):
+                parsed = message
+            else:
+                content = str(message).strip()
+                if content.startswith("```"):
+                    content = content.removeprefix("```").removeprefix("json").removesuffix("```").strip()
+                parsed = json.loads(content)
+            result = TranslationOutput.model_validate(parsed)
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError, ValidationError) as exc:
+            raise DeepSeekProviderError("DeepSeek translation response schema validation failed") from exc
+
+        usage = payload.get("usage") or {}
+        return TranslationResult(
+            translation_zh=result.translation_zh,
             input_tokens=usage.get("prompt_tokens"),
             output_tokens=usage.get("completion_tokens"),
         )

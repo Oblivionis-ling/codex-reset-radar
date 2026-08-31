@@ -24,6 +24,7 @@ class Settings:
     deepseek_model: str
     deepseek_base_url: str
     prompt_version: str
+    translation_version: str = "tibo-translation-v1"
     alerts_enabled: bool = True
     alert_dry_run: bool = False
     wxpusher_enabled: bool = False
@@ -51,6 +52,7 @@ def get_settings() -> Settings:
         deepseek_model=os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash").strip() or "deepseek-v4-flash",
         deepseek_base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/"),
         prompt_version=os.getenv("DEEPSEEK_PROMPT_VERSION", "tibo-classifier-v1").strip() or "tibo-classifier-v1",
+        translation_version=os.getenv("DEEPSEEK_TRANSLATION_VERSION", "tibo-translation-v1").strip() or "tibo-translation-v1",
         alerts_enabled=_env_bool("ALERTS_ENABLED", True),
         alert_dry_run=_env_bool("ALERT_DRY_RUN", False),
         wxpusher_enabled=_env_bool("WXPUSHER_ENABLED", False),

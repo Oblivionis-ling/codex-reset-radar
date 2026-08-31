@@ -52,6 +52,18 @@ def migrate_legacy_schema(engine: Engine) -> None:
                 if name not in columns:
                     connection.exec_driver_sql(f"ALTER TABLE classifications ADD COLUMN {name} {definition}")
 
+        if "tweets" in tables:
+            columns = {column["name"] for column in inspector.get_columns("tweets")}
+            additions = {
+                "translated_zh": "TEXT",
+                "translation_model": "VARCHAR(128)",
+                "translation_version": "VARCHAR(64)",
+                "translated_at": "DATETIME",
+            }
+            for name, definition in additions.items():
+                if name not in columns:
+                    connection.exec_driver_sql(f"ALTER TABLE tweets ADD COLUMN {name} {definition}")
+
         if "alerts" in tables:
             _migrate_alerts_table(connection, inspector)
 

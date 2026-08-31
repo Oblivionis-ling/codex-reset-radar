@@ -1,11 +1,27 @@
 {
   "confidence": 0.99,
   "expires_at": null,
-  "generated_at": "2026-08-30T18:00:32Z",
+  "forecast": {
+    "active_signal_tweet_id": null,
+    "baseline_next_reset_at": "2026-09-07T02:34:27Z",
+    "estimated_next_reset_at": "2026-09-07T02:34:27Z",
+    "forecast_reason": "Last confirmed reset + 7 days.",
+    "forecast_source": "weekly_baseline",
+    "last_reset_at": "2026-08-31T02:34:27Z",
+    "last_reset_evidence_tweet_id": "2094252447271366730",
+    "last_reset_source": "reset_confirmed_tweet",
+    "signal_window": null
+  },
+  "generated_at": "2026-08-31T06:20:59Z",
   "reason": "Matched language stating that the reset or limits are complete.",
   "schema_version": 1,
   "state": "CONFIRMED",
   "trigger_tweet_id": "2091688655828246890",
-  "updated_at": "2026-08-30T17:34:42.931910Z",
-  "urgency": "now"
+  "updated_at": "2026-08-31T05:21:52.124371Z",
+  "urgency": "now",
+  "usage_advice": {
+    "level": "GREEN",
+    "reason_code": "confirmed",
+    "title_code": "reset_confirmed"
+  }
 }

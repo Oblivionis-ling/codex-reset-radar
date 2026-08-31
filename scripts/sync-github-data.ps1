@@ -16,7 +16,7 @@ $python = Join-Path $repoRoot "backend\.venv\Scripts\python.exe"
 $syncRoot = Join-Path $repoRoot "_tmp\public-data-sync-$PID"
 $exportDir = Join-Path $syncRoot "export"
 $dataWorktree = Join-Path $syncRoot "data-worktree"
-$requiredFiles = @("index.json", "tweets.json", "radar.json", "health.json", "meta.json")
+$requiredFiles = @("index.json", "tweets.json", "radar.json", "health.json", "resets.json", "meta.json")
 
 function Invoke-GitChecked {
     param(

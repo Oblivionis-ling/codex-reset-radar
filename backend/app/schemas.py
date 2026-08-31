@@ -74,3 +74,7 @@ class ClassificationOutput(BaseModel):
 
 class RuleClassification(ClassificationOutput):
     requires_ai: bool = False
+
+
+class TranslationOutput(BaseModel):
+    translation_zh: str = Field(min_length=1, max_length=10000)

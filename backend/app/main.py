@@ -17,9 +17,10 @@ from sqlalchemy import func, select
 from app.config import get_settings
 from app.database import create_database
 from app.ingestion import ingest_batch, record_diagnostic, record_heartbeat
-from app.classifiers.service import classify_tweet, classify_tweet_ids
+from app.classifiers.service import classify_tweet, classify_tweet_ids, translate_tweet_ids
+from app.intelligence.forecast import build_forecast, build_reset_history, derive_usage_advice
 from app.intelligence.radar import update_radar
-from app.models import Alert, Classification, MonitorDiagnosticEvent, MonitorHealth, RadarState, Tweet, TweetSource
+from app.models import Alert, Classification, MonitorDiagnosticEvent, MonitorHealth, RadarState, ResetEvent, Tweet, TweetSource
 from app.notifications.alert_manager import AlertManager, derived_monitor_state
 from app.schemas import DiagnosticPayload, HeartbeatPayload, TweetBatch
 
@@ -54,6 +55,63 @@ def _parse_metadata(value: str | None) -> dict[str, Any]:
     except (TypeError, ValueError):
         return {"_parse_error": True}
     return parsed if isinstance(parsed, dict) else {"value": parsed}
+
+
+def _forecast_payload(session, now: datetime | None = None) -> dict[str, Any]:
+    """Build forecast data from explicit events or latest final classifications."""
+
+    rows = session.execute(
+        select(Classification, Tweet)
+        .join(Tweet, Tweet.tweet_id == Classification.tweet_id)
+        .where(Classification.classifier_type == "final")
+        .order_by(Classification.id.desc())
+    ).all()
+    latest_by_tweet: dict[str, tuple[Classification, Tweet]] = {}
+    for classification, tweet in rows:
+        latest_by_tweet.setdefault(tweet.tweet_id, (classification, tweet))
+
+    confirmed = [
+        {
+            "event_time": tweet.created_at or classification.created_at,
+            "evidence_tweet_id": tweet.tweet_id,
+            "text": tweet.text,
+        }
+        for classification, tweet in latest_by_tweet.values()
+        if classification.category == "reset_confirmed"
+    ]
+    explicit = [
+        {
+            "event_time": event.event_time,
+            "source": event.source,
+            "evidence_tweet_id": event.evidence_tweet_id,
+            "notes": event.notes,
+        }
+        for event in session.scalars(select(ResetEvent).order_by(ResetEvent.event_time.desc())).all()
+    ]
+    history = build_reset_history(explicit, confirmed)
+    hints = [
+        {
+            "event_time": tweet.created_at or classification.created_at,
+            "evidence_tweet_id": tweet.tweet_id,
+            "text": tweet.text,
+            "urgency": classification.urgency,
+        }
+        for classification, tweet in latest_by_tweet.values()
+        if classification.category == "reset_hint"
+    ]
+    announcements = [
+        {
+            "event_time": tweet.created_at or classification.created_at,
+            "evidence_tweet_id": tweet.tweet_id,
+            "text": tweet.text,
+        }
+        for classification, tweet in latest_by_tweet.values()
+        if classification.category == "reset_announcement"
+    ]
+    forecast = build_forecast(history, hints, announcements, now=now)
+    record = session.get(RadarState, 1)
+    advice = derive_usage_advice(record.state if record else "QUIET", forecast, now=now)
+    return {"forecast": forecast, "usage_advice": advice, "reset_history": history}
 
 
 def create_app(database_url: str | None = None, database_path: Path | None = None) -> FastAPI:
@@ -255,6 +313,10 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
                         "tweet_id": tweet.tweet_id,
                         "author": tweet.author,
                         "text": tweet.text,
+                        "translation_zh": tweet.translated_zh,
+                        "translation_model": tweet.translation_model,
+                        "translation_version": tweet.translation_version,
+                        "translated_at": serialize_datetime(tweet.translated_at),
                         "created_at": serialize_datetime(tweet.created_at),
                         "url": tweet.url,
                         "is_reply": tweet.is_reply,
@@ -332,6 +394,48 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
             mirror_event=request.app.state.mirror_event,
         )
 
+    @app.post("/api/translate/backfill")
+    async def translate_backfill(
+        request: Request,
+        limit: int = 20,
+        force: bool = False,
+    ) -> dict[str, int]:
+        """Translate the recent Tweet window plus every high-value reset signal."""
+
+        limit = max(1, min(limit, 500))
+        session = request.app.state.session_factory()
+        try:
+            recent_ids = session.scalars(
+                select(Tweet.tweet_id).order_by(Tweet.created_at.desc(), Tweet.discovered_at.desc()).limit(limit)
+            ).all()
+            signal_ids = session.scalars(
+                select(Classification.tweet_id)
+                .where(
+                    Classification.classifier_type == "final",
+                    Classification.category.in_(
+                        [
+                            "reset_hint",
+                            "reset_announcement",
+                            "reset_in_progress",
+                            "reset_confirmed",
+                            "reset_denial",
+                            "quota_information",
+                        ]
+                    ),
+                )
+                .order_by(Classification.created_at.desc(), Classification.id.desc())
+            ).all()
+        finally:
+            session.close()
+        result = await translate_tweet_ids(
+            request.app.state.session_factory,
+            list(dict.fromkeys([*recent_ids, *signal_ids])),
+            force=force,
+        )
+        if result["translated"]:
+            request.app.state.mirror_event.set()
+        return result
+
     @app.get("/api/radar")
     def radar(request: Request) -> dict[str, Any]:
         session = request.app.state.session_factory()
@@ -351,6 +455,14 @@ def create_app(database_url: str | None = None, database_path: Path | None = Non
                 "expires_at": serialize_datetime(record.expires_at),
                 "reason": record.reason,
             }
+        finally:
+            session.close()
+
+    @app.get("/api/forecast")
+    def forecast(request: Request) -> dict[str, Any]:
+        session = request.app.state.session_factory()
+        try:
+            return _forecast_payload(session)
         finally:
             session.close()
 

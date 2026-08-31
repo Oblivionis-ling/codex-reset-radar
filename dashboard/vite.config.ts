@@ -6,7 +6,7 @@ import { defineConfig, type Plugin } from "vite";
 const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(dashboardDir, "..");
 const publicDataDir = path.join(projectRoot, "public-data");
-const publicDataFiles = ["index.json", "tweets.json", "radar.json", "health.json", "meta.json"] as const;
+const publicDataFiles = ["index.json", "tweets.json", "radar.json", "health.json", "resets.json", "meta.json"] as const;
 
 function publicDataPlugin(): Plugin {
   return {
@@ -14,7 +14,9 @@ function publicDataPlugin(): Plugin {
     configureServer(server) {
       server.middlewares.use("/public-data", (request, response, next) => {
         const pathname = request.url?.split("?", 1)[0] ?? "";
-        const filename = pathname.replace(/^\/public-data\//, "");
+        // connect-style middleware strips the mount path before this handler;
+        // accept both the mounted and the raw request shape.
+        const filename = pathname.replace(/^\/public-data\//, "").replace(/^\/+/, "");
         if (!publicDataFiles.includes(filename as (typeof publicDataFiles)[number])) {
           next();
           return;

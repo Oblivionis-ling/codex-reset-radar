@@ -8,3 +8,4 @@ def disable_live_github_mirror_for_tests(monkeypatch):
     """Keep TestClient suites offline; mirror behavior has dedicated unit coverage."""
 
     monkeypatch.setenv("GITHUB_MIRROR_ENABLED", "false")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)

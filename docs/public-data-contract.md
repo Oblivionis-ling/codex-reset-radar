@@ -6,8 +6,21 @@
 
 - `index.json` — schema version, generation time, Tweet/classification counts, category counts, and the list of mirror files.
 - `tweets.json` — public Tweet fields, source names, and the latest `final` classification only.
-- `radar.json` — current public Radar state and its public trigger Tweet ID.
+- `radar.json` — current public Radar state, forecast, usage advice, and public trigger Tweet ID.
 - `health.json` — public component state and heartbeat timestamps only.
+- `resets.json` — confirmed Reset history, Beijing-time fields, interval labels, and lightweight time distribution.
+
+`tweets.json` keeps the original `text` unchanged and may include the best-effort
+`translation_zh`, `translation_model`, `translation_version`, and `translated_at`
+display fields. A missing translation is represented by `null` and never removes the
+English original.
+
+`radar.json.forecast` contains `last_reset_at`, `baseline_next_reset_at`,
+`signal_window`, `estimated_next_reset_at`, `forecast_source`, and
+`forecast_reason`. The baseline is explicitly `last confirmed reset + 7 days`;
+an active `reset_hint` with `within_24h` or a parseable explicit announcement may
+override it. `radar.json.usage_advice` contains the public `level`, `title_code`,
+and `reason_code` used by the Dashboard.
 
 ## Explicitly excluded
 

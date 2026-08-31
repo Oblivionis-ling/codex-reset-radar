@@ -1,0 +1,54 @@
+{
+  "events": [
+    {
+      "beijing_date": "2026-08-31",
+      "beijing_time": "10:34",
+      "event_time": "2026-08-31T02:34:27Z",
+      "evidence_tweet_id": "2094252447271366730",
+      "interval_label": "3天 10小时",
+      "interval_seconds": 295162.0,
+      "notes": "Derived from the latest final reset_confirmed Tweet; a near-duplicate confirmation was collapsed.",
+      "source": "reset_confirmed_tweet"
+    },
+    {
+      "beijing_date": "2026-08-28",
+      "beijing_time": "00:35",
+      "event_time": "2026-08-27T16:35:05Z",
+      "evidence_tweet_id": "2093014447833116908",
+      "interval_label": "3天 16小时",
+      "interval_seconds": 316094.0,
+      "notes": "Derived from the latest final reset_confirmed Tweet; no explicit reset_event was recorded.",
+      "source": "reset_confirmed_tweet"
+    },
+    {
+      "beijing_date": "2026-08-24",
+      "beijing_time": "08:46",
+      "event_time": "2026-08-24T00:46:51Z",
+      "evidence_tweet_id": "2091688655828246890",
+      "interval_label": "2天 0小时",
+      "interval_seconds": 172575.0,
+      "notes": "Derived from the latest final reset_confirmed Tweet; no explicit reset_event was recorded.",
+      "source": "reset_confirmed_tweet"
+    },
+    {
+      "beijing_date": "2026-08-22",
+      "beijing_time": "08:50",
+      "event_time": "2026-08-22T00:50:36Z",
+      "evidence_tweet_id": "2090964822422949999",
+      "interval_label": null,
+      "interval_seconds": null,
+      "notes": "Derived from the latest final reset_confirmed Tweet; no explicit reset_event was recorded.",
+      "source": "reset_confirmed_tweet"
+    }
+  ],
+  "generated_at": "2026-08-31T06:20:59Z",
+  "sample_count": 4,
+  "schema_version": 1,
+  "time_distribution": {
+    "00–06": 1,
+    "06–12": 3,
+    "12–18": 0,
+    "18–24": 0
+  },
+  "timezone": "Asia/Shanghai"
+}

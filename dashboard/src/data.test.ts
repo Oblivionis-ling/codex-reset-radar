@@ -31,7 +31,7 @@ describe("dashboard data", () => {
 
     expect(requested).toContain("https://raw.githubusercontent.com/Oblivionis-ling/codex-reset-radar/refs/heads/data/index.json");
     expect(requested.every((url) => url.includes("/codex-reset-radar/refs/heads/data/"))).toBe(true);
-    expect(initValues).toHaveLength(5);
+    expect(initValues).toHaveLength(6);
     expect(initValues.every((init) => init.cache === "no-store")).toBe(true);
   });
 

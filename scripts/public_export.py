@@ -12,9 +12,11 @@ import json
 import os
 import re
 import sqlite3
-from datetime import datetime, timezone
+import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +25,16 @@ DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "public-data"
 PUBLIC_COMPONENTS = ("backend", "profile_monitor", "replies_monitor", "search_backfill")
 STATUS_URL_RE = re.compile(r"^https://x\.com/thsottiaux/status/(\d+)$", re.IGNORECASE)
 KNOWN_SECRET_ENV_NAMES = ("DEEPSEEK_API_KEY", "WXPUSHER_APP_TOKEN", "WXPUSHER_UID")
+
+try:
+    BEIJING = ZoneInfo("Asia/Shanghai")
+except ZoneInfoNotFoundError:  # Windows runtime may not bundle tzdata; China has no DST.
+    BEIJING = timezone(timedelta(hours=8), name="Asia/Shanghai")
+
+if str(PROJECT_ROOT / "backend") not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT / "backend"))
+
+from app.intelligence.forecast import build_forecast, build_reset_history, derive_usage_advice  # noqa: E402
 
 
 def _configured_db_path() -> Path:
@@ -86,6 +98,10 @@ def _rows(connection: sqlite3.Connection, query: str, parameters: Iterable[Any] 
     return connection.execute(query, tuple(parameters)).fetchall()
 
 
+def _table_columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+
+
 def _latest_final_classifications(connection: sqlite3.Connection) -> dict[str, sqlite3.Row]:
     latest: dict[str, sqlite3.Row] = {}
     for row in _rows(
@@ -137,6 +153,73 @@ def _health_snapshot(connection: sqlite3.Connection, generated_at: datetime) -> 
     return {"schema_version": 1, "generated_at": generated_at.isoformat().replace("+00:00", "Z"), "components": components}
 
 
+def _reset_snapshot(
+    connection: sqlite3.Connection,
+    final_by_tweet: dict[str, sqlite3.Row],
+    tweets_by_id: dict[str, dict[str, Any]],
+    radar_state: str,
+    generated_at: datetime,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    explicit: list[dict[str, Any]] = []
+    if "reset_events" in _table_names(connection):
+        explicit = [
+            {
+                "event_time": row["event_time"],
+                "source": row["source"],
+                "evidence_tweet_id": row["evidence_tweet_id"],
+                "notes": row["notes"],
+            }
+            for row in _rows(
+                connection,
+                "SELECT event_time, source, evidence_tweet_id, notes FROM reset_events ORDER BY event_time DESC",
+            )
+        ]
+    confirmed: list[dict[str, Any]] = []
+    hints: list[dict[str, Any]] = []
+    announcements: list[dict[str, Any]] = []
+    for tweet_id, classification in final_by_tweet.items():
+        tweet = tweets_by_id.get(tweet_id)
+        if not tweet:
+            continue
+        item = {
+            "event_time": tweet.get("created_at") or classification["created_at"],
+            "evidence_tweet_id": tweet_id,
+            "text": tweet.get("text") or "",
+            "urgency": classification["urgency"],
+        }
+        category = str(classification["category"])
+        if category == "reset_confirmed":
+            confirmed.append(item)
+        elif category == "reset_hint":
+            hints.append(item)
+        elif category == "reset_announcement":
+            announcements.append(item)
+    history = build_reset_history(explicit, confirmed)
+    forecast = build_forecast(history, hints, announcements, now=generated_at)
+    advice = derive_usage_advice(radar_state, forecast, now=generated_at)
+    buckets = {"00–06": 0, "06–12": 0, "12–18": 0, "18–24": 0}
+    for event in history:
+        event_time = _parse_utc(event.get("event_time"))
+        if not event_time:
+            continue
+        hour = event_time.astimezone(BEIJING).hour
+        bucket = "00–06" if hour < 6 else "06–12" if hour < 12 else "12–18" if hour < 18 else "18–24"
+        buckets[bucket] += 1
+    resets = {
+        "schema_version": 1,
+        "generated_at": generated_at.isoformat().replace("+00:00", "Z"),
+        "timezone": "Asia/Shanghai",
+        "sample_count": len(history),
+        "events": history,
+        "time_distribution": buckets,
+    }
+    return forecast, {"forecast": forecast, "usage_advice": advice, "reset_history": resets}
+
+
+def _table_names(connection: sqlite3.Connection) -> set[str]:
+    return {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+
+
 def build_snapshot(database_path: Path, generated_at: datetime | None = None) -> dict[str, Any]:
     """Return the public mirror payload without exposing private tables/fields."""
 
@@ -145,15 +228,23 @@ def build_snapshot(database_path: Path, generated_at: datetime | None = None) ->
     connection = _open_read_only(database_path)
     try:
         final_by_tweet = _latest_final_classifications(connection)
+        tweet_columns = _table_columns(connection, "tweets")
+        translation_columns = [
+            name
+            for name in ("translated_zh", "translation_model", "translation_version", "translated_at")
+            if name in tweet_columns
+        ]
+        translation_select = ", " + ", ".join(translation_columns) if translation_columns else ""
         sources_by_tweet: dict[str, list[str]] = {}
         for row in _rows(connection, "SELECT tweet_id, source FROM tweet_sources ORDER BY tweet_id, source"):
             sources_by_tweet.setdefault(str(row["tweet_id"]), []).append(str(row["source"]))
 
         tweets: list[dict[str, Any]] = []
+        tweets_by_id: dict[str, dict[str, Any]] = {}
         for row in _rows(
             connection,
-            """
-            SELECT tweet_id, author, text, created_at, url, is_reply, reply_to, discovered_at
+            f"""
+            SELECT tweet_id, author, text, created_at, url, is_reply, reply_to, discovered_at{translation_select}
             FROM tweets
             ORDER BY discovered_at DESC, tweet_id DESC
             """,
@@ -170,6 +261,16 @@ def build_snapshot(database_path: Path, generated_at: datetime | None = None) ->
                 "reply_to": str(row["reply_to"]) if row["reply_to"] is not None else None,
                 "discovered_at": _iso(row["discovered_at"]),
                 "sources": sources_by_tweet.get(tweet_id, []),
+                "translation_zh": _redact_known_secrets(str(row["translated_zh"]))
+                if "translated_zh" in tweet_columns and row["translated_zh"]
+                else None,
+                "translation_model": str(row["translation_model"]) if "translation_model" in tweet_columns and row["translation_model"] else None,
+                "translation_version": str(row["translation_version"])
+                if "translation_version" in tweet_columns and row["translation_version"]
+                else None,
+                "translated_at": _iso(row["translated_at"])
+                if "translated_at" in tweet_columns
+                else None,
                 "classification": None,
             }
             if classification is not None:
@@ -184,6 +285,7 @@ def build_snapshot(database_path: Path, generated_at: datetime | None = None) ->
                     "classified_at": _iso(classification["created_at"]),
                 }
             tweets.append(public_tweet)
+            tweets_by_id[tweet_id] = public_tweet
 
         radar_row = connection.execute(
             """
@@ -204,6 +306,9 @@ def build_snapshot(database_path: Path, generated_at: datetime | None = None) ->
             "expires_at": _iso(radar_row["expires_at"]) if radar_row else None,
         }
         health = _health_snapshot(connection, generated_at)
+        forecast, derived = _reset_snapshot(connection, final_by_tweet, tweets_by_id, radar["state"], generated_at)
+        radar.update({"forecast": forecast, "usage_advice": derived["usage_advice"]})
+        resets = derived["reset_history"]
     finally:
         connection.close()
 
@@ -220,9 +325,9 @@ def build_snapshot(database_path: Path, generated_at: datetime | None = None) ->
         "tweet_count": len(tweets),
         "classified_tweet_count": sum(categories.values()),
         "category_counts": dict(sorted(categories.items())),
-        "files": ["health.json", "radar.json", "tweets.json"],
+        "files": ["health.json", "radar.json", "resets.json", "tweets.json"],
     }
-    return {"index": index, "radar": radar, "tweets": tweets, "health": health}
+    return {"index": index, "radar": radar, "tweets": tweets, "health": health, "resets": resets}
 
 
 def write_snapshot(snapshot: dict[str, Any], output_dir: Path) -> None:
@@ -232,6 +337,7 @@ def write_snapshot(snapshot: dict[str, Any], output_dir: Path) -> None:
         "radar.json": snapshot["radar"],
         "tweets.json": snapshot["tweets"],
         "health.json": snapshot["health"],
+        "resets.json": snapshot["resets"],
     }
     for filename, payload in payloads.items():
         target = output_dir / filename

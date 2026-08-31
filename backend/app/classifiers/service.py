@@ -89,6 +89,59 @@ def record_ai_usage(
     )
 
 
+async def translate_tweet(
+    session: Session,
+    tweet_id: str,
+    *,
+    provider: AIProvider | None = None,
+    settings: Settings | None = None,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Best-effort display translation; it never changes classification data."""
+
+    settings = settings or get_settings()
+    tweet = session.get(Tweet, tweet_id)
+    if tweet is None:
+        raise ValueError(f"Tweet not found: {tweet_id}")
+    if not force and tweet.translated_zh and tweet.translation_version == settings.translation_version:
+        return {"tweet_id": tweet_id, "translated": False, "skipped": True, "reason": "cached"}
+    provider = provider or provider_from_settings(settings)
+    translate = getattr(provider, "translate", None) if provider is not None else None
+    if translate is None or not tweet.text.strip():
+        return {"tweet_id": tweet_id, "translated": False, "skipped": True, "reason": "provider_unavailable"}
+    try:
+        result = await translate(tweet.text, context={"author": tweet.author, "is_reply": tweet.is_reply})
+        tweet.translated_zh = result.translation_zh.strip()
+        tweet.translation_model = provider.model_name
+        tweet.translation_version = settings.translation_version
+        tweet.translated_at = datetime.now(timezone.utc)
+        record_ai_usage(
+            session,
+            provider,
+            "translation_success",
+            ProviderResult(
+                result=ClassificationOutput(
+                    category="unrelated",
+                    confidence=0.0,
+                    urgency="unknown",
+                    explicitness="unclear",
+                    reason="translation",
+                ),
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+            ),
+        )
+        session.flush()
+        logger.info("TWEET_TRANSLATED tweet_id=%s", tweet_id)
+        return {"tweet_id": tweet_id, "translated": True, "skipped": False}
+    except Exception as exc:
+        message = str(exc)[:300]
+        if provider is not None:
+            record_ai_usage(session, provider, "translation_failure", error=message)
+        logger.warning("TWEET_TRANSLATION_FAILED tweet_id=%s reason=%s", tweet_id, message)
+        return {"tweet_id": tweet_id, "translated": False, "skipped": False, "failed": True, "reason": message}
+
+
 async def classify_tweet(
     session: Session,
     tweet_id: str,
@@ -172,6 +225,9 @@ async def classify_tweet(
         classification_pending=ai_pending,
         classification_conflict=decision.conflict,
     )
+    # Translation is deliberately after the audited classification and is
+    # isolated from it: a provider failure must not roll back intelligence.
+    await translate_tweet(session, tweet_id, provider=provider, settings=settings)
     if decision.conflict:
         logger.warning("CLASSIFICATION_CONFLICT tweet_id=%s", tweet_id)
     logger.info("FINAL_CLASSIFICATION tweet_id=%s category=%s confidence=%.2f", tweet_id, decision.result.category, decision.result.confidence)
@@ -207,6 +263,40 @@ async def classify_tweet(
         "classification_conflict": decision.conflict,
         "radar_state": radar.state,
     }
+
+
+async def translate_tweet_ids(
+    session_factory,
+    tweet_ids: list[str],
+    *,
+    force: bool = False,
+    settings: Settings | None = None,
+) -> dict[str, int]:
+    settings = settings or get_settings()
+    provider = provider_from_settings(settings)
+    counts = {"requested": len(tweet_ids), "translated": 0, "skipped": 0, "failed": 0}
+    with session_factory() as session:
+        for tweet_id in dict.fromkeys(tweet_ids):
+            try:
+                result = await translate_tweet(
+                    session,
+                    tweet_id,
+                    provider=provider,
+                    settings=settings,
+                    force=force,
+                )
+                if result.get("translated"):
+                    counts["translated"] += 1
+                elif result.get("failed"):
+                    counts["failed"] += 1
+                else:
+                    counts["skipped"] += 1
+                session.commit()
+            except Exception:
+                session.rollback()
+                counts["failed"] += 1
+                logger.exception("Translation backfill failed tweet_id=%s", tweet_id)
+    return counts
 
 
 async def classify_tweet_ids(

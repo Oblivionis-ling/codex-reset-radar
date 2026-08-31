@@ -23,6 +23,10 @@ class Tweet(Base):
     is_reply: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     reply_to: Mapped[str | None] = mapped_column(String(64), nullable=True)
     discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    translated_zh: Mapped[str | None] = mapped_column(Text, nullable=True)
+    translation_model: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    translation_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    translated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sources: Mapped[list["TweetSource"]] = relationship(back_populates="tweet", cascade="all, delete-orphan")
 
 

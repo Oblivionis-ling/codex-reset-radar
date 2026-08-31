@@ -109,6 +109,7 @@ def test_public_export_writes_only_contract_files(tmp_path) -> None:
         "health.json",
         "index.json",
         "radar.json",
+        "resets.json",
         "tweets.json",
     ]
 
