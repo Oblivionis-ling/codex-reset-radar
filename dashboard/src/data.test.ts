@@ -72,6 +72,29 @@ describe("dashboard data", () => {
     expect(data.errors).toContain("health: offline");
   });
 
+  it("reports request and response timestamps for every public-data file", async () => {
+    const traces: Array<{ file: string; response_received_at: string | null; status: number | null; ok: boolean }> = [];
+    const data = await loadDashboardData(
+      async (input) => {
+        if (input.toString().endsWith("health.json")) throw new Error("offline");
+        return jsonResponse([]);
+      },
+      "https://example.test/data/",
+      (trace) => traces.push(trace)
+    );
+
+    expect(traces).toHaveLength(6);
+    expect(new Set(traces.map((trace) => trace.file))).toEqual(new Set(["index", "tweets", "radar", "health", "meta", "resets"]));
+    expect(traces.filter((trace) => trace.ok)).toHaveLength(5);
+    expect(traces.find((trace) => trace.file === "health")).toMatchObject({
+      response_received_at: null,
+      status: null,
+      ok: false
+    });
+    expect(traces.filter((trace) => trace.ok).every((trace) => Date.parse(trace.response_received_at ?? "") > 0)).toBe(true);
+    expect(data.errors).toContain("health: offline");
+  });
+
   it("handles stale data, empty signals, and a missing health component", () => {
     expect(isDataStale("2026-08-30T17:58:00Z", NOW)).toBe(false);
     expect(isDataStale("2026-08-30T17:40:00Z", NOW)).toBe(true);

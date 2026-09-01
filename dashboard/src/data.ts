@@ -59,6 +59,17 @@ export interface DashboardData {
   errors: string[];
 }
 export type FetchJson = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type PublicDataFile = typeof PUBLIC_DATA_FILES[number];
+export interface DashboardFileLoadTrace {
+  file: PublicDataFile;
+  url: string;
+  request_started_at: string;
+  response_received_at: string | null;
+  status: number | null;
+  ok: boolean;
+  error?: string;
+}
+export type DashboardFileTraceHandler = (trace: DashboardFileLoadTrace) => void;
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -213,16 +224,45 @@ export function ageLabel(timestamp: string | null | undefined, now = Date.now(),
   if (hours < 24) return hours + "h ago";
   return Math.floor(hours / 24) + "d ago";
 }
-export async function loadDashboardData(fetcher: FetchJson = fetch, baseUrl = document.baseURI): Promise<DashboardData> {
+export async function loadDashboardData(
+  fetcher: FetchJson = fetch,
+  baseUrl = document.baseURI,
+  onFileTrace?: DashboardFileTraceHandler
+): Promise<DashboardData> {
   const result: DashboardData = { index: null, tweets: [], radar: null, health: null, meta: null, resets: null, errors: [] };
   const resolvedBase = new URL(baseUrl, typeof document === "undefined" ? "https://data.invalid/" : document.baseURI);
   const values = await Promise.all(PUBLIC_DATA_FILES.map(async (file) => {
+    const requestStartedAt = new Date().toISOString();
+    const requestUrl = new URL(file + ".json", resolvedBase);
+    let responseReceivedAt: string | null = null;
+    let status: number | null = null;
     try {
-      const response = await fetcher(new URL(file + ".json", resolvedBase), { cache: "no-store" });
+      const response = await fetcher(requestUrl, { cache: "no-store" });
+      responseReceivedAt = new Date().toISOString();
+      status = response.status;
       if (!response.ok) throw new Error("HTTP " + response.status);
-      return { file, value: await response.json() as unknown };
+      const value = await response.json() as unknown;
+      onFileTrace?.({
+        file,
+        url: requestUrl.toString(),
+        request_started_at: requestStartedAt,
+        response_received_at: responseReceivedAt,
+        status,
+        ok: true
+      });
+      return { file, value };
     } catch (error) {
-      result.errors.push(file + ": " + (error instanceof Error ? error.message : "request failed"));
+      const message = error instanceof Error ? error.message : "request failed";
+      result.errors.push(file + ": " + message);
+      onFileTrace?.({
+        file,
+        url: requestUrl.toString(),
+        request_started_at: requestStartedAt,
+        response_received_at: responseReceivedAt,
+        status,
+        ok: false,
+        error: message
+      });
       return { file, value: null };
     }
   }));

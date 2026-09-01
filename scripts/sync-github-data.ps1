@@ -218,10 +218,10 @@ try {
             $pushOutput = @(Invoke-GitChecked -WorkingDirectory $dataWorktree -Arguments @("push", $Remote, "HEAD:$Branch"))
             $pushSucceeded = $true
             $syncFinished = [datetimeoffset]::UtcNow
-            Write-Output ("PUBLIC_MIRROR_SYNC_SUCCESS cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} trigger={5} result=success push_attempt={6}" -f `
+            Write-Output ("PUBLIC_MIRROR_SYNC_SUCCESS cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} mirror_synced_at={5} trigger={6} result=success push_attempt={7}" -f `
                 (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $syncFinished),
                 [math]::Round(($syncFinished - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
-                (Format-SecondsSincePreviousSuccess $syncFinished), $Trigger, $attempt)
+                (Format-SecondsSincePreviousSuccess $syncFinished), $generatedAt, $Trigger, $attempt)
             break
         } catch {
             $pushOutput = @($_.Exception.Message)

@@ -9,6 +9,7 @@ import {
   mergeDashboardData,
   sortByTweetTime,
   type DashboardData,
+  type DashboardFileLoadTrace,
   type DisplayHealth,
   type PublicHealthComponent,
   type PublicResetEvent,
@@ -18,12 +19,27 @@ import { adviceTone, radarStateToken } from "./ui";
 
 type Language = "zh" | "en";
 const LANGUAGE_STORAGE_KEY = "codex-reset-radar-language";
+const REFRESH_LOG_STORAGE_KEY = "codex-reset-radar-refresh-log";
+const REFRESH_LOG_LIMIT = 100;
 const REFRESH_INTERVAL_MS = 60_000;
 const app = document.querySelector<HTMLElement>("#app");
 let language: Language = readLanguage();
 let lastSuccessfulData: DashboardData | null = null;
 let lastRefreshFailed = false;
 let refreshInFlight = false;
+let lastRefreshLog: DashboardRefreshLog | null = null;
+
+interface DashboardRefreshLog {
+  schema_version: 1;
+  refresh_started_at: string;
+  dashboard_received_at: string;
+  duration_ms: number;
+  result: "success" | "partial" | "failed";
+  mirror_synced_at: string | null;
+  used_snapshot_at: string | null;
+  errors: string[];
+  files: DashboardFileLoadTrace[];
+}
 
 interface Copy {
   languageButton: string; languageAria: string; eyebrow: string; dataUpdated: string;
@@ -48,6 +64,7 @@ interface Copy {
   navLabel: string; records: string; why: string; id: string; autoRefresh: string;
   dataSource: string; status: string; reset: string; forecastBasis: string; latest: string;
   viewDetails: string; timezone: string; confirmedReset: string; opsMatrix: string;
+  dashboardReceived: string;
 }
 
 const COPY: Record<Language, Copy> = {
@@ -85,7 +102,7 @@ const COPY: Record<Language, Copy> = {
     calendar: "Reset 日历", calendarDetail: "点击日期查看当天的 Reset 记录。", unknown: "未知", snapshotGenerated: "快照生成于",
     navLabel: "主导航", records: "条记录", why: "判断原因", id: "技术 ID", autoRefresh: "每 60 秒自动刷新",
     dataSource: "数据来源", status: "状态", reset: "RESET", forecastBasis: "依据", latest: "最新", viewDetails: "查看详情",
-    timezone: "时区", confirmedReset: "确认事件", opsMatrix: "运维矩阵"
+    timezone: "时区", confirmedReset: "确认事件", opsMatrix: "运维矩阵", dashboardReceived: "页面收到"
   },
   en: {
     languageButton: "中文", languageAria: "切换到中文", eyebrow: "PUBLIC INTELLIGENCE CONSOLE · @thsottiaux",
@@ -121,7 +138,7 @@ const COPY: Record<Language, Copy> = {
     calendar: "RESET CALENDAR", calendarDetail: "Select a date to see that day's Reset records.", unknown: "unknown", snapshotGenerated: "Snapshot generated",
     navLabel: "Primary navigation", records: "records", why: "WHY THIS STATE", id: "TECHNICAL ID", autoRefresh: "Auto-refresh every 60 seconds",
     dataSource: "DATA SOURCE", status: "STATUS", reset: "RESET", forecastBasis: "BASIS", latest: "LATEST", viewDetails: "VIEW DETAILS",
-    timezone: "TIMEZONE", confirmedReset: "CONFIRMED EVENT", opsMatrix: "OPS MATRIX"
+    timezone: "TIMEZONE", confirmedReset: "CONFIRMED EVENT", opsMatrix: "OPS MATRIX", dashboardReceived: "DASHBOARD RECEIVED"
   }
 };
 
@@ -130,6 +147,34 @@ function readLanguage(): Language {
 }
 function saveLanguage(next: Language): void {
   try { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next); } catch { /* view-only fallback */ }
+}
+function isDashboardRefreshLog(value: unknown): value is DashboardRefreshLog {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.refresh_started_at === "string"
+    && typeof record.dashboard_received_at === "string"
+    && typeof record.duration_ms === "number"
+    && Array.isArray(record.files);
+}
+function readLastRefreshLog(): DashboardRefreshLog | null {
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(REFRESH_LOG_STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(parsed)) return null;
+    for (let index = parsed.length - 1; index >= 0; index -= 1) {
+      if (isDashboardRefreshLog(parsed[index])) return parsed[index];
+    }
+  } catch { /* view-only fallback */ }
+  return null;
+}
+function persistRefreshLog(log: DashboardRefreshLog): void {
+  lastRefreshLog = log;
+  console.info("DASHBOARD_REFRESH_LOG", log);
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(REFRESH_LOG_STORAGE_KEY) ?? "[]");
+    const existing = Array.isArray(parsed) ? parsed.filter(isDashboardRefreshLog) : [];
+    existing.push(log);
+    window.localStorage.setItem(REFRESH_LOG_STORAGE_KEY, JSON.stringify(existing.slice(-REFRESH_LOG_LIMIT)));
+  } catch { /* view-only fallback */ }
 }
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character);
@@ -246,7 +291,7 @@ function monitorRow(component: PublicHealthComponent | undefined, snapshotAt: st
     <div class="ops-age">${escapeHtml(ageLabel(timestamp, Date.now(), currentLanguage))}</div>
   </div>`;
 }
-function mirrorRow(data: DashboardData, currentLanguage: Language): string {
+function mirrorRow(data: DashboardData, currentLanguage: Language, refreshLog: DashboardRefreshLog | null): string {
   const copy = COPY[currentLanguage];
   const syncedAt = data.meta?.mirror_synced_at ?? data.meta?.generated_at ?? snapshotTimestamp(data);
   const state = deriveMirrorState(syncedAt);
@@ -255,6 +300,7 @@ function mirrorRow(data: DashboardData, currentLanguage: Language): string {
     <div class="mirror-title"><span class="field-label">${escapeHtml(copy.dataMirror)}</span><strong>${escapeHtml(copy.dataSource)} / ${escapeHtml(data.meta?.data_branch ?? "data")}</strong></div>
     <div class="mirror-status">${statusMark(state, status)}</div>
     <div class="mirror-time"><span>${escapeHtml(copy.lastSync)}</span><strong>${escapeHtml(ageLabel(syncedAt, Date.now(), currentLanguage))}</strong><small>${escapeHtml(syncedAt ? formatDate(syncedAt, currentLanguage) : copy.unknown)}</small></div>
+    <div class="mirror-received"><span>${escapeHtml(copy.dashboardReceived)}</span><strong>${escapeHtml(refreshLog ? formatDate(refreshLog.dashboard_received_at, currentLanguage) : copy.unknown)}</strong><small>${escapeHtml(refreshLog ? `${refreshLog.duration_ms} ms · ${refreshLog.files.filter((file) => file.ok).length}/${refreshLog.files.length}` : copy.unknown)}</small></div>
   </div>`;
 }
 
@@ -322,12 +368,12 @@ function header(currentRoute: string, currentLanguage: Language, data: Dashboard
   return `<header class="topbar"><div class="mobile-brand"><span class="brand-mark">CRR</span><strong>Codex Reset Radar</strong></div><div class="topbar-context"><span class="field-label">${escapeHtml(copy.eyebrow)}</span><span class="topbar-title">${escapeHtml(currentRoute === "/" ? copy.overview : currentRoute === "/tweets" ? copy.recentTweets : copy.resetHistory)}</span></div><nav class="mobile-nav" aria-label="${escapeHtml(copy.navLabel)}">${link("/", copy.overview)}${link("/tweets", copy.recentTweets)}${link("/resets", copy.resetHistory)}</nav><div class="topbar-actions"><span class="record-count">${escapeHtml(tweetCount)} ${escapeHtml(copy.tweets)}</span><button class="refresh-button" type="button" data-refresh>${escapeHtml(copy.refreshData)} ↻</button><button class="language-toggle" type="button" data-language-toggle aria-label="${escapeHtml(copy.languageAria)}">${escapeHtml(copy.languageButton)}</button></div></header>`;
 }
 
-function homePage(data: DashboardData, currentLanguage: Language): string {
+function homePage(data: DashboardData, currentLanguage: Language, refreshLog: DashboardRefreshLog | null): string {
   const copy = COPY[currentLanguage];
   const signals = highValueTweets(data.tweets).slice(0, 3);
   const snapshotAt = snapshotTimestamp(data);
   const health = ["backend", "profile_monitor", "replies_monitor", "search_backfill"].map((name) => monitorRow((data.health?.components ?? []).find((component) => component.component === name), snapshotAt, currentLanguage)).join("");
-  return `<section class="page-intro"><div><span class="section-number">01</span><span class="field-label">${escapeHtml(copy.overview)}</span><h1>Codex Reset Radar</h1></div><p>${escapeHtml(copy.latestSignalHeading)}</p></section>${overviewBoard(data, currentLanguage)}${advicePanel(data, currentLanguage)}<section class="split-grid"><section class="panel latest-panel"><div class="panel-header"><div><span class="section-number">02</span><span class="field-label">${escapeHtml(copy.latestSignal)}</span><h2>${escapeHtml(copy.latestSignalHeading)}</h2></div><span class="panel-count">${signals.length} / 3</span></div><div class="signal-list">${signals.length ? signals.map((tweet) => tweetRow(tweet, currentLanguage, true)).join("") : `<div class="empty-state"><strong>${escapeHtml(copy.noSignals)}</strong><p>${escapeHtml(copy.noSignalsDetail)}</p></div>`}</div><a class="panel-cta" href="#/tweets">${escapeHtml(copy.viewTweets)}</a></section><section class="panel ops-panel"><div class="panel-header"><div><span class="section-number">03</span><span class="field-label">${escapeHtml(copy.monitorHealth)}</span><h2>${escapeHtml(copy.opsMatrix)}</h2></div><span class="panel-count">4 / 4</span></div><div class="ops-matrix"><div class="ops-header"><span>${escapeHtml(copy.dataSource)}</span><span>${escapeHtml(copy.status)}</span><span>${escapeHtml(copy.lastHeartbeat)}</span></div>${health}</div>${mirrorRow(data, currentLanguage)}</section></section><div class="cta-grid"><a href="#/tweets"><span class="section-number">02</span><strong>${escapeHtml(copy.recentTweets)}</strong><span>${escapeHtml(copy.viewTweets)}</span></a><a href="#/resets"><span class="section-number">03</span><strong>${escapeHtml(copy.resetHistory)}</strong><span>${escapeHtml(copy.viewResets)}</span></a></div>`;
+  return `<section class="page-intro"><div><span class="section-number">01</span><span class="field-label">${escapeHtml(copy.overview)}</span><h1>Codex Reset Radar</h1></div><p>${escapeHtml(copy.latestSignalHeading)}</p></section>${overviewBoard(data, currentLanguage)}${advicePanel(data, currentLanguage)}<section class="split-grid"><section class="panel latest-panel"><div class="panel-header"><div><span class="section-number">02</span><span class="field-label">${escapeHtml(copy.latestSignal)}</span><h2>${escapeHtml(copy.latestSignalHeading)}</h2></div><span class="panel-count">${signals.length} / 3</span></div><div class="signal-list">${signals.length ? signals.map((tweet) => tweetRow(tweet, currentLanguage, true)).join("") : `<div class="empty-state"><strong>${escapeHtml(copy.noSignals)}</strong><p>${escapeHtml(copy.noSignalsDetail)}</p></div>`}</div><a class="panel-cta" href="#/tweets">${escapeHtml(copy.viewTweets)}</a></section><section class="panel ops-panel"><div class="panel-header"><div><span class="section-number">03</span><span class="field-label">${escapeHtml(copy.monitorHealth)}</span><h2>${escapeHtml(copy.opsMatrix)}</h2></div><span class="panel-count">4 / 4</span></div><div class="ops-matrix"><div class="ops-header"><span>${escapeHtml(copy.dataSource)}</span><span>${escapeHtml(copy.status)}</span><span>${escapeHtml(copy.lastHeartbeat)}</span></div>${health}</div>${mirrorRow(data, currentLanguage, refreshLog)}</section></section><div class="cta-grid"><a href="#/tweets"><span class="section-number">02</span><strong>${escapeHtml(copy.recentTweets)}</strong><span>${escapeHtml(copy.viewTweets)}</span></a><a href="#/resets"><span class="section-number">03</span><strong>${escapeHtml(copy.resetHistory)}</strong><span>${escapeHtml(copy.viewResets)}</span></a></div>`;
 }
 
 function pageHeading(number: string, title: string, detail: string): string {
@@ -392,7 +438,7 @@ function footer(data: DashboardData, currentLanguage: Language): string {
 function render(data: DashboardData, refreshFailed = lastRefreshFailed): void {
   if (!app) return;
   const currentRoute = route();
-  const content = currentRoute === "/tweets" ? tweetsPage(data, language) : currentRoute === "/resets" ? resetsPage(data, language) : homePage(data, language);
+  const content = currentRoute === "/tweets" ? tweetsPage(data, language) : currentRoute === "/resets" ? resetsPage(data, language) : homePage(data, language, lastRefreshLog);
   document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
   app.innerHTML = `<a class="skip-link" href="#main-content">${escapeHtml(COPY[language].skipToContent)}</a><div class="app-shell">${sidebar(currentRoute, language)}<div class="workspace">${header(currentRoute, language, data)}<div class="content-wrap">${notices(data, language, refreshFailed)}<main id="main-content" class="page-content">${content}</main>${footer(data, language)}</div></div></div>`;
   app.querySelector<HTMLButtonElement>("[data-language-toggle]")?.addEventListener("click", () => { language = language === "zh" ? "en" : "zh"; saveLanguage(language); render(data, refreshFailed); });
@@ -409,19 +455,48 @@ function render(data: DashboardData, refreshFailed = lastRefreshFailed): void {
 async function refreshDashboard(): Promise<void> {
   if (refreshInFlight) return;
   refreshInFlight = true;
+  const refreshStartedAt = new Date().toISOString();
+  const fileTraces: DashboardFileLoadTrace[] = [];
   try {
-    const next = await loadDashboardData(fetch, DATA_BASE_URL);
+    const next = await loadDashboardData(fetch, DATA_BASE_URL, (trace) => fileTraces.push(trace));
     const hadPreviousData = Boolean(lastSuccessfulData);
     const merged = lastSuccessfulData ? mergeDashboardData(lastSuccessfulData, next) : next;
-    lastSuccessfulData = merged; lastRefreshFailed = hadPreviousData && next.errors.length > 0; render(merged);
+    lastSuccessfulData = merged;
+    lastRefreshFailed = hadPreviousData && next.errors.length > 0;
+    const dashboardReceivedAt = new Date().toISOString();
+    persistRefreshLog({
+      schema_version: 1,
+      refresh_started_at: refreshStartedAt,
+      dashboard_received_at: dashboardReceivedAt,
+      duration_ms: Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(refreshStartedAt)),
+      result: next.errors.length ? "partial" : "success",
+      mirror_synced_at: merged.meta?.mirror_synced_at ?? null,
+      used_snapshot_at: snapshotTimestamp(merged) ?? null,
+      errors: next.errors,
+      files: fileTraces
+    });
+    render(merged);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Data unavailable";
+    const dashboardReceivedAt = new Date().toISOString();
+    persistRefreshLog({
+      schema_version: 1,
+      refresh_started_at: refreshStartedAt,
+      dashboard_received_at: dashboardReceivedAt,
+      duration_ms: Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(refreshStartedAt)),
+      result: "failed",
+      mirror_synced_at: lastSuccessfulData?.meta?.mirror_synced_at ?? null,
+      used_snapshot_at: lastSuccessfulData ? snapshotTimestamp(lastSuccessfulData) ?? null : null,
+      errors: [message],
+      files: fileTraces
+    });
     if (lastSuccessfulData) { lastRefreshFailed = true; render({ ...lastSuccessfulData, errors: [message] }, true); }
     else render({ index: null, tweets: [], radar: null, health: null, meta: null, resets: null, errors: [message] });
   } finally { refreshInFlight = false; }
 }
 
 if (app) {
+  lastRefreshLog = readLastRefreshLog();
   void refreshDashboard();
   window.setInterval(() => void refreshDashboard(), REFRESH_INTERVAL_MS);
   window.addEventListener("hashchange", () => { if (lastSuccessfulData) render(lastSuccessfulData); });

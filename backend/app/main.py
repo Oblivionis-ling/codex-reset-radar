@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,6 +34,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger("radar")
 
+MIRROR_CADENCE_LOG_PATH = Path(__file__).resolve().parents[1] / "data" / "mirror-cadence.jsonl"
+_MIRROR_LOG_LOCK = threading.Lock()
+_MIRROR_LOG_SCALAR_FIELDS = (
+    "cycle_started_at",
+    "sync_finished_at",
+    "mirror_synced_at",
+    "duration_ms",
+    "previous_success_at",
+    "seconds_since_previous_success",
+    "cycle_interval_seconds",
+    "scheduler_cycle_interval_seconds",
+    "configured_interval_seconds",
+    "trigger",
+    "result",
+    "push_attempt",
+    "exit_code",
+)
+_MIRROR_LOG_NUMERIC_FIELDS = {
+    "duration_ms",
+    "seconds_since_previous_success",
+    "cycle_interval_seconds",
+    "scheduler_cycle_interval_seconds",
+    "configured_interval_seconds",
+    "push_attempt",
+    "exit_code",
+}
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -52,10 +80,60 @@ def _redact_mirror_text(value: str) -> str:
     return redacted
 
 
+def _append_mirror_log(event: str, *, source: str, **fields: Any) -> None:
+    """Persist safe mirror timing records without making logging a hard dependency."""
+    record: dict[str, Any] = {
+        "event": event,
+        "logged_at": _mirror_timestamp(utc_now()),
+        "source": source,
+    }
+    for key, value in fields.items():
+        if value is None:
+            continue
+        if isinstance(value, str):
+            value = _redact_mirror_text(value)[:500]
+        record[key] = value
+    try:
+        MIRROR_CADENCE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _MIRROR_LOG_LOCK:
+            with MIRROR_CADENCE_LOG_PATH.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+    except OSError as exc:
+        logger.warning("PUBLIC_MIRROR_LOG_WRITE_FAILED reason=%s", _redact_mirror_text(str(exc)[:300]))
+
+
+def _parse_mirror_log_line(line: str) -> tuple[str, dict[str, Any]] | None:
+    match = re.search(r"(PUBLIC_MIRROR_[A-Z_]+)(?:\s+(.*))?$", line.strip())
+    if not match:
+        return None
+    event, payload = match.group(1), (match.group(2) or "").replace("|", " ")
+    fields: dict[str, Any] = {}
+    for key in _MIRROR_LOG_SCALAR_FIELDS:
+        value_match = re.search(rf"(?:^|\s){re.escape(key)}=([^\s]+)", payload)
+        if not value_match:
+            continue
+        value: Any = value_match.group(1)
+        if key in _MIRROR_LOG_NUMERIC_FIELDS:
+            try:
+                value = float(value) if "." in value else int(value)
+            except ValueError:
+                pass
+        fields[key] = value
+    reason_match = re.search(r"(?:^|\s)reason=(.+?)(?=\s+(?:output|error)=|$)", payload)
+    if reason_match:
+        fields["reason"] = _redact_mirror_text(reason_match.group(1).strip())[:500]
+    return event, fields
+
+
 def _log_mirror_script_events(output: str) -> None:
     for line in output.splitlines():
-        if line.startswith("PUBLIC_MIRROR_"):
-            logger.info("%s", _redact_mirror_text(line))
+        if "PUBLIC_MIRROR_" in line:
+            redacted = _redact_mirror_text(line)
+            logger.info("%s", redacted)
+            parsed = _parse_mirror_log_line(redacted)
+            if parsed:
+                event, fields = parsed
+                _append_mirror_log(event, source="sync-script", **fields)
 
 
 def serialize_datetime(value: datetime | None) -> str | None:
@@ -605,6 +683,19 @@ async def _public_mirror_loop(settings, stop_event: asyncio.Event, mirror_event:
             _mirror_timestamp(previous_success_at),
             trigger,
         )
+        _append_mirror_log(
+            "PUBLIC_MIRROR_CYCLE_STARTED",
+            source="scheduler",
+            cycle_started_at=_mirror_timestamp(cycle_started_at),
+            cycle_interval_seconds=round(cycle_interval, 3) if cycle_interval is not None else None,
+            scheduler_cycle_interval_seconds=(
+                round(scheduler_cycle_interval, 3) if scheduler_cycle_interval is not None else None
+            ),
+            configured_interval_seconds=interval,
+            previous_success_at=_mirror_timestamp(previous_success_at),
+            trigger=trigger,
+            result="started",
+        )
         success = await asyncio.to_thread(
             _run_public_mirror_sync,
             settings,
@@ -696,6 +787,7 @@ def _run_public_mirror_sync(
             check=False,
         )
     except Exception as exc:
+        sync_finished_at = utc_now()
         logger.warning(
             "PUBLIC_MIRROR_SYNC_FAILED cycle_started_at=%s sync_finished_at=%s duration_ms=- "
             "previous_success_at=%s seconds_since_previous_success=- trigger=%s result=failed reason=%s",
@@ -705,12 +797,23 @@ def _run_public_mirror_sync(
             trigger,
             _redact_mirror_text(str(exc)[:300]),
         )
+        _append_mirror_log(
+            "PUBLIC_MIRROR_SYNC_FAILED",
+            source="scheduler",
+            cycle_started_at=_mirror_timestamp(cycle_started_at),
+            sync_finished_at=_mirror_timestamp(sync_finished_at),
+            previous_success_at=_mirror_timestamp(previous_success_at),
+            trigger=trigger,
+            result="failed",
+            reason=str(exc)[:300],
+        )
         return "failed"
     output = _redact_mirror_text(result.stdout or "")
     error = _redact_mirror_text(result.stderr or "")
     _log_mirror_script_events(output)
     _log_mirror_script_events(error)
     if result.returncode != 0:
+        sync_finished_at = utc_now()
         logger.warning(
             "PUBLIC_MIRROR_SYNC_FAILED cycle_started_at=%s sync_finished_at=%s duration_ms=- "
             "previous_success_at=%s seconds_since_previous_success=- trigger=%s result=failed "
@@ -722,6 +825,17 @@ def _run_public_mirror_sync(
             result.returncode,
             output[-500:],
             error[-500:],
+        )
+        _append_mirror_log(
+            "PUBLIC_MIRROR_SYNC_FAILED",
+            source="scheduler",
+            cycle_started_at=_mirror_timestamp(cycle_started_at),
+            sync_finished_at=_mirror_timestamp(sync_finished_at),
+            previous_success_at=_mirror_timestamp(previous_success_at),
+            trigger=trigger,
+            result="failed",
+            exit_code=result.returncode,
+            reason=(error or output)[-500:],
         )
         return "failed"
     outcome = "skipped" if "PUBLIC_MIRROR_SYNC_SKIPPED" in output else "published"
