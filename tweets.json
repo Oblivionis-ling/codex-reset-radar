@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-01T01:06:52.737380Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-01T00:49:05.000000Z",
     "discovered_at": "2026-09-01T01:06:52.544000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "If you still haven't tried Codex but have considered it in the past, what's the one thing holding you back?",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-01T01:06:57.346446Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "如果你还没有尝试过 Codex，但曾经考虑过，那么阻止你的那件事是什么？",
     "tweet_id": "2094588317245509959",
     "url": "https://x.com/thsottiaux/status/2094588317245509959"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-01T01:06:57.398644Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-01T00:44:34.000000Z",
     "discovered_at": "2026-09-01T01:06:52.544000Z",
     "is_reply": false,
@@ -28,16 +46,25 @@
       "search"
     ],
     "text": "Welcome both! Very inspired by what you've built",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-01T01:07:00.192534Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "欢迎两位！你们所构建的东西让我深受启发。",
     "tweet_id": "2094587183483211962",
     "url": "https://x.com/thsottiaux/status/2094587183483211962"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-01T01:07:00.259760Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-01T00:42:30.000000Z",
     "discovered_at": "2026-09-01T01:06:52.544000Z",
     "is_reply": false,
@@ -46,16 +73,25 @@
       "search"
     ],
     "text": "Our API bill is eye watering",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-01T01:07:04.656826Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们的API账单高得令人咋舌",
     "tweet_id": "2094586662798201081",
     "url": "https://x.com/thsottiaux/status/2094586662798201081"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-01T01:07:04.702339Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-08-31T19:29:40.000000Z",
     "discovered_at": "2026-09-01T01:06:52.544000Z",
     "is_reply": false,
@@ -64,10 +100,10 @@
       "search"
     ],
     "text": "Excited to invent what’s next together. Welcome!",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-01T01:07:08.878263Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "很高兴能一起创造未来。欢迎！",
     "tweet_id": "2094507935598874633",
     "url": "https://x.com/thsottiaux/status/2094507935598874633"
   },
