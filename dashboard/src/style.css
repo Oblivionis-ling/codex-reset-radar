@@ -170,12 +170,15 @@ code { color: var(--blue); font-size: .64rem; }
 .status-warning, .status-stale { border-color: #a86d00; background: var(--warn-pale); color: #754700; }
 .status-offline { border-color: var(--red); background: var(--red-pale); color: #981f27; }
 .status-unknown { border-color: var(--muted); color: var(--muted); }
-.mirror-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; margin: 16px 18px 18px; padding-top: 14px; border-top: 2px solid var(--line); }
+.mirror-strip { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 12px; align-items: center; margin: 16px 18px 18px; padding-top: 14px; border-top: 2px solid var(--line); }
 .mirror-title, .mirror-time { display: grid; gap: 4px; min-width: 0; }
 .mirror-title strong { color: var(--blue); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mirror-time { text-align: right; }
 .mirror-time span, .mirror-time small { color: var(--muted); font-size: .63rem; }
 .mirror-time strong { color: var(--blue); font-family: "Fira Code", Consolas, monospace; font-size: .7rem; }
+.mirror-received { display: grid; gap: 4px; min-width: 0; text-align: right; }
+.mirror-received span, .mirror-received small { color: var(--muted); font-size: .63rem; }
+.mirror-received strong { color: var(--blue); font-family: "Fira Code", Consolas, monospace; font-size: .68rem; overflow-wrap: anywhere; }
 .mirror-status .status-mark { max-width: 92px; overflow: hidden; }
 .cta-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
 .cta-grid a { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; padding: 16px 18px; border: 1px solid var(--line); background: var(--white); transition: background-color 180ms ease, color 180ms ease; }
@@ -282,6 +285,7 @@ code { color: var(--blue); font-size: .64rem; }
   .mirror-strip { grid-template-columns: minmax(0, 1fr) auto; }
   .mirror-time { grid-column: 1 / -1; grid-row: 2; text-align: left; }
   .mirror-status { grid-column: 2; grid-row: 1; }
+  .mirror-received { grid-column: 1 / -1; grid-row: 3; text-align: left; }
   .cta-grid { display: block; }
   .cta-grid a { margin-bottom: 9px; }
   .archive-toolbar { display: block; }

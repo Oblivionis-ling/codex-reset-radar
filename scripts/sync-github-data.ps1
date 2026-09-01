@@ -7,7 +7,11 @@ param(
     [ValidateRange(1, 3)]
     [int]$MaxPushAttempts = 3,
     [ValidateRange(0, 60)]
-    [int]$RetryDelaySeconds = 2
+    [int]$RetryDelaySeconds = 2,
+    [ValidateSet("scheduled", "event", "manual")]
+    [string]$Trigger = "manual",
+    [string]$CycleStartedAt = "",
+    [string]$PreviousSuccessAt = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,6 +21,28 @@ $syncRoot = Join-Path $repoRoot "_tmp\public-data-sync-$PID"
 $exportDir = Join-Path $syncRoot "export"
 $dataWorktree = Join-Path $syncRoot "data-worktree"
 $requiredFiles = @("index.json", "tweets.json", "radar.json", "health.json", "resets.json", "meta.json")
+$cycleStarted = if ($CycleStartedAt) { [datetimeoffset]::Parse($CycleStartedAt).ToUniversalTime() } else { [datetimeoffset]::UtcNow }
+$previousSuccess = if ($PreviousSuccessAt) { [datetimeoffset]::Parse($PreviousSuccessAt).ToUniversalTime() } else { $null }
+
+function Format-CadenceTimestamp {
+    param([datetimeoffset]$Value)
+    return $Value.ToUniversalTime().ToString("o")
+}
+
+function Format-PreviousSuccess {
+    if ($previousSuccess) {
+        return Format-CadenceTimestamp $previousSuccess
+    }
+    return "-"
+}
+
+function Format-SecondsSincePreviousSuccess {
+    param([datetimeoffset]$Value)
+    if ($previousSuccess) {
+        return [math]::Round(($Value - $previousSuccess).TotalSeconds, 3).ToString("0.###")
+    }
+    return "-"
+}
 
 function Invoke-GitChecked {
     param(
@@ -100,6 +126,11 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Public data export failed with exit code $LASTEXITCODE."
     }
+    $exportFinished = [datetimeoffset]::UtcNow
+    Write-Output ("PUBLIC_MIRROR_EXPORT_COMPLETED cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} trigger={5} result=success" -f `
+        (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $exportFinished),
+        [math]::Round(($exportFinished - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
+        (Format-SecondsSincePreviousSuccess $exportFinished), $Trigger)
 
     $index = Get-Content -LiteralPath (Join-Path $exportDir "index.json") -Raw | ConvertFrom-Json
     $generatedAt = ConvertTo-IsoUtc $index.generated_at
@@ -161,7 +192,11 @@ try {
     $diffArguments = @("diff", "--cached", "--name-only", "--") + $requiredFiles
     $staged = @(Invoke-GitChecked -WorkingDirectory $dataWorktree -Arguments $diffArguments)
     if ($staged.Count -eq 0) {
-        Write-Host "Public data branch is unchanged; nothing to push."
+        $skippedAt = [datetimeoffset]::UtcNow
+        Write-Output ("PUBLIC_MIRROR_SYNC_SKIPPED cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} trigger={5} result=skipped reason=no_changes" -f `
+            (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $skippedAt),
+            [math]::Round(($skippedAt - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
+            (Format-SecondsSincePreviousSuccess $skippedAt), $Trigger)
         exit 0
     }
 
@@ -172,12 +207,21 @@ try {
     }
 
     Invoke-GitChecked -WorkingDirectory $dataWorktree -Arguments @("commit", "-m", "chore(data): update public radar mirror") | Out-Null
+    $pushStarted = [datetimeoffset]::UtcNow
+    Write-Output ("PUBLIC_MIRROR_PUSH_STARTED cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} trigger={5} result=started" -f `
+        (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $pushStarted),
+        [math]::Round(($pushStarted - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
+        (Format-SecondsSincePreviousSuccess $pushStarted), $Trigger)
     $pushSucceeded = $false
     for ($attempt = 1; $attempt -le $MaxPushAttempts; $attempt++) {
         try {
             $pushOutput = @(Invoke-GitChecked -WorkingDirectory $dataWorktree -Arguments @("push", $Remote, "HEAD:$Branch"))
             $pushSucceeded = $true
-            Write-Host "Public data mirror pushed to '$Branch' on attempt $attempt."
+            $syncFinished = [datetimeoffset]::UtcNow
+            Write-Output ("PUBLIC_MIRROR_SYNC_SUCCESS cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} mirror_synced_at={5} trigger={6} result=success push_attempt={7}" -f `
+                (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $syncFinished),
+                [math]::Round(($syncFinished - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
+                (Format-SecondsSincePreviousSuccess $syncFinished), $generatedAt, $Trigger, $attempt)
             break
         } catch {
             $pushOutput = @($_.Exception.Message)
@@ -192,7 +236,11 @@ try {
     }
     exit 0
 } catch {
-    Write-Error "PUBLIC_MIRROR_SYNC_FAILED: $($_.Exception.Message)"
+    $failedAt = [datetimeoffset]::UtcNow
+    Write-Error ("PUBLIC_MIRROR_SYNC_FAILED cycle_started_at={0} sync_finished_at={1} duration_ms={2} previous_success_at={3} seconds_since_previous_success={4} trigger={5} result=failed reason={6}" -f `
+        (Format-CadenceTimestamp $cycleStarted), (Format-CadenceTimestamp $failedAt),
+        [math]::Round(($failedAt - $cycleStarted).TotalMilliseconds, 0), (Format-PreviousSuccess),
+        (Format-SecondsSincePreviousSuccess $failedAt), $Trigger, $_.Exception.Message)
     exit 1
 } finally {
     Remove-GeneratedSyncDirectory
