@@ -1,6 +1,78 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-01T00:49:05.000000Z",
+    "discovered_at": "2026-09-01T01:06:52.544000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "If you still haven't tried Codex but have considered it in the past, what's the one thing holding you back?",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2094588317245509959",
+    "url": "https://x.com/thsottiaux/status/2094588317245509959"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-01T00:44:34.000000Z",
+    "discovered_at": "2026-09-01T01:06:52.544000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Welcome both! Very inspired by what you've built",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2094587183483211962",
+    "url": "https://x.com/thsottiaux/status/2094587183483211962"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-01T00:42:30.000000Z",
+    "discovered_at": "2026-09-01T01:06:52.544000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Our API bill is eye watering",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2094586662798201081",
+    "url": "https://x.com/thsottiaux/status/2094586662798201081"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-08-31T19:29:40.000000Z",
+    "discovered_at": "2026-09-01T01:06:52.544000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Excited to invent what’s next together. Welcome!",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2094507935598874633",
+    "url": "https://x.com/thsottiaux/status/2094507935598874633"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-08-31T05:21:52.119371Z",
