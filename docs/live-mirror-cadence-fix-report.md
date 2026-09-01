@@ -131,6 +131,12 @@ TRANSLATION_VERSION=tibo-translation-v1
 
 因此 Dashboard 没有把 stale threshold 改成 30 分钟；在正常 mirror cadence 下，页面保持 fresh。GitHub 网络异常期间，日志会明确显示 failed，Dashboard 仍按既定 15 分钟规则显示数据 freshness。
 
+### Final runtime observation
+
+在最后一次与最新代码对齐的 Backend 重启后，`2026-09-01T01:12:40Z` 的 scheduled cycle 仍按时启动；export 用时 `747ms`，随后两次 clone 都因 `github.com:443` 连接失败，最终 `43.485s` 后记录 `PUBLIC_MIRROR_SYNC_FAILED`。Backend `/health` 仍为 HTTP 200，scheduler 没有退出。
+
+因此在该外部网络故障持续期间，线上最后成功镜像仍为 `2026-08-31T17:46:13Z`，会按 15 分钟规则进入 stale。这是失败发布的真实告警，不是通过修改 freshness threshold 隐藏的问题；网络恢复后，下一 scheduled cycle 会继续尝试发布。
+
 ## 7. 回归测试
 
 | 检查 | 结果 |
@@ -147,4 +153,3 @@ TRANSLATION_VERSION=tibo-translation-v1
 | Dashboard 15 分钟 freshness tests | passed |
 
 本阶段没有修改 Collector、health threshold、Radar、DeepSeek、WxPusher、数据库 schema，也没有实现自动 reload、自动重开 Tab 或 self-healing。
-
