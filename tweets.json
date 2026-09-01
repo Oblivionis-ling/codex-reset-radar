@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-01T16:36:57.697864Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-01T16:36:53.000000Z",
+    "discovered_at": "2026-09-01T16:36:57.546000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Tibo@thsottiaux·回复 @thsottiaux",
+    "translated_at": "2026-09-01T16:37:22.663322Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "Tibo@thsottiaux·回复 @thsottiaux",
+    "tweet_id": "2094826841622348106",
+    "url": "https://x.com/thsottiaux/status/2094826841622348106"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-01T16:37:22.722981Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-01T16:36:45.000000Z",
+    "discovered_at": "2026-09-01T16:36:57.546000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Should we do a merch line?",
+    "translated_at": "2026-09-01T16:37:27.240453Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们该做一条周边产品线吗？",
+    "tweet_id": "2094826808114057246",
+    "url": "https://x.com/thsottiaux/status/2094826808114057246"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-01T07:01:54.834214Z",
       "confidence": 0.99,
       "explicitness": "explicit",
