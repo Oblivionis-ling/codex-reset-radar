@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-02T03:21:56.685276Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-02T03:20:07.000000Z",
+    "discovered_at": "2026-09-02T03:21:56.522000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I’m seeing things about Astra you wouldn’t believe",
+    "translated_at": "2026-09-02T03:22:01.660651Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "关于Astra，我看到了一些你不会相信的事情。",
+    "tweet_id": "2094988714422542469",
+    "url": "https://x.com/thsottiaux/status/2094988714422542469"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-02T03:22:01.707197Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-02T03:18:10.000000Z",
+    "discovered_at": "2026-09-02T03:21:56.522000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "卢娜！",
+    "translated_at": "2026-09-02T03:22:14.291370Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "卢娜！",
+    "tweet_id": "2094988223407886801",
+    "url": "https://x.com/thsottiaux/status/2094988223407886801"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-02T00:06:53.109117Z",
       "confidence": 0.99,
       "explicitness": "explicit",
