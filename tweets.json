@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-02T23:21:57.696281Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-02T23:19:28.000000Z",
+    "discovered_at": "2026-09-02T23:21:57.647000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Should have been 50'000. I get it.",
+    "translated_at": "2026-09-02T23:22:01.840925Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "本应是50,000。我明白了。",
+    "tweet_id": "2095290543790280964",
+    "url": "https://x.com/thsottiaux/status/2095290543790280964"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-02T23:11:57.967721Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-02T23:11:01.000000Z",
+    "discovered_at": "2026-09-02T23:11:57.756000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "The ChatGPT desktop app is now my main browser and my productivity has never been higher",
+    "translated_at": "2026-09-02T23:12:01.761040Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "ChatGPT桌面应用现在成了我的主浏览器，我的生产力从未如此之高。",
+    "tweet_id": "2095288416292487289",
+    "url": "https://x.com/thsottiaux/status/2095288416292487289"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-02T05:31:57.327443Z",
       "confidence": 0.99,
       "explicitness": "explicit",
