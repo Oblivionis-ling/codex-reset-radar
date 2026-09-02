@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-02T00:06:53.109117Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-02T00:05:17.000000Z",
+    "discovered_at": "2026-09-02T00:06:53.020000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Bullish",
+    "translated_at": "2026-09-02T00:06:54.223906Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "看涨",
+    "tweet_id": "2094939684015317363",
+    "url": "https://x.com/thsottiaux/status/2094939684015317363"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-01T16:36:57.697864Z",
       "confidence": 0.99,
       "explicitness": "explicit",
