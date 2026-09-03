@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T23:47:59.383635Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T23:47:24.000000Z",
+    "discovered_at": "2026-09-03T23:47:59.256000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Sam, there is infinite demand for positivity and being nice. I hope you choose to make a difference in the world. Go smell some roses, pick up a book and smile. It's worth it. Lindsay is such as person and I absolutely love working with her every day.",
+    "translated_at": "2026-09-03T23:48:03.736692Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "萨姆，对积极和友善的需求是无限的。我希望你选择让世界有所不同。去闻闻玫瑰，拿起一本书，微笑吧。这是值得的。林赛就是这样的人，我非常喜欢每天和她一起工作。",
+    "tweet_id": "2095659959304569231",
+    "url": "https://x.com/thsottiaux/status/2095659959304569231"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "reset_announcement",
       "classified_at": "2026-09-03T23:12:59.334693Z",
       "confidence": 0.98,
