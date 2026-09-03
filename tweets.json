@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T19:42:59.204585Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-03T19:39:51.000000Z",
     "discovered_at": "2026-09-03T19:42:58.821000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "Across the plans Astra will be included in the normal usage allocation and you will be able to use 100% of it towards Astra.",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-03T19:43:03.535570Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "在所有方案中，Astra 均计入常规使用额度，并且你可以将其中 100% 用于 Astra。",
     "tweet_id": "2095597659545591917",
     "url": "https://x.com/thsottiaux/status/2095597659545591917"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T19:43:03.625740Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-03T19:37:54.000000Z",
     "discovered_at": "2026-09-03T19:42:58.821000Z",
     "is_reply": false,
@@ -28,10 +46,10 @@
       "search"
     ],
     "text": "We are starting to release GPT-6 Astra and we are doing it as carefully and quickly as possible. It was very important to us that we bring it to all Plus users and not only Pro, Business and Enterprise. It will take a few days for the rollout to complete and behind the scenes",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-03T19:43:15.080724Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们正在开始发布GPT-6 Astra，并且以尽可能谨慎且快速的方式进行。对我们来说，将其带给所有Plus用户，而不仅仅是Pro、Business和Enterprise用户，这一点非常重要。推出完成需要几天时间，并且在幕后……",
     "tweet_id": "2095597168816226335",
     "url": "https://x.com/thsottiaux/status/2095597168816226335"
   },
