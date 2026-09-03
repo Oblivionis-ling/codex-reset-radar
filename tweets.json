@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-03T22:27:59.379998Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T22:23:44.000000Z",
+    "discovered_at": "2026-09-03T22:27:59.289000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Such goes OpenAI",
+    "translated_at": "2026-09-03T22:28:10.086500Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "OpenAI就是这样。",
+    "tweet_id": "2095638904087232892",
+    "url": "https://x.com/thsottiaux/status/2095638904087232892"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-03T20:52:59.004479Z",
       "confidence": 0.99,
       "explicitness": "explicit",
