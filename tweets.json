@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T22:37:59.570096Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-03T22:36:28.000000Z",
     "discovered_at": "2026-09-03T22:37:59.290000Z",
     "is_reply": false,

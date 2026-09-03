@@ -12,12 +12,12 @@
     "last_reset_source": "reset_confirmed_tweet",
     "signal_window": null
   },
-  "generated_at": "2026-09-03T22:37:59Z",
+  "generated_at": "2026-09-03T22:39:40Z",
   "reason": "Matched language stating that the reset or limits are complete.",
   "schema_version": 1,
   "state": "CONFIRMED",
   "trigger_tweet_id": "2091688655828246890",
-  "updated_at": "2026-09-03T22:28:10.094498Z",
+  "updated_at": "2026-09-03T22:38:29.720959Z",
   "urgency": "now",
   "usage_advice": {
     "level": "GREEN",
