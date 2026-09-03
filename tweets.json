@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-01T20:17:01.000000Z",
+    "discovered_at": "2026-09-03T10:36:41.547000Z",
+    "is_reply": true,
+    "reply_to": null,
+    "sources": [
+      "with_replies"
+    ],
+    "text": "Tibo @thsottiaux , if you delay Astra again, I’m going to OpenAI and releasing it myself.",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2094882239763071372",
+    "url": "https://x.com/thsottiaux/status/2094882239763071372"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-03T06:16:52.381796Z",
@@ -13,10 +31,11 @@
     },
     "created_at": "2026-09-03T06:12:43.000000Z",
     "discovered_at": "2026-09-03T06:16:52.343000Z",
-    "is_reply": false,
+    "is_reply": true,
     "reply_to": null,
     "sources": [
-      "search"
+      "search",
+      "with_replies"
     ],
     "text": "Interesting",
     "translated_at": "2026-09-03T06:16:54.791419Z",
@@ -40,10 +59,11 @@
     },
     "created_at": "2026-09-03T04:37:45.000000Z",
     "discovered_at": "2026-09-03T04:41:50.810000Z",
-    "is_reply": false,
+    "is_reply": true,
     "reply_to": null,
     "sources": [
-      "search"
+      "search",
+      "with_replies"
     ],
     "text": "Which Codex reset?",
     "translated_at": "2026-09-03T04:42:04.965577Z",
