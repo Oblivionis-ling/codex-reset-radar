@@ -1,10 +1,10 @@
 {
-  "schema_version": 1,
-  "generated_at": "2026-09-03T10:36:42Z",
-  "snapshot_id": "snap-20260903T103642Z-d07d5e",
-  "mirror_synced_at": "2026-09-03T10:36:42Z",
-  "published_at": "2026-09-03T10:36:57.1467355+00:00",
-  "source": "local-radar",
-  "data_branch": "data",
-  "last_sync_status": "success"
+    "schema_version":  1,
+    "generated_at":  "2026-09-03T10:44:40Z",
+    "snapshot_id":  "snap-20260903T104440Z-7d3fcd",
+    "mirror_synced_at":  "2026-09-03T10:44:40Z",
+    "published_at":  "2026-09-03T10:45:45.5872355+00:00",
+    "source":  "local-radar",
+    "data_branch":  "data",
+    "last_sync_status":  "success"
 }
