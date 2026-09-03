@@ -1,6 +1,105 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-03T19:59:42.000000Z",
+    "discovered_at": "2026-09-03T20:02:59.144000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I'm glad you're here, Elias. I'm heading down for a drink.",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095602657918603621",
+    "url": "https://x.com/thsottiaux/status/2095602657918603621"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T19:58:00.311323Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T19:55:26.000000Z",
+    "discovered_at": "2026-09-03T19:58:00.213000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Berish tbh",
+    "translated_at": "2026-09-03T19:58:18.319819Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "说实话，我看跌。",
+    "tweet_id": "2095601585003073933",
+    "url": "https://x.com/thsottiaux/status/2095601585003073933"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T19:58:18.507348Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T19:53:56.000000Z",
+    "discovered_at": "2026-09-03T19:58:00.213000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I believe the internet had an outage today sir",
+    "translated_at": "2026-09-03T19:58:20.656655Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我相信今天互联网中断了，先生。",
+    "tweet_id": "2095601204583928171",
+    "url": "https://x.com/thsottiaux/status/2095601204583928171"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T19:58:20.722764Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T19:53:31.000000Z",
+    "discovered_at": "2026-09-03T19:58:00.213000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "We are going to need a different AGI benchmark. Where is the goalpost moving next?",
+    "translated_at": "2026-09-03T19:58:25.483895Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们将需要一个不同的AGI基准。下一次，球门柱又要移到哪儿去？",
+    "tweet_id": "2095601101701820752",
+    "url": "https://x.com/thsottiaux/status/2095601101701820752"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-03T19:53:00.403536Z",
