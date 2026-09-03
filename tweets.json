@@ -1,6 +1,78 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-03T04:34:49.000000Z",
+    "discovered_at": "2026-09-03T04:36:51.817000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I think the best way to describe OpenAI's culture is as a mega startup. It's hard to believe unless you see it from the inside. Extreme ownership, care and pace.",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095369901137654271",
+    "url": "https://x.com/thsottiaux/status/2095369901137654271"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T04:31:51.883463Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T04:29:41.000000Z",
+    "discovered_at": "2026-09-03T04:31:51.741000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Where is it trying to go",
+    "translated_at": "2026-09-03T04:31:57.966557Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "它想往哪里去？",
+    "tweet_id": "2095368608713199994",
+    "url": "https://x.com/thsottiaux/status/2095368608713199994"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T04:31:58.024828Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T04:27:28.000000Z",
+    "discovered_at": "2026-09-03T04:31:51.741000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Benefits All",
+    "translated_at": "2026-09-03T04:32:05.144692Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "惠及所有人",
+    "tweet_id": "2095368053739696143",
+    "url": "https://x.com/thsottiaux/status/2095368053739696143"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-03T04:26:52.142066Z",
