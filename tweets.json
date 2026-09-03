@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-03T04:26:52.142066Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T04:26:13.000000Z",
+    "discovered_at": "2026-09-03T04:26:52.084000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Godex Podex Todex",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095367738684489861",
+    "url": "https://x.com/thsottiaux/status/2095367738684489861"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-02T23:21:57.696281Z",
       "confidence": 0.99,
       "explicitness": "explicit",
