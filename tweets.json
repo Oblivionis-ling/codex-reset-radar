@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-09-03T23:12:59.334693Z",
+      "confidence": 0.98,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit reset announcement pattern.",
+      "urgency": "within_6h"
+    },
+    "created_at": "2026-09-03T23:12:09.000000Z",
+    "discovered_at": "2026-09-03T23:12:58.994000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "We will give one banked reset for every day you don't have access to Astra on your paid ChatGPT plan, starting today. Team is moving mountains to give access as fast as we can. First one will land in ~ 3 hours. There is still time to create your account if you don't have one.",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095651088502591861",
+    "url": "https://x.com/thsottiaux/status/2095651088502591861"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-03T22:37:59.570096Z",
       "confidence": 0.99,
