@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-03T09:09:28Z",
-  "mirror_synced_at": "2026-09-03T09:09:28Z",
-  "published_at": "2026-09-03T09:09:38.1938265+00:00",
+  "generated_at": "2026-09-03T09:14:28Z",
+  "mirror_synced_at": "2026-09-03T09:14:28Z",
+  "published_at": "2026-09-03T09:14:41.1259280+00:00",
   "source": "local-radar",
   "data_branch": "data",
   "last_sync_status": "success"
