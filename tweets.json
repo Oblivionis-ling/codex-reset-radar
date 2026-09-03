@@ -2,6 +2,87 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-03T15:12:59.518247Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T15:09:59.000000Z",
+    "discovered_at": "2026-09-03T15:12:59.367000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Did you ask Codex?",
+    "translated_at": "2026-09-03T15:13:01.475391Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "你问过 Codex 吗？",
+    "tweet_id": "2095529746855764220",
+    "url": "https://x.com/thsottiaux/status/2095529746855764220"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T15:13:01.560384Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T15:09:15.000000Z",
+    "discovered_at": "2026-09-03T15:12:59.367000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Too many",
+    "translated_at": "2026-09-03T15:13:04.997985Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "太多了",
+    "tweet_id": "2095529563191406672",
+    "url": "https://x.com/thsottiaux/status/2095529563191406672"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T15:08:01.356690Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T15:07:23.000000Z",
+    "discovered_at": "2026-09-03T15:08:01.084000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "What does it mean",
+    "translated_at": "2026-09-03T15:08:02.971874Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "这是什么意思？",
+    "tweet_id": "2095529092720562180",
+    "url": "https://x.com/thsottiaux/status/2095529092720562180"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-03T10:36:41.689947Z",
       "confidence": 0.99,
