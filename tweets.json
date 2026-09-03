@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-03T20:52:59.004479Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T20:50:03.000000Z",
+    "discovered_at": "2026-09-03T20:52:58.941000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Astra",
+    "translated_at": "2026-09-03T20:53:02.323275Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "Astra",
+    "tweet_id": "2095615328483193190",
+    "url": "https://x.com/thsottiaux/status/2095615328483193190"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-03T20:53:02.383244Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-03T20:48:45.000000Z",
+    "discovered_at": "2026-09-03T20:52:58.941000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Significantly",
+    "translated_at": "2026-09-03T20:53:08.421235Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "显著",
+    "tweet_id": "2095615001432334622",
+    "url": "https://x.com/thsottiaux/status/2095615001432334622"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-03T20:02:59.222034Z",
       "confidence": 0.99,
       "explicitness": "explicit",
