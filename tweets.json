@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-04T22:02:59.408888Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-04T22:00:00.000000Z",
+    "discovered_at": "2026-09-04T22:02:59.231000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Awesome to see GPT-6 Astra is #1 on Terminal Bench 4.0 using the Codex harness. At 50% of the cost of #2.",
+    "translated_at": "2026-09-04T22:03:08.974448Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "太棒了！看到 GPT-6 Astra 在 Terminal Bench 4.0 上使用 Codex 框架位居第一，而且成本仅为第二名的 50%。",
+    "tweet_id": "2095995318471168397",
+    "url": "https://x.com/thsottiaux/status/2095995318471168397"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "reset_announcement",
       "classified_at": "2026-09-04T20:58:07.933801Z",
       "confidence": 0.9,
