@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-04T04:27:54.059097Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-04T04:27:14.000000Z",
+    "discovered_at": "2026-09-04T04:27:53.968000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "hahaha",
+    "translated_at": "2026-09-04T04:27:55.228524Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "哈哈哈",
+    "tweet_id": "2095730381437939850",
+    "url": "https://x.com/thsottiaux/status/2095730381437939850"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-04T00:52:52.983490Z",
       "confidence": 0.99,
       "explicitness": "explicit",
