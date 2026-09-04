@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-04T19:57:59.200401Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-04T19:56:04.000000Z",
     "discovered_at": "2026-09-04T19:57:59.029000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "Congratulations. What will you do with it?",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-04T19:58:01.457893Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "恭喜。你打算用它做什么？",
     "tweet_id": "2095964132461961370",
     "url": "https://x.com/thsottiaux/status/2095964132461961370"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-04T19:58:01.684311Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-04T19:55:43.000000Z",
     "discovered_at": "2026-09-04T19:57:59.029000Z",
     "is_reply": false,
@@ -28,10 +46,10 @@
       "search"
     ],
     "text": "更清楚地",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-04T19:58:15.092398Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "更清楚地",
     "tweet_id": "2095964041185509567",
     "url": "https://x.com/thsottiaux/status/2095964041185509567"
   },
