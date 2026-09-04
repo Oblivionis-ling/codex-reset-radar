@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-09-04T20:58:07.933801Z",
+      "confidence": 0.9,
+      "explicitness": "explicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "AI high-confidence reset event overrides preliminary rule=reset_hint. The tweet explicitly states that a banked reset will land by end of day, a future scheduled reset event. It does not say the reset is already in progress or completed.",
+      "urgency": "within_24h"
+    },
+    "created_at": "2026-09-04T20:57:17.000000Z",
+    "discovered_at": "2026-09-04T20:57:58.719000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Some Plus and Business users won't yet get access to Astra today, we've got you covered with a banked reset. Lands by end of day and if you create your account by 8pm PT then you'll get it too.",
+    "translated_at": "2026-09-04T20:58:30.313572Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "部分 Plus 和 Business 用户今天暂时还无法访问 Astra，但不必担心，我们已通过累积重置为你提供保障。该重置将在今天结束前生效，如果你在太平洋时间晚上 8 点前创建账户，也能获得。",
+    "tweet_id": "2095979536043401428",
+    "url": "https://x.com/thsottiaux/status/2095979536043401428"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-04T19:57:59.200401Z",
       "confidence": 0.99,
