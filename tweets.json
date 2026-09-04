@@ -1,6 +1,42 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-04T19:56:04.000000Z",
+    "discovered_at": "2026-09-04T19:57:59.029000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Congratulations. What will you do with it?",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095964132461961370",
+    "url": "https://x.com/thsottiaux/status/2095964132461961370"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-04T19:55:43.000000Z",
+    "discovered_at": "2026-09-04T19:57:59.029000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "更清楚地",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095964041185509567",
+    "url": "https://x.com/thsottiaux/status/2095964041185509567"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "codex_related",
       "classified_at": "2026-09-04T19:47:59.785387Z",
