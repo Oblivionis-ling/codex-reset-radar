@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-04T15:42:53.780638Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-04T15:40:47.000000Z",
+    "discovered_at": "2026-09-04T15:42:53.595000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I tested it and you can comfortably do it in the Plus subscription. It takes Astra 10-15 minutes and less than the 15% of the weekly usage. This means that you can sell ~6 tables per week. Or 24 tables in a month. Making it less than 85 cents per table.",
+    "translated_at": "2026-09-04T15:43:09.716007Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我测试了一下，在 Plus 订阅下你可以轻松完成。Astra 需要 10-15 分钟，并且使用量不到每周配额的 15%。这意味着你每周大约可以卖出 6 张表格，或者每月 24 张。这样每张表格的成本不到 85 美分。",
+    "tweet_id": "2095899886470463914",
+    "url": "https://x.com/thsottiaux/status/2095899886470463914"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-04T15:22:53.762060Z",
       "confidence": 0.99,
       "explicitness": "explicit",
