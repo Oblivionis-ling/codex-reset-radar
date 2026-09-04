@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-04T22:32:59.351243Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-04T22:30:29.000000Z",
     "discovered_at": "2026-09-04T22:32:58.887000Z",
     "is_reply": false,
@@ -10,10 +19,10 @@
       "search"
     ],
     "text": "OK nevermind, the team and Astra did a good job and our systems are more scalable than we anticipated. Astra is now rolled out to all Plus and Business users too. Hope you have a blast and let us know how it goes!",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-04T22:33:06.438953Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "好吧，算了，团队和Astra干得很好，而且我们的系统比预期的更具可扩展性。Astra现在已经向所有Plus和Business用户推出。希望你们玩得开心，并告诉我们进展如何！",
     "tweet_id": "2096002992046796932",
     "url": "https://x.com/thsottiaux/status/2096002992046796932"
   },
