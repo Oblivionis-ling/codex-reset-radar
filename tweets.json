@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-04T19:47:59.785387Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-04T19:44:22.000000Z",
+    "discovered_at": "2026-09-04T19:47:59.381000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "We are progressing through the rollout of Astra. Pro and Business subscriptions get it first, some of you should start seeing it across ChatGPT Work and Codex. And then we will proceed with rollout to all of Plus as fast as we can.",
+    "translated_at": "2026-09-04T19:48:03.576548Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们正在推进 Astra 的推出。Pro 和 Business 订阅用户会先获得它，你们中的一些人应该会开始在 ChatGPT Work 和 Codex 中看到它。然后我们会尽快向所有 Plus 用户推出。",
+    "tweet_id": "2095961185262997556",
+    "url": "https://x.com/thsottiaux/status/2095961185262997556"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-04T19:07:52.299271Z",
       "confidence": 0.99,
