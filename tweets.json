@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-04T16:08:42.000000Z",
+    "discovered_at": "2026-09-04T16:13:03.599000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Welcome sir",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2095906910168031522",
+    "url": "https://x.com/thsottiaux/status/2095906910168031522"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-04T16:07:54.932932Z",
