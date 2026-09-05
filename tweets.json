@@ -1,6 +1,42 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:20:27.000000Z",
+    "discovered_at": "2026-09-05T05:22:53.657000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "🫡",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096106160780955944",
+    "url": "https://x.com/thsottiaux/status/2096106160780955944"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:19:49.000000Z",
+    "discovered_at": "2026-09-05T05:22:53.657000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "La Vista",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096106003192488399",
+    "url": "https://x.com/thsottiaux/status/2096106003192488399"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-05T05:12:56.697547Z",
