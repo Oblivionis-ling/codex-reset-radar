@@ -1,6 +1,42 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:01:39.000000Z",
+    "discovered_at": "2026-09-05T05:02:52.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Astra was probably our biggest competitive advantage while it wasn’t generally available. Since we’ve had it our productivity jumped so much that we shifted some of our plans 6 months ahead and will ship them at DevDay instead of mid next year.",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096101429832552872",
+    "url": "https://x.com/thsottiaux/status/2096101429832552872"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T04:58:42.000000Z",
+    "discovered_at": "2026-09-05T05:02:52.236000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Wow, huge, wonder why!",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096100688241873129",
+    "url": "https://x.com/thsottiaux/status/2096100688241873129"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-05T04:57:53.772748Z",
