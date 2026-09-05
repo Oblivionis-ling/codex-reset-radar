@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:27:53.972314Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-05T05:27:05.000000Z",
     "discovered_at": "2026-09-05T05:27:53.704000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "更他妈的是香肠",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-05T05:28:11.865145Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "更他妈的是香肠",
     "tweet_id": "2096107832865436063",
     "url": "https://x.com/thsottiaux/status/2096107832865436063"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:28:11.910351Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-05T05:23:46.000000Z",
     "discovered_at": "2026-09-05T05:27:53.704000Z",
     "is_reply": false,
@@ -28,16 +46,25 @@
       "search"
     ],
     "text": "Can it play it too?",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-05T05:28:21.245849Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "它也能玩吗？",
     "tweet_id": "2096106997527830551",
     "url": "https://x.com/thsottiaux/status/2096106997527830551"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:28:21.299860Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-05T05:23:18.000000Z",
     "discovered_at": "2026-09-05T05:27:53.704000Z",
     "is_reply": false,
@@ -46,10 +73,10 @@
       "search"
     ],
     "text": "Share the setup!",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-05T05:28:38.872784Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "分享这个配置！",
     "tweet_id": "2096106878925410786",
     "url": "https://x.com/thsottiaux/status/2096106878925410786"
   },
