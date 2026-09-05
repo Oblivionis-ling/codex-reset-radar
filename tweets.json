@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-05T06:03:04.398131Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-05T06:02:26.000000Z",
+    "discovered_at": "2026-09-05T06:03:04.162000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Astra just keeps building and we keep shipping",
+    "translated_at": "2026-09-05T06:03:09.298710Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "Astra 一直在不断打造，我们则不断发布。",
+    "tweet_id": "2096116729554620795",
+    "url": "https://x.com/thsottiaux/status/2096116729554620795"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-05T05:27:53.972314Z",
       "confidence": 0.99,
       "explicitness": "explicit",
