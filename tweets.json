@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-05T05:12:56.697547Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-05T05:12:14.000000Z",
+    "discovered_at": "2026-09-05T05:12:56.605000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Very cool application",
+    "translated_at": "2026-09-05T05:12:58.659318Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "很酷的应用",
+    "tweet_id": "2096104094943576067",
+    "url": "https://x.com/thsottiaux/status/2096104094943576067"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:07:54.837821Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-05T05:06:53.000000Z",
+    "discovered_at": "2026-09-05T05:07:54.675000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Spread the word. Would have been easy to do the same. Felt petty",
+    "translated_at": "2026-09-05T05:08:18.965748Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "传消息。做同样的事本来很容易。感觉那样很小气。",
+    "tweet_id": "2096102749813514292",
+    "url": "https://x.com/thsottiaux/status/2096102749813514292"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-05T05:02:52.536677Z",
       "confidence": 0.99,
       "explicitness": "explicit",
