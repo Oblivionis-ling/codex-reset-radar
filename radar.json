@@ -12,7 +12,7 @@
     "last_reset_source": "reset_confirmed_tweet",
     "signal_window": "explicit_time"
   },
-  "generated_at": "2026-09-05T02:04:40Z",
+  "generated_at": "2026-09-05T02:09:40Z",
   "reason": "Matched language stating that the reset or limits are complete.",
   "schema_version": 1,
   "state": "CONFIRMED",
