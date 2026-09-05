@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T01:59:33.000000Z",
+    "discovered_at": "2026-09-05T02:02:53.595000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "You’ve just revealed our strategy. See you at DevDay",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096055605538799675",
+    "url": "https://x.com/thsottiaux/status/2096055605538799675"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-05T00:42:55.794683Z",
