@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:22:53.737163Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-05T05:20:27.000000Z",
     "discovered_at": "2026-09-05T05:22:53.657000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "🫡",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-05T05:23:09.473414Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "🫡",
     "tweet_id": "2096106160780955944",
     "url": "https://x.com/thsottiaux/status/2096106160780955944"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-05T05:23:09.519094Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-05T05:19:49.000000Z",
     "discovered_at": "2026-09-05T05:22:53.657000Z",
     "is_reply": false,
