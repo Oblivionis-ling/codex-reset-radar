@@ -1,6 +1,60 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:27:05.000000Z",
+    "discovered_at": "2026-09-05T05:27:53.704000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "更他妈的是香肠",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096107832865436063",
+    "url": "https://x.com/thsottiaux/status/2096107832865436063"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:23:46.000000Z",
+    "discovered_at": "2026-09-05T05:27:53.704000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Can it play it too?",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096106997527830551",
+    "url": "https://x.com/thsottiaux/status/2096106997527830551"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-05T05:23:18.000000Z",
+    "discovered_at": "2026-09-05T05:27:53.704000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Share the setup!",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096106878925410786",
+    "url": "https://x.com/thsottiaux/status/2096106878925410786"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-05T05:22:53.737163Z",
