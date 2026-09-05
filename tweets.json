@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-05T00:42:55.794683Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-05T00:40:39.000000Z",
+    "discovered_at": "2026-09-05T00:42:55.706000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "And the team will have some nice sleep now. See you next week for some more ships.",
+    "translated_at": "2026-09-05T00:43:02.720083Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "现在团队可以睡个好觉了。下周见，届时再发布一些内容。",
+    "tweet_id": "2096035748130795560",
+    "url": "https://x.com/thsottiaux/status/2096035748130795560"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_announcement",
+      "classified_at": "2026-09-05T00:43:06.342305Z",
+      "confidence": 0.97,
+      "explicitness": "explicit",
+      "model_name": "deepseek-v4-flash",
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "AI high-confidence reset event overrides preliminary rule=reset_hint. The tweet explicitly states they will do the full banked reset today for Plus, Pro, and Business users, and that it lands end of day. This is a clear future reset event rather than a completed or ongoing reset.",
+      "urgency": "within_24h"
+    },
+    "created_at": "2026-09-05T00:39:25.000000Z",
+    "discovered_at": "2026-09-05T00:42:55.706000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Because we are beyond happy to have Astra rolled out today ahead of schedule and you have been super patient with us (not really, but it’s ok!)… we will do the full banked reset today too for all Plus, Pro and Business users. Lands end of day. Happy Astra day and enjoy a",
+    "translated_at": "2026-09-05T00:43:26.131253Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "因为我们无比高兴Astra今天提前上线，而你们一直对我们超级耐心（才没有呢，但没关系！）……今天我们也会为所有Plus、Pro和Business用户执行完整的banked reset。今天结束时生效。Astra日快乐，享受一个",
+    "tweet_id": "2096035437299237298",
+    "url": "https://x.com/thsottiaux/status/2096035437299237298"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-04T22:32:59.351243Z",
       "confidence": 0.99,
       "explicitness": "explicit",
