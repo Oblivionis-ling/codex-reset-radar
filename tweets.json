@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-06T20:38:22.398274Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-06T20:35:04.000000Z",
     "discovered_at": "2026-09-06T20:37:59.903000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "I can",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-06T20:38:38.102676Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我可以",
     "tweet_id": "2096698720440213943",
     "url": "https://x.com/thsottiaux/status/2096698720440213943"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-06T20:38:43.318495Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-06T20:34:26.000000Z",
     "discovered_at": "2026-09-06T20:37:59.903000Z",
     "is_reply": false,
@@ -28,10 +46,10 @@
       "search"
     ],
     "text": "Astra on NVIDIA GPUs every morning: You're not talking to somebody who woke up a loser. That loser attitude, that loser premise makes no sense to me. We are not a car. Brrrrrrr",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-06T20:38:57.457882Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "每天早上在NVIDIA GPU上运行的Astra：你并不是在跟一个醒来就是失败者的人说话。那种失败者的态度，那种失败者的前提，对我来说毫无意义。我们不是一辆车。Brrrrrrr",
     "tweet_id": "2096698561971064864",
     "url": "https://x.com/thsottiaux/status/2096698561971064864"
   },
