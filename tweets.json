@@ -3,6 +3,60 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-06T20:02:59.219196Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T19:59:35.000000Z",
+    "discovered_at": "2026-09-06T20:02:58.722000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Welcome back Pablo. See DM for a little gift.",
+    "translated_at": "2026-09-06T20:03:03.334450Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "欢迎回来，Pablo。请看私信，有份小礼物。",
+    "tweet_id": "2096689792281117103",
+    "url": "https://x.com/thsottiaux/status/2096689792281117103"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-06T20:03:03.532116Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T19:59:01.000000Z",
+    "discovered_at": "2026-09-06T20:02:58.722000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Should not be the case, between those two it's about ~50% cheaper per task at roughly equivalent output.",
+    "translated_at": "2026-09-06T20:03:10.912341Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "情况不应该是这样的，这两者之间，每个任务的成本大约便宜50%，而输出大致相当。",
+    "tweet_id": "2096689650257805558",
+    "url": "https://x.com/thsottiaux/status/2096689650257805558"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-06T19:57:59.802058Z",
       "confidence": 0.99,
       "explicitness": "explicit",
