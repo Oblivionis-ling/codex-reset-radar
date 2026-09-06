@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-06T21:53:21.858899Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-06T21:51:18.000000Z",
     "discovered_at": "2026-09-06T21:52:59.808000Z",
     "is_reply": false,
@@ -10,10 +19,10 @@
       "search"
     ],
     "text": "We've made some improvements that improve usage on the long tail for power users of Astra when logged in with your ChatGPT account. No change in quality and a pure win that on the long tail can result in up to 3-4X less usage being drawn from the subscription.",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-06T21:53:47.473026Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我们对使用ChatGPT账户登录Astra的重度用户进行了一些改进，以优化他们在长尾场景中的用量。质量不变，纯属利好，在长尾场景中，订阅消耗的用量最高可减少3至4倍。",
     "tweet_id": "2096717905614524491",
     "url": "https://x.com/thsottiaux/status/2096717905614524491"
   },
