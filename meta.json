@@ -1,9 +1,9 @@
 {
     "schema_version":  1,
-    "generated_at":  "2026-09-06T23:25:21Z",
-    "snapshot_id":  "snap-20260906T232521Z-dca7c8",
-    "mirror_synced_at":  "2026-09-06T23:25:21Z",
-    "published_at":  "2026-09-06T23:26:36.4579514+00:00",
+    "generated_at":  "2026-09-06T23:40:30Z",
+    "snapshot_id":  "snap-20260906T234030Z-88f2e0",
+    "mirror_synced_at":  "2026-09-06T23:40:30Z",
+    "published_at":  "2026-09-06T23:46:32.0492973+00:00",
     "source":  "local-radar",
     "data_branch":  "data",
     "last_sync_status":  "success"
