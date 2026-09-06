@@ -286,6 +286,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Astra was probably our biggest competitive advantage while it wasn’t generally available. Since we’ve had it our productivity jumped so much that we shifted some of our plans 6 months ahead and will ship them at DevDay instead of mid next year.",
@@ -394,6 +395,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "And the team will have some nice sleep now. See you next week for some more ships.",
@@ -421,6 +423,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Because we are beyond happy to have Astra rolled out today ahead of schedule and you have been super patient with us (not really, but it’s ok!)… we will do the full banked reset today too for all Plus, Pro and Business users. Lands end of day. Happy Astra day and enjoy a",
@@ -448,6 +451,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "OK nevermind, the team and Astra did a good job and our systems are more scalable than we anticipated. Astra is now rolled out to all Plus and Business users too. Hope you have a blast and let us know how it goes!",
@@ -475,6 +479,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Awesome to see GPT-6 Astra is #1 on Terminal Bench 4.0 using the Codex harness. At 50% of the cost of #2.",
@@ -502,6 +507,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Some Plus and Business users won't yet get access to Astra today, we've got you covered with a banked reset. Lands by end of day and if you create your account by 8pm PT then you'll get it too.",
@@ -583,6 +589,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "We are progressing through the rollout of Astra. Pro and Business subscriptions get it first, some of you should start seeing it across ChatGPT Work and Codex. And then we will proceed with rollout to all of Plus as fast as we can.",
@@ -826,6 +833,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "We will give one banked reset for every day you don't have access to Astra on your paid ChatGPT plan, starting today. Team is moving mountains to give access as fast as we can. First one will land in ~ 3 hours. There is still time to create your account if you don't have one.",
@@ -1042,6 +1050,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "We are going to need a different AGI benchmark. Where is the goalpost moving next?",
