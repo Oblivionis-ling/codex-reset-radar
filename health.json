@@ -2,7 +2,7 @@
   "components": [
     {
       "component": "backend",
-      "last_heartbeat": "2026-09-06T10:24:41.385407Z",
+      "last_heartbeat": "2026-09-06T10:29:41.387475Z",
       "state": "healthy"
     },
     {
@@ -17,10 +17,10 @@
     },
     {
       "component": "search_backfill",
-      "last_heartbeat": "2026-09-06T10:23:05.587666Z",
+      "last_heartbeat": "2026-09-06T10:28:04.227739Z",
       "state": "healthy"
     }
   ],
-  "generated_at": "2026-09-06T10:24:41Z",
+  "generated_at": "2026-09-06T10:29:41Z",
   "schema_version": 1
 }
