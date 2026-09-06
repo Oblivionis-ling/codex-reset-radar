@@ -3,6 +3,87 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-06T20:13:00.534010Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T20:11:46.000000Z",
+    "discovered_at": "2026-09-06T20:12:59.771000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I have a rule for Twitter. I only hand-type things. Neurons to letters, with only the keyboard inbetween",
+    "translated_at": "2026-09-06T20:13:08.461851Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我对 Twitter 有条规矩：我只亲手打字。神经元到字母，中间只有键盘。",
+    "tweet_id": "2096692856543182879",
+    "url": "https://x.com/thsottiaux/status/2096692856543182879"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "reset_denial",
+      "classified_at": "2026-09-06T20:13:08.589584Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched an explicit negation of a reset action.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T20:09:56.000000Z",
+    "discovered_at": "2026-09-06T20:12:59.771000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Who says it won't reset in a while 👀",
+    "translated_at": "2026-09-06T20:13:22.865397Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "谁说它不会很快就重置呢？👀",
+    "tweet_id": "2096692394435752258",
+    "url": "https://x.com/thsottiaux/status/2096692394435752258"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-06T20:13:22.917679Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T20:08:16.000000Z",
+    "discovered_at": "2026-09-06T20:12:59.771000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Researcher. They spend their time in the most incomprehensible pile of Python code that requires having read 10 different papers and the full comprehension of the very odd systems and how they subtly affect training dynamics. Their entire day is basically debugging why something",
+    "translated_at": "2026-09-06T20:13:35.493080Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "研究员。他们把时间花在最难以理解的一大堆Python代码上，这些代码要求你读过10篇不同的论文，并完全理解那些非常奇怪的系统以及它们如何微妙地影响训练动态。他们的一整天基本上就是在调试为什么某些东西...",
+    "tweet_id": "2096691977740001677",
+    "url": "https://x.com/thsottiaux/status/2096691977740001677"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-06T20:02:59.219196Z",
       "confidence": 0.99,
       "explicitness": "explicit",
