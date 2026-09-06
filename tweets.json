@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-06T19:48:03.501806Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-06T19:46:00.000000Z",
+    "discovered_at": "2026-09-06T19:48:01.333000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Not the case. There is no difference between usage you get before or after a reset.",
+    "translated_at": "2026-09-06T19:48:06.931046Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "并非如此。重置之前或之后获得的用量没有区别。",
+    "tweet_id": "2096686370848989558",
+    "url": "https://x.com/thsottiaux/status/2096686370848989558"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-06T07:07:53.956684Z",
       "confidence": 0.99,
       "explicitness": "explicit",
