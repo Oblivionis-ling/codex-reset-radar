@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-07T22:06:35.000000Z",
+    "discovered_at": "2026-09-07T22:08:00.091000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I challenge this a bit (a) Codex was started as an internal tool. The goal was explicitly to build what was the highest leverage tool to accelerate infrastructure buildout. (b) I don’t think the Meta vs non-Meta is particularly enlightening here. Most of us who came from older",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2097084139627561041",
+    "url": "https://x.com/thsottiaux/status/2097084139627561041"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-07T19:27:59.913589Z",
