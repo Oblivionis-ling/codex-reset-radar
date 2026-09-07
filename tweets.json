@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-07T22:08:00.323559Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-07T22:06:35.000000Z",
     "discovered_at": "2026-09-07T22:08:00.091000Z",
     "is_reply": false,
@@ -10,10 +19,10 @@
       "search"
     ],
     "text": "I challenge this a bit (a) Codex was started as an internal tool. The goal was explicitly to build what was the highest leverage tool to accelerate infrastructure buildout. (b) I don’t think the Meta vs non-Meta is particularly enlightening here. Most of us who came from older",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-07T22:08:18.493941Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我稍微质疑这一点 (a) Codex 最初是作为内部工具开始的。其目标明确是构建最高杠杆的工具，以加速基础设施建设。(b) 我不认为这里 Meta 与非 Meta 之分特别有启发性。我们大多数人来自更早的",
     "tweet_id": "2097084139627561041",
     "url": "https://x.com/thsottiaux/status/2097084139627561041"
   },
