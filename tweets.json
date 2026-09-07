@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-07T19:27:59.913589Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-07T19:24:57.000000Z",
+    "discovered_at": "2026-09-07T19:27:59.510000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Never gonna give you up Never gonna let you down Never gonna run around and desert you Never gonna make you cry Never gonna say goodbye Never gonna tell a lie and hurt you Thanks for reading. We will do a global reset of the usage for all paid subscriptions so that you can keep",
+    "translated_at": "2026-09-07T19:28:07.419010Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "永远不会放弃你\n永远不会让你失望\n永远不会到处跑并抛弃你\n永远不会让你哭泣\n永远不会说再见\n永远不会撒谎伤害你\n感谢阅读。\n我们将对所有付费订阅的用量进行全局重置，以便你能够继续",
+    "tweet_id": "2097043464538264003",
+    "url": "https://x.com/thsottiaux/status/2097043464538264003"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-07T06:29:36.582464Z",
       "confidence": 0.99,
       "explicitness": "explicit",
