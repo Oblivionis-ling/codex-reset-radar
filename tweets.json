@@ -2,6 +2,60 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-07T22:28:00.073422Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-07T22:24:30.000000Z",
+    "discovered_at": "2026-09-07T22:27:59.935000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "My condolences",
+    "translated_at": "2026-09-07T22:28:20.402241Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "节哀",
+    "tweet_id": "2097088648768635068",
+    "url": "https://x.com/thsottiaux/status/2097088648768635068"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-07T22:28:20.493593Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-07T22:24:15.000000Z",
+    "discovered_at": "2026-09-07T22:27:59.935000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I think I can officially say: we are so back",
+    "translated_at": "2026-09-07T22:28:29.996830Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我想我可以正式说：我们真的回来了",
+    "tweet_id": "2097088586843816330",
+    "url": "https://x.com/thsottiaux/status/2097088586843816330"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "codex_related",
       "classified_at": "2026-09-07T22:08:00.323559Z",
       "confidence": 0.93,
