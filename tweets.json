@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-07T01:03:58.258326Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-07T01:01:39.000000Z",
+    "discovered_at": "2026-09-07T01:02:53.260000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "@ajambrosino Did you ship comic sans again?",
+    "translated_at": "2026-09-07T01:04:04.440193Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "@ajambrosino 你又发布了 comic sans 吗？",
+    "tweet_id": "2096765806818509047",
+    "url": "https://x.com/thsottiaux/status/2096765806818509047"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-06T22:46:12.756672Z",
       "confidence": 0.99,
       "explicitness": "explicit",
