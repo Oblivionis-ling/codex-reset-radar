@@ -17,10 +17,10 @@
     },
     {
       "component": "search_backfill",
-      "last_heartbeat": "2026-09-07T01:42:56.516000Z",
+      "last_heartbeat": "2026-09-07T01:43:01.941000Z",
       "state": "healthy"
     }
   ],
-  "generated_at": "2026-09-07T01:43:49Z",
+  "generated_at": "2026-09-07T01:45:27Z",
   "schema_version": 1
 }

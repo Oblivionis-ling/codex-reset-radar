@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-07T01:43:48.549324Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-07T01:39:25.000000Z",
     "discovered_at": "2026-09-07T01:42:56.348000Z",
     "is_reply": false,
@@ -10,16 +19,25 @@
       "search"
     ],
     "text": "Glad you like it!",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-07T01:43:57.210458Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "你喜欢就好！",
     "tweet_id": "2096775311790899620",
     "url": "https://x.com/thsottiaux/status/2096775311790899620"
   },
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-07T01:43:57.336373Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-07T01:38:24.000000Z",
     "discovered_at": "2026-09-07T01:42:56.348000Z",
     "is_reply": false,
@@ -28,10 +46,10 @@
       "search"
     ],
     "text": "It's possible though that we built Astra in just 2 days. Not probable, but possible",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-07T01:44:01.177807Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "不过我们有可能在短短两天内就构建出了Astra。虽然可能性不大，但并非不可能。",
     "tweet_id": "2096775056336859637",
     "url": "https://x.com/thsottiaux/status/2096775056336859637"
   },
