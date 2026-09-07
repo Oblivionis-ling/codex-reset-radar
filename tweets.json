@@ -1,6 +1,42 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-07T01:39:25.000000Z",
+    "discovered_at": "2026-09-07T01:42:56.348000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Glad you like it!",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096775311790899620",
+    "url": "https://x.com/thsottiaux/status/2096775311790899620"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-07T01:38:24.000000Z",
+    "discovered_at": "2026-09-07T01:42:56.348000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "It's possible though that we built Astra in just 2 days. Not probable, but possible",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2096775056336859637",
+    "url": "https://x.com/thsottiaux/status/2096775056336859637"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-07T01:03:58.258326Z",
