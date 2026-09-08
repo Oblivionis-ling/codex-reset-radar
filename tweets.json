@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": null,
+    "created_at": "2026-09-08T04:07:53.000000Z",
+    "discovered_at": "2026-09-08T04:08:02.259000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "There is no schedule, only resets",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2097175062566846501",
+    "url": "https://x.com/thsottiaux/status/2097175062566846501"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-08T04:07:54.246220Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-08T04:05:53.000000Z",
     "discovered_at": "2026-09-08T04:07:53.771000Z",
     "is_reply": false,
