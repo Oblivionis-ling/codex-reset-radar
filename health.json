@@ -2,12 +2,12 @@
   "components": [
     {
       "component": "backend",
-      "last_heartbeat": "2026-09-08T08:55:54.879164Z",
+      "last_heartbeat": "2026-09-08T09:00:54.894132Z",
       "state": "healthy"
     },
     {
       "component": "profile_monitor",
-      "last_heartbeat": "2026-09-08T08:55:48.327000Z",
+      "last_heartbeat": "2026-09-08T09:00:48.314000Z",
       "state": "healthy"
     },
     {
@@ -17,10 +17,10 @@
     },
     {
       "component": "search_backfill",
-      "last_heartbeat": "2026-09-08T08:53:03.668494Z",
+      "last_heartbeat": "2026-09-08T08:58:04.093472Z",
       "state": "healthy"
     }
   ],
-  "generated_at": "2026-09-08T08:55:55Z",
+  "generated_at": "2026-09-08T09:00:55Z",
   "schema_version": 1
 }
