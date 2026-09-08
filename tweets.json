@@ -3,6 +3,87 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-08T04:32:53.572448Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-08T04:32:03.000000Z",
+    "discovered_at": "2026-09-08T04:32:53.272000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Hey Astra, cancel all the subscriptions I don't really need, also go negotiate my internet bill, same for my electricity bill... oh and find some nice flowers (she likes peonies) for my wife and make sure to remind me every 3 weeks to get some",
+    "translated_at": "2026-09-08T04:32:59.769584Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "嘿 Astra，取消所有我不太需要的订阅，还有去协商我的网费，电费也一样……哦，还有给我妻子找一些漂亮的花（她喜欢牡丹），并确保每三周提醒我去买一些。",
+    "tweet_id": "2097181146752983291",
+    "url": "https://x.com/thsottiaux/status/2097181146752983291"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-08T04:27:54.226379Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-08T04:27:13.000000Z",
+    "discovered_at": "2026-09-08T04:27:53.863000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Spidey sense",
+    "translated_at": "2026-09-08T04:27:57.990140Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "蜘蛛感应",
+    "tweet_id": "2097179930719310259",
+    "url": "https://x.com/thsottiaux/status/2097179930719310259"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-08T04:27:58.171765Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-08T04:26:31.000000Z",
+    "discovered_at": "2026-09-08T04:27:53.863000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Congrats, you're a Google Gemini user",
+    "translated_at": "2026-09-08T04:28:01.216079Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "恭喜，你是 Google Gemini 用户了。",
+    "tweet_id": "2097179752855646358",
+    "url": "https://x.com/thsottiaux/status/2097179752855646358"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-08T04:08:24.629603Z",
       "confidence": 0.99,
       "explicitness": "explicit",
