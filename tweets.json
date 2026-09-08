@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-08T04:08:24.629603Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-08T04:07:53.000000Z",
     "discovered_at": "2026-09-08T04:08:02.259000Z",
     "is_reply": false,
@@ -10,10 +19,10 @@
       "search"
     ],
     "text": "There is no schedule, only resets",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-08T04:08:37.084639Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "没有时间表，只有重置。",
     "tweet_id": "2097175062566846501",
     "url": "https://x.com/thsottiaux/status/2097175062566846501"
   },
