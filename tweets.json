@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-08T05:20:19.000000Z",
+    "discovered_at": "2026-09-08T05:22:54.173000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Looking at this 28 page deck right now where Codex is keeping track of all the individual launches. Each one of them I can't wait to see what people do with it. Brought to you by an incredible team (and Astra)",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2097193293532848288",
+    "url": "https://x.com/thsottiaux/status/2097193293532848288"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-08T04:43:25.595490Z",
