@@ -2,6 +2,33 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-08T20:08:00.557384Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-08T20:03:11.000000Z",
+    "discovered_at": "2026-09-08T20:07:59.888000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Not that an official word would stop you. But really it's an optimization related to scheduling and routing of request that combined with long context and workload we have on 1P subscriptions that yields a significant saving in long tail of long-running sessions",
+    "translated_at": "2026-09-08T20:08:13.309123Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "倒不是说官方说法就会让你停手。但其实这是一个与请求调度和路由相关的优化，与我们 1P 订阅上的长上下文和工作负载相结合，能够在长尾的长时间运行会话中产生显著节省。",
+    "tweet_id": "2097415471251464582",
+    "url": "https://x.com/thsottiaux/status/2097415471251464582"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "codex_related",
       "classified_at": "2026-09-08T05:22:54.597232Z",
       "confidence": 0.93,
