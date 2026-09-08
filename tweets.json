@@ -1,7 +1,16 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-08T05:22:54.597232Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-08T05:20:19.000000Z",
     "discovered_at": "2026-09-08T05:22:54.173000Z",
     "is_reply": false,
@@ -10,10 +19,10 @@
       "search"
     ],
     "text": "Looking at this 28 page deck right now where Codex is keeping track of all the individual launches. Each one of them I can't wait to see what people do with it. Brought to you by an incredible team (and Astra)",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-08T05:23:08.182419Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "正在看这份28页的演示文稿，Codex 在其中记录着所有单独的发布。每一次发布，我都等不及想看人们会用它做什么。由一支了不起的团队（还有 Astra）呈现。",
     "tweet_id": "2097193293532848288",
     "url": "https://x.com/thsottiaux/status/2097193293532848288"
   },
