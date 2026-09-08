@@ -2,25 +2,25 @@
   "components": [
     {
       "component": "backend",
-      "last_heartbeat": "2026-09-08T19:20:55.326913Z",
+      "last_heartbeat": "2026-09-08T19:25:55.312364Z",
       "state": "healthy"
     },
     {
       "component": "profile_monitor",
-      "last_heartbeat": "2026-09-08T19:20:48.846000Z",
+      "last_heartbeat": "2026-09-08T19:25:48.841000Z",
       "state": "healthy"
     },
     {
       "component": "replies_monitor",
-      "last_heartbeat": "2026-09-08T19:20:48.846000Z",
+      "last_heartbeat": "2026-09-08T19:25:48.843000Z",
       "state": "healthy"
     },
     {
       "component": "search_backfill",
-      "last_heartbeat": "2026-09-08T19:20:48.850000Z",
+      "last_heartbeat": "2026-09-08T19:25:48.844000Z",
       "state": "healthy"
     }
   ],
-  "generated_at": "2026-09-08T19:20:55Z",
+  "generated_at": "2026-09-08T19:25:55Z",
   "schema_version": 1
 }
