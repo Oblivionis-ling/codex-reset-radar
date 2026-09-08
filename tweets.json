@@ -16,6 +16,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Looking at this 28 page deck right now where Codex is keeping track of all the individual launches. Each one of them I can't wait to see what people do with it. Brought to you by an incredible team (and Astra)",
@@ -40,10 +41,11 @@
     },
     "created_at": "2026-09-08T04:41:58.000000Z",
     "discovered_at": "2026-09-08T04:43:25.282000Z",
-    "is_reply": false,
+    "is_reply": true,
     "reply_to": null,
     "sources": [
-      "search"
+      "search",
+      "with_replies"
     ],
     "text": "You forgot the part where I reset usage twice in the middle",
     "translated_at": "2026-09-08T04:43:35.401057Z",
@@ -178,6 +180,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "All reset for everyone. Enjoy the week with Astra.",
@@ -259,6 +262,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "I think I can officially say: we are so back",
@@ -313,6 +317,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Never gonna give you up Never gonna let you down Never gonna run around and desert you Never gonna make you cry Never gonna say goodbye Never gonna tell a lie and hurt you Thanks for reading. We will do a global reset of the usage for all paid subscriptions so that you can keep",
@@ -583,6 +588,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "We've made some improvements that improve usage on the long tail for power users of Astra when logged in with your ChatGPT account. No change in quality and a pure win that on the long tail can result in up to 3-4X less usage being drawn from the subscription.",
@@ -610,6 +616,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "The number of people who don't get it in the comments is concerning to me. Go ask Astra.",
@@ -664,6 +671,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "Astra on NVIDIA GPUs every morning: You're not talking to somebody who woke up a loser. That loser attitude, that loser premise makes no sense to me. We are not a car. Brrrrrrr",
@@ -826,6 +834,7 @@
     "is_reply": false,
     "reply_to": null,
     "sources": [
+      "profile_dom",
       "search"
     ],
     "text": "To calibrate you all on which reasoning effort to use for Astra, know that GPT-6 Astra on low performs better than GPT-5.6 Sol on high. If you were using high reasoning efforts with Sol and were happy, I suggest you move down to low or medium for Astra.",
