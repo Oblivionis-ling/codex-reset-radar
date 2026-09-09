@@ -3,6 +3,33 @@
     "author": "thsottiaux",
     "classification": {
       "category": "unrelated",
+      "classified_at": "2026-09-09T00:07:46.295029Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-09T00:06:52.000000Z",
+    "discovered_at": "2026-09-09T00:07:46.022000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Look! A fish!",
+    "translated_at": "2026-09-09T00:07:48.898213Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "看！一条鱼！",
+    "tweet_id": "2097476797298520292",
+    "url": "https://x.com/thsottiaux/status/2097476797298520292"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
       "classified_at": "2026-09-08T20:08:00.557384Z",
       "confidence": 0.99,
       "explicitness": "explicit",
