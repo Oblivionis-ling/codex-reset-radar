@@ -2,6 +2,60 @@
   {
     "author": "thsottiaux",
     "classification": {
+      "category": "codex_related",
+      "classified_at": "2026-09-09T00:32:46.041102Z",
+      "confidence": 0.93,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "Matched Codex-related terminology without a direct reset signal.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-09T00:28:54.000000Z",
+    "discovered_at": "2026-09-09T00:32:45.861000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I am pleased to see that Ant’s new Claude Code has a version of background computer use on par with the version from Codex from last May this year. Nice work! Shipping great features first turns out to be a great way to encourage other labs to ship too. We will continue to do",
+    "translated_at": "2026-09-09T00:33:01.705967Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我很高兴看到 Ant 的新 Claude Code 有一个后台计算机使用版本，与今年五月 Codex 的版本相当。干得好！抢先发布优秀功能，结果证明是鼓励其他实验室也发布的好方法。我们将继续",
+    "tweet_id": "2097482341916852719",
+    "url": "https://x.com/thsottiaux/status/2097482341916852719"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-09T00:33:01.808828Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-09T00:28:46.000000Z",
+    "discovered_at": "2026-09-09T00:32:45.861000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "I for one am glad prompt injection is getting solved across the industry and that Astra is not only our most capable, but also our most aligned model to date. But also ...",
+    "translated_at": "2026-09-09T00:33:03.727254Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "我個人很樂見提示注入問題在整個行業中逐漸得到解決，而且Astra不僅是我們迄今為止最強大的模型，也是最符合我們價值觀的模型。但話說回來……",
+    "tweet_id": "2097482307812859978",
+    "url": "https://x.com/thsottiaux/status/2097482307812859978"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
       "category": "unrelated",
       "classified_at": "2026-09-09T00:07:46.295029Z",
       "confidence": 0.99,
