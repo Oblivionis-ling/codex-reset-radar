@@ -1,7 +1,43 @@
 [
   {
     "author": "thsottiaux",
-    "classification": null,
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-09T01:17:55.101208Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
+    "created_at": "2026-09-09T01:15:40.000000Z",
+    "discovered_at": "2026-09-09T01:17:53.925000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "Astra on `ultra` and /fast?",
+    "translated_at": "2026-09-09T01:18:01.185335Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "Astra 在 `ultra` 和 /fast 上呢？",
+    "tweet_id": "2097494113012863197",
+    "url": "https://x.com/thsottiaux/status/2097494113012863197"
+  },
+  {
+    "author": "thsottiaux",
+    "classification": {
+      "category": "unrelated",
+      "classified_at": "2026-09-09T01:12:55.595470Z",
+      "confidence": 0.99,
+      "explicitness": "explicit",
+      "model_name": null,
+      "prompt_version": "tibo-classifier-v2-calibrated",
+      "reason": "No Codex, quota, reset, or known hint signal was found.",
+      "urgency": "unknown"
+    },
     "created_at": "2026-09-09T01:08:58.000000Z",
     "discovered_at": "2026-09-09T01:12:52.653000Z",
     "is_reply": false,
@@ -10,10 +46,10 @@
       "search"
     ],
     "text": "See you at the Astra party. Excited to meet some of you",
-    "translated_at": null,
-    "translation_model": null,
-    "translation_version": null,
-    "translation_zh": null,
+    "translated_at": "2026-09-09T01:12:59.012873Z",
+    "translation_model": "deepseek-v4-flash",
+    "translation_version": "tibo-translation-v1",
+    "translation_zh": "Astra派对上见。很期待见到你们中的一些人。",
     "tweet_id": "2097492424474165293",
     "url": "https://x.com/thsottiaux/status/2097492424474165293"
   },
