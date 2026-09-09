@@ -1,6 +1,24 @@
 [
   {
     "author": "thsottiaux",
+    "classification": null,
+    "created_at": "2026-09-09T01:08:58.000000Z",
+    "discovered_at": "2026-09-09T01:12:52.653000Z",
+    "is_reply": false,
+    "reply_to": null,
+    "sources": [
+      "search"
+    ],
+    "text": "See you at the Astra party. Excited to meet some of you",
+    "translated_at": null,
+    "translation_model": null,
+    "translation_version": null,
+    "translation_zh": null,
+    "tweet_id": "2097492424474165293",
+    "url": "https://x.com/thsottiaux/status/2097492424474165293"
+  },
+  {
+    "author": "thsottiaux",
     "classification": {
       "category": "codex_related",
       "classified_at": "2026-09-09T00:32:46.041102Z",
