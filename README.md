@@ -1,72 +1,126 @@
 # Codex Reset Radar
 
-Personal, local-first monitoring of Tibo (`@thsottiaux`) on X. Phase A provides reliable browser collection, SQLite ingestion/deduplication, health heartbeats, and Latest-search reconciliation. Phase B now adds transparent classification, bounded context, optional DeepSeek semantic review, and Radar State.
+Codex Reset Radar is a local-first, full-stack system for answering one practical question:
 
-## Current progress
+> Is the next Codex Reset approaching?
 
-- [x] Milestone 0 — scaffold, architecture, SQLite schema, readable logging, `/health`
-- [x] Milestone 1 — MV3 Profile/Replies DOM collector, local ingestion, deduplication, fallback scan, heartbeat
-- [x] Milestone 2 — 72-hour Latest search backfill, UTC day windows, reconciliation
-- [x] Milestone 3 — transparent Rule Classifier
-- [x] Milestone 4 — DeepSeek Provider with structured validation and fallback
-- [x] Milestone 5 — bounded SQLite Context Engine
-- [x] Milestone 6 — audited Rule/AI Final Resolver
-- [x] Milestone 7 — Radar State and expiry engine
-- [x] DeepSeek live calls — Phase B.5 calibrated backfill and acceptance completed
-- [x] Phase C core — Alert Manager, notification channels, deduplication, baseline, escalation, and monitor alerts
-- [x] Phase C acceptance — WxPusher delivery and Windows Toast verified locally
-- [x] Profile / Replies SPA Route Fix — context-preserving status navigation verified
-- [x] Phase D local mirror — allow-listed public data export and GitHub sync script
-- [x] GitHub Pages Dashboard — static UI on GitHub Pages
-- [x] Phase E.5 live data branch and freshness-aware Health semantics
+It collects Tibo's public X posts, preserves reset history, and exposes a stable product contract for a future semantic judge. The repository is the source, documentation, CI, and version history; GitHub is not part of the V2 runtime data path.
 
-GitHub Pages hosts the static Dashboard. Live public JSON is published to the independent `data` branch; the local Collector, Backend, SQLite, Radar, and notifications continue to run on the Windows machine and do not depend on GitHub.
+## V2 status
 
-## Quick start on Windows
+The current release target is **V2 Foundation Alpha 1** (`0.1.0-alpha.1`). It provides:
 
-1. Copy `.env.example` to `.env` and adjust only local settings if needed.
-2. Run `start-radar.bat`.
-3. In Chrome or Edge, open `chrome://extensions` or `edge://extensions`, enable Developer mode, choose **Load unpacked**, and select `extension/dist` after building the extension.
-4. Sign in to X, open `https://x.com/thsottiaux`, and keep the browser running.
-5. For Phase C notifications, configure the local `.env` using the variables described in `docs/phase-c-progress-report.md`; never commit the App Token or UID.
+- a FastAPI Backend with a new isolated SQLite schema;
+- a local Vite Web app that reads only `/api/v2/*`;
+- the existing browser Extension as a transitional collector adapter;
+- bounded local JSONL logs and in-memory collector heartbeat state;
+- read-only V1 post migration with explicit Reset review candidates;
+- one-command local start and project-scoped stop scripts.
 
-The backend listens on `http://127.0.0.1:8787`. Check `http://127.0.0.1:8787/health`.
+The DeepSeek Judge, historical corpus, server collector, final UI, notification redesign, and overseas deployment are intentionally outside this alpha.
 
-## Build and test
+## Architecture
+
+```text
+X public pages
+    |
+    v
+Transitional Collector Extension
+    |
+    v
+Local FastAPI Backend ----> V2 SQLite
+    |
+    v
+Local Vite Web
+```
+
+No active V2 process reads `raw.githubusercontent.com`, writes the `data` branch, deploys Pages, or uses Git as a runtime database.
+
+## Repository structure
+
+```text
+apps/backend/               V2 API, database, tests, and V1 source archive
+apps/web/                   V2 local Dashboard foundation
+apps/collector-extension/   transitional Manifest V3 collector adapter
+docs/v1/                    V1 reports, contracts, and static-data snapshot
+docs/v2/                    V2 product and engineering contracts
+legacy/v1/                  V1 operational scripts and launchers
+scripts/                    V2 migration and local lifecycle scripts
+backend/data/               local legacy V1 data; ignored and preserved
+runtime/                    generated V2 database, logs, and PID records
+data/analysis/              generated migration review artifacts; ignored
+```
+
+## Local development
+
+From the repository root, install the Backend, Web, and Extension dependencies as described in [Local development](docs/v2/local-development.md). Then run:
 
 ```powershell
-cd backend
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-\.venv\Scripts\python.exe -m pytest -q
+.\start-v2-local.bat
+```
 
-cd ..\extension
-npm install
+Local endpoints:
+
+- Web: `http://127.0.0.1:5173`
+- Backend API: `http://127.0.0.1:8787/api/v2`
+- Health: `http://127.0.0.1:8787/api/v2/health`
+
+Stop only the recorded V2 processes with:
+
+```powershell
+.\stop-v2-local.bat
+```
+
+## Data policy
+
+Long-lived V2 data is limited to public Tibo posts, verified Full/Special Reset events, structured post analysis, necessary Radar judgements, and reviewed analysis artifacts. Routine heartbeats, request traces, browser lifecycle spam, timer ticks, logs, credentials, databases, and build artifacts are not committed.
+
+The legacy V1 database under `backend/data/` remains local and read-only until migration review is complete. The GitHub `data` branch is retained only as a legacy read-only snapshot and is not used by V2.
+
+## Radar product model
+
+- Action levels: `GREEN`, `YELLOW`, `ORANGE`, `RED`
+- Insufficient evidence: `UNKNOWN`, displayed as white
+- Horizons: `24H`, `48H`, `72H`
+- Special Reset events: displayed uniformly as `PURPLE`
+- Full Reset: a historical event that opens a new Reset cycle, not a persistent risk level
+- Confidence percentages: not part of the public V2 contract
+
+Alpha 1 correctly returns `UNKNOWN` until a later Judge is enabled. See [Product model](docs/v2/product-model.md).
+
+## V1 legacy snapshot
+
+The final V1 working state is preserved by the annotated tag `v1-final-snapshot-2026-09-13`. Its local Backend → GitHub data branch → GitHub Pages architecture is archived and no longer developed as the active product runtime.
+
+Historical reports and source remain available under `docs/v1/`, `legacy/v1/`, and `apps/backend/legacy_v1/` on the V2 branch. Local V1 data is preserved but never committed.
+
+## Deployment plan
+
+V2 is validated as a complete local stack first. A later phase may deploy the Backend, database, Web, and future server collector to an overseas server. Docker, reverse proxy, TLS, domains, and production secrets are not part of Alpha 1.
+
+## Security
+
+- Never commit `.env`, API tokens, cookies, browser profiles, SQLite files, runtime logs, or generated corpora.
+- Copy `.env.example` to `.env` only for local configuration.
+- The Alpha 1 runtime does not send real notifications or call a semantic Judge.
+- Tests use data explicitly labelled as synthetic fixtures; the repository must not invent Reset history or Tibo posts.
+
+## Validation
+
+Run from the repository root:
+
+```powershell
+backend\.venv\Scripts\python.exe -m pytest apps\backend\tests -q
+cd apps\web
+npm ci
 npm test
+npm run typecheck
 npm run build
-
-cd ..\backend
-.\.venv\Scripts\python.exe classify_existing.py
+cd ..\collector-extension
+npm ci
+npm test
+npm run typecheck
+npm run build
 ```
 
-See [docs/architecture.md](docs/architecture.md), [docs/data-model.md](docs/data-model.md), and [docs/operations.md](docs/operations.md) for the current implementation and known collector limits.
-
-The live mirror design and Phase E.5 acceptance record are documented in [docs/live-data-mirror.md](docs/live-data-mirror.md) and [docs/phase-e5-progress-report.md](docs/phase-e5-progress-report.md).
-
-## Public data mirror
-
-The tracked `public-data/` directory contains only sanitized Tweet, final classification, Radar summary, and component health snapshots. It does not contain the local SQLite database, diagnostic telemetry, notification records, AI usage, or credentials.
-
-After the Backend has produced current data and the repository remote is configured, update the live data branch with:
-
-```powershell
-.\scripts\sync-github-data.ps1
-```
-
-The sync script reads SQLite in read-only mode, stages only the five sanitized JSON files in a temporary data-branch worktree, and pushes through the authenticated Git remote. It never switches the active development worktree or updates `main/public-data/`. A GitHub outage does not interrupt the local radar.
-
-The Backend runs the same sync in a lightweight 5-minute background loop, with event-triggered sync requests for new Tweets, high-value classifications, Radar changes, and monitor state changes. GitHub failures are logged and retried at most three times per sync cycle; they do not interrupt collection, classification, Radar, SQLite, or notifications.
-
-Collector verification and the current leak-risk assessment are recorded in [docs/collector-test-results.md](docs/collector-test-results.md).
-
-Phase B classification results are recorded in [docs/phase-b-classification-report.md](docs/phase-b-classification-report.md). Phase B.5 calibration and acceptance materials are in [docs/phase-b5-progress-report.md](docs/phase-b5-progress-report.md), [docs/phase-b5-review-table.md](docs/phase-b5-review-table.md), and [docs/phase-b5-classification-report.md](docs/phase-b5-classification-report.md).
+GitHub Actions performs the same Backend, Web, and Collector checks. It does not host the Dashboard or publish runtime data.
