@@ -1,52 +1,22 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 
-const dashboardDir = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(dashboardDir, "..");
-const publicDataDir = path.join(projectRoot, "public-data");
-const publicDataFiles = ["index.json", "tweets.json", "radar.json", "health.json", "resets.json", "meta.json"] as const;
-
-function publicDataPlugin(): Plugin {
-  return {
-    name: "codex-reset-radar-public-data",
-    configureServer(server) {
-      server.middlewares.use("/public-data", (request, response, next) => {
-        const pathname = request.url?.split("?", 1)[0] ?? "";
-        // connect-style middleware strips the mount path before this handler;
-        // accept both the mounted and the raw request shape.
-        const filename = pathname.replace(/^\/public-data\//, "").replace(/^\/+/, "");
-        if (!publicDataFiles.includes(filename as (typeof publicDataFiles)[number])) {
-          next();
-          return;
-        }
-        try {
-          response.statusCode = 200;
-          response.setHeader("Content-Type", "application/json; charset=utf-8");
-          response.end(readFileSync(path.join(publicDataDir, filename)));
-        } catch {
-          next();
-        }
-      });
-    },
-    generateBundle() {
-      for (const filename of publicDataFiles) {
-        this.emitFile({
-          type: "asset",
-          fileName: `public-data/${filename}`,
-          source: readFileSync(path.join(publicDataDir, filename), "utf-8")
-        });
-      }
-    }
-  };
-}
+const webDir = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(webDir, "../..");
+const appVersion = readFileSync(path.join(repositoryRoot, "VERSION"), "utf-8").trim();
 
 export default defineConfig({
-  base: "./",
-  plugins: [publicDataPlugin()],
-  build: {
-    outDir: "dist",
-    emptyOutDir: true
-  }
+  base: "/",
+  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      "/api": { target: "http://127.0.0.1:8787", changeOrigin: false }
+    }
+  },
+  build: { outDir: "dist", emptyOutDir: true }
 });
