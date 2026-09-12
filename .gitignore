@@ -1,23 +1,41 @@
 .env
 .venv/
+**/.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-backend/data/
-backend/*.db
-backend/*.db-*
-extension/node_modules/
-extension/dist/
-dashboard/node_modules/
-dashboard/dist/
-*.log
 .coverage
 htmlcov/
+*.log
 .DS_Store
 _tmp/
 
-# Public mirror is intentionally tracked. Keep local mirror scratch files out.
-public-data/*.tmp
+# V1 runtime data stays local and read-only during migration.
+backend/data/*
+!backend/data/README.md
+backend/*.db
+backend/*.db-*
+
+# V2 runtime state is never versioned.
+runtime/*
+!runtime/README.md
+data/analysis/*
+!data/analysis/README.md
+*.db
+*.db-*
+*.sqlite
+*.sqlite-*
+*.jsonl
+
+# Reproducible frontend and extension artifacts are built by CI.
+node_modules/
+dist/
+apps/**/node_modules/
+apps/**/dist/
+dashboard/node_modules/
+dashboard/dist/
+extension/node_modules/
+extension/dist/
 
 # Unreferenced local V1 design mockup containing fabricated sample data.
 docs/Codex 图像 2026年8月31日 14_37_30.png
