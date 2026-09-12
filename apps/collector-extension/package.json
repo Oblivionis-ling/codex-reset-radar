@@ -1,11 +1,12 @@
 {
-  "name": "codex-reset-radar-extension",
+  "name": "codex-reset-radar-collector-adapter",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.1",
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.270",

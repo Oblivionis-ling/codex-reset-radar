@@ -195,7 +195,7 @@ async function heartbeat(message: HeartbeatMessage, sender?: chrome.runtime.Mess
   const sequence = message.sequence ?? ++searchHeartbeatSequence;
   const traceId = message.trace_id ?? `hb-${message.component}-${EXTENSION_INSTANCE_ID}-${sequence}`;
   const requestId = message.request_id ?? `req-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
-  const metadata = {
+  const metadata: Record<string, unknown> = {
     ...(message.metadata ?? {}),
     ...(await readTabSnapshot(sender?.tab?.id)),
     extension_instance_id: EXTENSION_INSTANCE_ID,

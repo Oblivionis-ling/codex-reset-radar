@@ -1,16 +1,19 @@
-# Codex Reset Radar extension
+# Transitional Collector Adapter
 
-This is a Chrome/Edge Manifest V3 extension built with Vite and TypeScript.
+This Manifest V3 extension is the legacy/transitional browser collector for V2 Alpha 1. It keeps the existing Profile, Replies, and Search collection path available while the future server collector remains out of scope.
+
+It sends normalized public posts and ephemeral health/diagnostic messages only to the local Backend at `http://127.0.0.1:8787`. The V2 Backend does not persist routine heartbeat or browser lifecycle spam.
 
 ## Build
 
+Run from the repository root:
+
 ```powershell
-npm install
+cd apps/collector-extension
+npm ci
 npm test
+npm run typecheck
 npm run build
 ```
 
-Load the generated `dist` folder as an unpacked extension. The content script is intentionally limited to Tibo's Profile, `with_replies`, and X Search pages. It does not read cookies or call an X API.
-
-The service worker posts normalized Tweets and heartbeats to `http://127.0.0.1:8787`. When the backend is unavailable, raw Tweet payloads are kept in `chrome.storage.local` and retried.
-
+Load `apps/collector-extension/dist` as an unpacked extension. It does not read browser cookies or use an X API credential.
