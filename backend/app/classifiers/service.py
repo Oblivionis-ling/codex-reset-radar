@@ -13,6 +13,7 @@ from app.intelligence.context_engine import build_context
 from app.intelligence.radar import update_radar
 from app.models import AIUsage, Classification, Tweet
 from app.notifications.alert_manager import AlertManager
+from app.observability import append_event, new_id, redact_secret
 from app.schemas import ClassificationOutput, RuleClassification
 
 from .providers import AIProvider, DeepSeekProvider, DeepSeekProviderError, ProviderResult, TranslationResult
@@ -96,18 +97,49 @@ async def translate_tweet(
     provider: AIProvider | None = None,
     settings: Settings | None = None,
     force: bool = False,
+    trace_id: str | None = None,
 ) -> dict[str, Any]:
     """Best-effort display translation; it never changes classification data."""
 
     settings = settings or get_settings()
+    translation_trace_id = trace_id or new_id(f"tweet-{tweet_id}-translation")
+    started_at = datetime.now(timezone.utc)
+    append_event(
+        "backend",
+        "TWEET_TRANSLATION_STARTED",
+        component="translation",
+        trace_id=translation_trace_id,
+        metadata={"tweet_id": tweet_id},
+        tweet_id=tweet_id,
+    )
     tweet = session.get(Tweet, tweet_id)
     if tweet is None:
         raise ValueError(f"Tweet not found: {tweet_id}")
     if not force and tweet.translated_zh and tweet.translation_version == settings.translation_version:
+        append_event(
+            "backend",
+            "TWEET_TRANSLATION_SKIPPED",
+            component="translation",
+            trace_id=translation_trace_id,
+            result="skipped",
+            metadata={"tweet_id": tweet_id, "reason": "cached"},
+            tweet_id=tweet_id,
+            reason="cached",
+        )
         return {"tweet_id": tweet_id, "translated": False, "skipped": True, "reason": "cached"}
     provider = provider or provider_from_settings(settings)
     translate = getattr(provider, "translate", None) if provider is not None else None
     if translate is None or not tweet.text.strip():
+        append_event(
+            "backend",
+            "TWEET_TRANSLATION_SKIPPED",
+            component="translation",
+            trace_id=translation_trace_id,
+            result="skipped",
+            metadata={"tweet_id": tweet_id, "reason": "provider_unavailable"},
+            tweet_id=tweet_id,
+            reason="provider_unavailable",
+        )
         return {"tweet_id": tweet_id, "translated": False, "skipped": True, "reason": "provider_unavailable"}
     try:
         result = await translate(tweet.text, context={"author": tweet.author, "is_reply": tweet.is_reply})
@@ -123,12 +155,35 @@ async def translate_tweet(
         )
         session.flush()
         logger.info("TWEET_TRANSLATED tweet_id=%s", tweet_id)
+        append_event(
+            "backend",
+            "TWEET_TRANSLATED",
+            component="translation",
+            trace_id=translation_trace_id,
+            duration_ms=round((datetime.now(timezone.utc) - started_at).total_seconds() * 1000, 3),
+            result="success",
+            metadata={"tweet_id": tweet_id, "translation_version": settings.translation_version},
+            tweet_id=tweet_id,
+        )
         return {"tweet_id": tweet_id, "translated": True, "skipped": False}
     except Exception as exc:
         message = str(exc)[:300]
         if provider is not None:
             record_ai_usage(session, provider, "translation_failure", error=message)
         logger.warning("TWEET_TRANSLATION_FAILED tweet_id=%s reason=%s", tweet_id, message)
+        append_event(
+            "backend",
+            "TWEET_TRANSLATION_FAILED",
+            level="WARNING",
+            component="translation",
+            trace_id=translation_trace_id,
+            duration_ms=round((datetime.now(timezone.utc) - started_at).total_seconds() * 1000, 3),
+            result="failed",
+            error_type=type(exc).__name__,
+            metadata={"tweet_id": tweet_id, "error": redact_secret(exc)},
+            tweet_id=tweet_id,
+            error=redact_secret(exc),
+        )
         return {"tweet_id": tweet_id, "translated": False, "skipped": False, "failed": True, "reason": message}
 
 
@@ -140,12 +195,32 @@ async def classify_tweet(
     settings: Settings | None = None,
     force: bool = False,
     mirror_event: Any | None = None,
+    trace_id: str | None = None,
 ) -> dict[str, Any]:
     settings = settings or get_settings()
+    processing_trace_id = trace_id or new_id(f"tweet-{tweet_id}")
+    append_event(
+        "backend",
+        "TWEET_PROCESSING_STARTED",
+        component="classification",
+        trace_id=processing_trace_id,
+        metadata={"tweet_id": tweet_id},
+        tweet_id=tweet_id,
+    )
     tweet = session.get(Tweet, tweet_id)
     if tweet is None:
         raise ValueError(f"Tweet not found: {tweet_id}")
     if not force and latest_final(session, tweet_id) is not None:
+        append_event(
+            "backend",
+            "TWEET_CLASSIFICATION_SKIPPED",
+            component="classification",
+            trace_id=processing_trace_id,
+            result="skipped",
+            metadata={"tweet_id": tweet_id, "reason": "already_classified"},
+            tweet_id=tweet_id,
+            reason="already_classified",
+        )
         return {"tweet_id": tweet_id, "skipped": True, "reason": "already_classified"}
 
     context = build_context(session, tweet)
@@ -217,13 +292,43 @@ async def classify_tweet(
     )
     # Translation is deliberately after the audited classification and is
     # isolated from it: a provider failure must not roll back intelligence.
-    await translate_tweet(session, tweet_id, provider=provider, settings=settings)
+    await translate_tweet(session, tweet_id, provider=provider, settings=settings, trace_id=processing_trace_id)
     if decision.conflict:
         logger.warning("CLASSIFICATION_CONFLICT tweet_id=%s", tweet_id)
     logger.info("FINAL_CLASSIFICATION tweet_id=%s category=%s confidence=%.2f", tweet_id, decision.result.category, decision.result.confidence)
     radar = update_radar(session)
-    AlertManager(settings).handle_radar_transition(session, radar)
+    AlertManager(settings).handle_radar_transition(session, radar, trace_id=processing_trace_id)
     session.commit()
+    append_event(
+        "backend",
+        "TWEET_CLASSIFIED",
+        component="classification",
+        trace_id=processing_trace_id,
+        result="success",
+        metadata={
+            "tweet_id": tweet_id,
+            "category": decision.result.category,
+            "confidence": decision.result.confidence,
+            "classification_pending": ai_pending,
+            "classification_conflict": decision.conflict,
+        },
+        tweet_id=tweet_id,
+        category=decision.result.category,
+        confidence=decision.result.confidence,
+        classification_pending=ai_pending,
+        classification_conflict=decision.conflict,
+    )
+    append_event(
+        "backend",
+        "RADAR_EVALUATED",
+        component="radar",
+        trace_id=processing_trace_id,
+        result="changed" if radar.changed else "unchanged",
+        metadata={"tweet_id": tweet_id, "state": radar.state, "changed": radar.changed},
+        tweet_id=tweet_id,
+        state=radar.state,
+        changed=radar.changed,
+    )
     if radar.changed:
         logger.info(
             "RADAR_STATE_CHANGED previous_state=%s state=%s trigger_tweet_id=%s",
@@ -313,8 +418,19 @@ async def classify_tweet_ids(
                     mirror_event=mirror_event,
                 )
                 counts["skipped" if result.get("skipped") else "classified"] += 1
-            except Exception:
+            except Exception as exc:
                 session.rollback()
                 counts["failed"] += 1
+                append_event(
+                    "backend",
+                    "TWEET_PROCESSING_FAILED",
+                    level="ERROR",
+                    component="classification",
+                    result="failed",
+                    error_type=type(exc).__name__,
+                    metadata={"tweet_id": tweet_id, "error": redact_secret(exc)},
+                    tweet_id=tweet_id,
+                    error=redact_secret(exc),
+                )
                 logger.exception("Classification pipeline failed tweet_id=%s", tweet_id)
     return counts

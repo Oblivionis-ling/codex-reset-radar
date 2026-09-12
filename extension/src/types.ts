@@ -15,11 +15,16 @@ export interface NormalizedTweet {
 export interface IngestMessage {
   type: "INGEST_TWEETS";
   tweets: NormalizedTweet[];
+  trace_id?: string;
 }
 
 export interface HeartbeatMessage {
   type: "HEARTBEAT";
   component: string;
+  instance_id?: string;
+  sequence?: number;
+  trace_id?: string;
+  request_id?: string;
   observed_at?: string;
   state?: "healthy" | "warning" | "offline";
   last_tweet_seen?: string | null;
@@ -46,12 +51,25 @@ export type DiagnosticEventType =
   | "DOCUMENT_READY_STATE_CHANGED"
   | "SERVICE_WORKER_MESSAGE_SENT"
   | "SERVICE_WORKER_MESSAGE_FAILED"
-  | "TAB_STATE_SNAPSHOT";
+  | "TAB_STATE_SNAPSHOT"
+  | "HEARTBEAT_CREATED"
+  | "HEARTBEAT_SW_RECEIVED"
+  | "HEARTBEAT_HTTP_STARTED"
+  | "HEARTBEAT_HTTP_SUCCESS"
+  | "HEARTBEAT_HTTP_FAILED"
+  | "HEARTBEAT_SKIPPED_NO_ACTIVE_SOURCE"
+  | "DIAGNOSTIC_BACKFILL_STARTED"
+  | "DIAGNOSTIC_BACKFILL_COMPLETED"
+  | "DIAGNOSTIC_BACKFILL_FAILED";
 
 export interface DiagnosticMessage {
   type: "DIAGNOSTIC";
   component: string;
   event: DiagnosticEventType;
+  instance_id?: string;
+  sequence?: number;
+  trace_id?: string;
+  request_id?: string;
   observed_at?: string;
   details?: Record<string, unknown>;
 }

@@ -41,7 +41,8 @@ describe("dashboard data", () => {
         return jsonResponse({
           schema_version: 1,
           generated_at: "2026-08-30T17:59:00Z",
-          mirror_synced_at: "2026-08-30T17:59:00Z"
+          mirror_synced_at: "2026-08-30T17:59:00Z",
+          published_at: "2026-08-30T17:59:04Z"
         });
       }
       return jsonResponse(input.toString().endsWith("tweets.json") ? [{ tweet_id: "first" }] : {});
@@ -55,6 +56,7 @@ describe("dashboard data", () => {
     const merged = mergeDashboardData(previous, next);
 
     expect(previous.meta?.mirror_synced_at).toBe("2026-08-30T17:59:00Z");
+    expect(previous.meta?.published_at).toBe("2026-08-30T17:59:04Z");
     expect(merged.tweets[0]?.tweet_id).toBe("second");
     expect(merged.health).toBe(previous.health);
     expect(merged.errors).toContain("health: network down");

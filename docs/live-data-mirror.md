@@ -34,7 +34,9 @@ for the next cycle.
 The sync runs in a worker thread and its failure is isolated: a GitHub timeout,
 authentication error, rate limit, or push failure is logged as
 `PUBLIC_MIRROR_SYNC_FAILED` and does not stop collection, classification,
-SQLite, Radar, or notifications.
+SQLite, Radar, or notifications. Temporary network failures receive at most
+four attempts in one job, with 30s, 60s, and 120s delays between retries; the
+already exported snapshot is reused for every retry.
 
 ## Dashboard source and freshness
 
@@ -44,11 +46,14 @@ Production data is fetched from:
 
 The base URL is centralized in `dashboard/src/config.ts`. Local Vite
 development may use `/public-data/`; the build-time copy is only a fallback
-sample and is not used by the production URL. The page refreshes all five JSON
+sample and is not used by the production URL. The page refreshes all six JSON
 files every 60 seconds and uses `cache: "no-store"`.
 
-Freshness is based on `meta.mirror_synced_at`, then the snapshot generation
-time. A snapshot is fresh for 15 minutes and stale after that:
+Freshness is based on `meta.published_at` when available. Older snapshots fall
+back to `meta.mirror_synced_at`, then the snapshot generation time. The existing
+`mirror_synced_at` field remains the generated snapshot timestamp for contract
+compatibility; `published_at` represents the successful publication time of the
+public snapshot. A snapshot is fresh for 15 minutes and stale after that:
 
 - `fresh` + reported `healthy` → `正常` / `HEALTHY`;
 - `fresh` + reported `offline` → `离线` / `OFFLINE`;

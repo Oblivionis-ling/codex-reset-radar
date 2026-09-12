@@ -42,6 +42,8 @@ export interface PublicHealthComponent { component?: string; state?: string; las
 export interface PublicHealth { generated_at?: string; components?: PublicHealthComponent[]; }
 export interface PublicMeta {
   schema_version?: number; generated_at?: string; mirror_synced_at?: string;
+  published_at?: string;
+  snapshot_id?: string;
   source?: string; data_branch?: string; last_sync_status?: string;
 }
 export interface PublicResetEvent {
@@ -67,6 +69,7 @@ export interface DashboardFileLoadTrace {
   response_received_at: string | null;
   status: number | null;
   ok: boolean;
+  duration_ms?: number;
   error?: string;
 }
 export type DashboardFileTraceHandler = (trace: DashboardFileLoadTrace) => void;
@@ -141,7 +144,7 @@ function normalizeHealth(value: unknown): PublicHealth | null {
 }
 function normalizeMeta(value: unknown): PublicMeta | null {
   if (!isRecord(value)) return null;
-  return { schema_version: asNumber(value.schema_version), generated_at: asString(value.generated_at), mirror_synced_at: asString(value.mirror_synced_at), source: asString(value.source), data_branch: asString(value.data_branch), last_sync_status: asString(value.last_sync_status) };
+  return { schema_version: asNumber(value.schema_version), generated_at: asString(value.generated_at), mirror_synced_at: asString(value.mirror_synced_at), published_at: asString(value.published_at), snapshot_id: asString(value.snapshot_id), source: asString(value.source), data_branch: asString(value.data_branch), last_sync_status: asString(value.last_sync_status) };
 }
 function normalizeResets(value: unknown): PublicResets | null {
   if (!isRecord(value)) return null;
@@ -248,7 +251,8 @@ export async function loadDashboardData(
         request_started_at: requestStartedAt,
         response_received_at: responseReceivedAt,
         status,
-        ok: true
+        ok: true,
+        duration_ms: Math.max(0, Date.parse(responseReceivedAt) - Date.parse(requestStartedAt))
       });
       return { file, value };
     } catch (error) {
@@ -261,6 +265,7 @@ export async function loadDashboardData(
         response_received_at: responseReceivedAt,
         status,
         ok: false,
+        duration_ms: responseReceivedAt ? Math.max(0, Date.parse(responseReceivedAt) - Date.parse(requestStartedAt)) : undefined,
         error: message
       });
       return { file, value: null };

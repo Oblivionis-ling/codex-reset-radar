@@ -41,6 +41,10 @@ Important fields:
 - `mirror_synced_at`: the public snapshot timestamp written into `meta.json`.
 - `duration_ms`, `trigger`, `result`, `push_attempt`, and failure `reason` when
   available.
+- Retry records additionally include `attempt`, `next_attempt`,
+  `retry_delay_seconds`, `error_type`, and `terminal`. Temporary network
+  failures use the bounded 30s/60s/120s schedule; authentication, conflict,
+  and other non-temporary errors do not receive this retry schedule.
 - `logged_at`: when the Backend appended the record locally.
 
 The log only persists timing and safe status fields. Credential values and
@@ -72,6 +76,11 @@ Each refresh record contains:
   ready to render the refresh result.
 - `duration_ms`: elapsed time for that refresh.
 - `mirror_synced_at`: the source timestamp reported by the selected data.
+- `published_at`: the successful mirror publication timestamp when the new
+  metadata field is available; older snapshots may omit it. The public value
+  is written immediately before the push as a conservative lower-bound marker;
+  the exact post-push return time is the Backend log's successful
+  `sync_finished_at`.
 - `used_snapshot_at`: the source timestamp of the data actually kept for
   display, including the previous successful file for a partial refresh.
 - `result`: `success`, `partial`, or `failed`.

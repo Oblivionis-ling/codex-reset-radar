@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -94,6 +94,7 @@ class Alert(Base):
             "channel",
             name="uq_alert_dedup",
         ),
+        Index("ix_alerts_created_at", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -130,8 +131,51 @@ class MonitorHealth(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
 
+class HeartbeatHistory(Base):
+    __tablename__ = "heartbeat_history"
+    __table_args__ = (
+        Index("ix_heartbeat_history_component_received", "component", "backend_received_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    component: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    instance_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    sequence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    request_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    client_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    backend_received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    db_committed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class HealthStateHistory(Base):
+    __tablename__ = "health_state_history"
+    __table_args__ = (
+        Index("ix_health_state_history_component_changed", "component", "changed_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    component: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    previous_state: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    new_state: Mapped[str] = mapped_column(String(16), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    heartbeat_age_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    instance_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    trace_id: Mapped[str | None] = mapped_column(String(160), nullable=True, index=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
 class MonitorDiagnosticEvent(Base):
     __tablename__ = "monitor_diagnostic_events"
+    __table_args__ = (
+        Index("ix_monitor_diagnostic_events_component_observed", "component", "observed_at"),
+        Index("ix_monitor_diagnostic_events_component_created", "component", "created_at"),
+        Index("ix_monitor_diagnostic_events_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     component: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -199,6 +243,8 @@ __all__ = [
     "AIUsage",
     "Classification",
     "MonitorHealth",
+    "HeartbeatHistory",
+    "HealthStateHistory",
     "MonitorDiagnosticEvent",
     "NotificationBaseline",
     "RadarState",

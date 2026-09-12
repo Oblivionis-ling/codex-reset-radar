@@ -23,8 +23,47 @@ def create_database(database_url: str, database_path: Path | None = None) -> tup
 
     Base.metadata.create_all(engine)
     migrate_legacy_schema(engine)
+    ensure_observability_indexes(engine)
     session_factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     return engine, session_factory
+
+
+def ensure_observability_indexes(engine: Engine) -> None:
+    """Add the small set of query indexes needed by observability.
+
+    ``create_all`` does not retrofit indexes onto an already-existing SQLite
+    database, so this is intentionally an idempotent, explicit migration.
+    It is limited to tables that are already present and never changes the
+    journal mode.
+    """
+
+    statements = {
+        "heartbeat_history": (
+            "CREATE INDEX IF NOT EXISTS ix_heartbeat_history_component_received "
+            "ON heartbeat_history (component, backend_received_at)",
+        ),
+        "monitor_diagnostic_events": (
+            "CREATE INDEX IF NOT EXISTS ix_monitor_diagnostic_events_component_observed "
+            "ON monitor_diagnostic_events (component, observed_at)",
+            "CREATE INDEX IF NOT EXISTS ix_monitor_diagnostic_events_component_created "
+            "ON monitor_diagnostic_events (component, created_at)",
+            "CREATE INDEX IF NOT EXISTS ix_monitor_diagnostic_events_created_at "
+            "ON monitor_diagnostic_events (created_at)",
+        ),
+        "health_state_history": (
+            "CREATE INDEX IF NOT EXISTS ix_health_state_history_component_changed "
+            "ON health_state_history (component, changed_at)",
+        ),
+        "alerts": (
+            "CREATE INDEX IF NOT EXISTS ix_alerts_created_at ON alerts (created_at)",
+        ),
+    }
+    tables = set(inspect(engine).get_table_names())
+    with engine.begin() as connection:
+        for table, table_statements in statements.items():
+            if table in tables:
+                for statement in table_statements:
+                    connection.exec_driver_sql(statement)
 
 
 def migrate_legacy_schema(engine: Engine) -> None:

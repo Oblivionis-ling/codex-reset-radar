@@ -22,8 +22,11 @@ const LANGUAGE_STORAGE_KEY = "codex-reset-radar-language";
 const REFRESH_LOG_STORAGE_KEY = "codex-reset-radar-refresh-log";
 const REFRESH_LOG_LIMIT = 100;
 const REFRESH_INTERVAL_MS = 60_000;
+const DASHBOARD_INSTANCE_STORAGE_KEY = "codex-reset-radar-dashboard-instance-id";
+const DASHBOARD_REFRESH_SEQUENCE_KEY = "codex-reset-radar-refresh-sequence";
 const app = document.querySelector<HTMLElement>("#app");
 let language: Language = readLanguage();
+const dashboardInstanceId = readSessionId(DASHBOARD_INSTANCE_STORAGE_KEY, "dash");
 let lastSuccessfulData: DashboardData | null = null;
 let lastRefreshFailed = false;
 let refreshInFlight = false;
@@ -31,12 +34,18 @@ let lastRefreshLog: DashboardRefreshLog | null = null;
 
 interface DashboardRefreshLog {
   schema_version: 1;
+  dashboard_instance_id: string;
+  refresh_id: string;
   refresh_started_at: string;
   dashboard_received_at: string;
   duration_ms: number;
   result: "success" | "partial" | "failed";
   mirror_synced_at: string | null;
+  published_at: string | null;
   used_snapshot_at: string | null;
+  source_snapshot_id: string | null;
+  source_age_ms: number | null;
+  network_duration_ms: number;
   errors: string[];
   files: DashboardFileLoadTrace[];
 }
@@ -64,7 +73,7 @@ interface Copy {
   navLabel: string; records: string; why: string; id: string; autoRefresh: string;
   dataSource: string; status: string; reset: string; forecastBasis: string; latest: string;
   viewDetails: string; timezone: string; confirmedReset: string; opsMatrix: string;
-  dashboardReceived: string;
+  dashboardReceived: string; snapshotId: string;
 }
 
 const COPY: Record<Language, Copy> = {
@@ -102,7 +111,7 @@ const COPY: Record<Language, Copy> = {
     calendar: "Reset 日历", calendarDetail: "点击日期查看当天的 Reset 记录。", unknown: "未知", snapshotGenerated: "快照生成于",
     navLabel: "主导航", records: "条记录", why: "判断原因", id: "技术 ID", autoRefresh: "每 60 秒自动刷新",
     dataSource: "数据来源", status: "状态", reset: "RESET", forecastBasis: "依据", latest: "最新", viewDetails: "查看详情",
-    timezone: "时区", confirmedReset: "确认事件", opsMatrix: "运维矩阵", dashboardReceived: "页面收到"
+    timezone: "时区", confirmedReset: "确认事件", opsMatrix: "运维矩阵", dashboardReceived: "页面收到", snapshotId: "快照 ID"
   },
   en: {
     languageButton: "中文", languageAria: "切换到中文", eyebrow: "PUBLIC INTELLIGENCE CONSOLE · @thsottiaux",
@@ -138,7 +147,7 @@ const COPY: Record<Language, Copy> = {
     calendar: "RESET CALENDAR", calendarDetail: "Select a date to see that day's Reset records.", unknown: "unknown", snapshotGenerated: "Snapshot generated",
     navLabel: "Primary navigation", records: "records", why: "WHY THIS STATE", id: "TECHNICAL ID", autoRefresh: "Auto-refresh every 60 seconds",
     dataSource: "DATA SOURCE", status: "STATUS", reset: "RESET", forecastBasis: "BASIS", latest: "LATEST", viewDetails: "VIEW DETAILS",
-    timezone: "TIMEZONE", confirmedReset: "CONFIRMED EVENT", opsMatrix: "OPS MATRIX", dashboardReceived: "DASHBOARD RECEIVED"
+    timezone: "TIMEZONE", confirmedReset: "CONFIRMED EVENT", opsMatrix: "OPS MATRIX", dashboardReceived: "DASHBOARD RECEIVED", snapshotId: "SNAPSHOT ID"
   }
 };
 
@@ -208,7 +217,28 @@ function urgencyLabel(urgency: string | undefined, currentLanguage: Language): s
 }
 function tweetTime(tweet: PublicTweet): string { return tweet.created_at ?? tweet.discovered_at ?? ""; }
 function snapshotTimestamp(data: DashboardData): string | undefined {
-  return data.meta?.mirror_synced_at ?? data.meta?.generated_at ?? data.index?.generated_at ?? data.health?.generated_at;
+  return data.meta?.published_at ?? data.meta?.mirror_synced_at ?? data.meta?.generated_at ?? data.index?.generated_at ?? data.health?.generated_at;
+}
+
+function readSessionId(key: string, prefix: string): string {
+  try {
+    const existing = window.sessionStorage.getItem(key);
+    if (existing) return existing;
+    const value = `${prefix}-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
+    window.sessionStorage.setItem(key, value);
+    return value;
+  } catch {
+    return `${prefix}-ephemeral-${Math.random().toString(36).slice(2)}`;
+  }
+}
+function nextRefreshId(): string {
+  let sequence = 0;
+  try {
+    sequence = Number(window.sessionStorage.getItem(DASHBOARD_REFRESH_SEQUENCE_KEY) ?? "0") || 0;
+    sequence += 1;
+    window.sessionStorage.setItem(DASHBOARD_REFRESH_SEQUENCE_KEY, String(sequence));
+  } catch { sequence = Date.now(); }
+  return `${dashboardInstanceId}-refresh-${String(sequence).padStart(4, "0")}`;
 }
 function route(): string {
   const hash = window.location.hash.replace(/^#/, "");
@@ -293,14 +323,15 @@ function monitorRow(component: PublicHealthComponent | undefined, snapshotAt: st
 }
 function mirrorRow(data: DashboardData, currentLanguage: Language, refreshLog: DashboardRefreshLog | null): string {
   const copy = COPY[currentLanguage];
-  const syncedAt = data.meta?.mirror_synced_at ?? data.meta?.generated_at ?? snapshotTimestamp(data);
+  const syncedAt = data.meta?.published_at ?? data.meta?.mirror_synced_at ?? data.meta?.generated_at ?? snapshotTimestamp(data);
   const state = deriveMirrorState(syncedAt);
   const status = copy.healthStates[state] ?? copy.unknown;
+  const snapshotId = data.meta?.snapshot_id ?? refreshLog?.source_snapshot_id ?? copy.unknown;
   return `<div class="mirror-strip">
     <div class="mirror-title"><span class="field-label">${escapeHtml(copy.dataMirror)}</span><strong>${escapeHtml(copy.dataSource)} / ${escapeHtml(data.meta?.data_branch ?? "data")}</strong></div>
     <div class="mirror-status">${statusMark(state, status)}</div>
     <div class="mirror-time"><span>${escapeHtml(copy.lastSync)}</span><strong>${escapeHtml(ageLabel(syncedAt, Date.now(), currentLanguage))}</strong><small>${escapeHtml(syncedAt ? formatDate(syncedAt, currentLanguage) : copy.unknown)}</small></div>
-    <div class="mirror-received"><span>${escapeHtml(copy.dashboardReceived)}</span><strong>${escapeHtml(refreshLog ? formatDate(refreshLog.dashboard_received_at, currentLanguage) : copy.unknown)}</strong><small>${escapeHtml(refreshLog ? `${refreshLog.duration_ms} ms · ${refreshLog.files.filter((file) => file.ok).length}/${refreshLog.files.length}` : copy.unknown)}</small></div>
+    <div class="mirror-received"><span>${escapeHtml(copy.dashboardReceived)}</span><strong>${escapeHtml(refreshLog ? formatDate(refreshLog.dashboard_received_at, currentLanguage) : copy.unknown)}</strong><small>${escapeHtml(refreshLog ? `${refreshLog.duration_ms} ms · ${refreshLog.files.filter((file) => file.ok).length}/${refreshLog.files.length}` : copy.unknown)}</small><small>${escapeHtml(copy.snapshotId)}: ${escapeHtml(snapshotId)}</small></div>
   </div>`;
 }
 
@@ -456,6 +487,7 @@ async function refreshDashboard(): Promise<void> {
   if (refreshInFlight) return;
   refreshInFlight = true;
   const refreshStartedAt = new Date().toISOString();
+  const refreshId = nextRefreshId();
   const fileTraces: DashboardFileLoadTrace[] = [];
   try {
     const next = await loadDashboardData(fetch, DATA_BASE_URL, (trace) => fileTraces.push(trace));
@@ -464,14 +496,21 @@ async function refreshDashboard(): Promise<void> {
     lastSuccessfulData = merged;
     lastRefreshFailed = hadPreviousData && next.errors.length > 0;
     const dashboardReceivedAt = new Date().toISOString();
+    const publishedAt = merged.meta?.published_at ?? null;
     persistRefreshLog({
       schema_version: 1,
+      dashboard_instance_id: dashboardInstanceId,
+      refresh_id: refreshId,
       refresh_started_at: refreshStartedAt,
       dashboard_received_at: dashboardReceivedAt,
       duration_ms: Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(refreshStartedAt)),
       result: next.errors.length ? "partial" : "success",
       mirror_synced_at: merged.meta?.mirror_synced_at ?? null,
+      published_at: publishedAt,
       used_snapshot_at: snapshotTimestamp(merged) ?? null,
+      source_snapshot_id: merged.meta?.snapshot_id ?? null,
+      source_age_ms: publishedAt ? Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(publishedAt)) : null,
+      network_duration_ms: fileTraces.reduce((sum, file) => sum + (file.duration_ms ?? 0), 0),
       errors: next.errors,
       files: fileTraces
     });
@@ -479,14 +518,21 @@ async function refreshDashboard(): Promise<void> {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Data unavailable";
     const dashboardReceivedAt = new Date().toISOString();
+    const publishedAt = lastSuccessfulData?.meta?.published_at ?? null;
     persistRefreshLog({
       schema_version: 1,
+      dashboard_instance_id: dashboardInstanceId,
+      refresh_id: refreshId,
       refresh_started_at: refreshStartedAt,
       dashboard_received_at: dashboardReceivedAt,
       duration_ms: Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(refreshStartedAt)),
       result: "failed",
       mirror_synced_at: lastSuccessfulData?.meta?.mirror_synced_at ?? null,
+      published_at: publishedAt,
       used_snapshot_at: lastSuccessfulData ? snapshotTimestamp(lastSuccessfulData) ?? null : null,
+      source_snapshot_id: lastSuccessfulData?.meta?.snapshot_id ?? null,
+      source_age_ms: publishedAt ? Math.max(0, Date.parse(dashboardReceivedAt) - Date.parse(publishedAt)) : null,
+      network_duration_ms: fileTraces.reduce((sum, file) => sum + (file.duration_ms ?? 0), 0),
       errors: [message],
       files: fileTraces
     });

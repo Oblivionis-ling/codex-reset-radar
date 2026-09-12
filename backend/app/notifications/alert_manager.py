@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import threading
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Protocol
 
 from sqlalchemy import select
@@ -14,12 +17,23 @@ from sqlalchemy.orm import Session
 from app.config import Settings
 from app.intelligence.radar import RADAR_STATES, STATE_RANK, RadarDecision
 from app.models import Alert, Classification, MonitorHealth, NotificationBaseline, RadarState, Tweet
+from app.observability import (
+    BACKEND_INSTANCE_ID,
+    append_event,
+    current_environment,
+    current_trace_id,
+    observability_context,
+    redact_secret,
+)
 
 from .windows import WindowsToastNotifier
-from .wxpusher import WxPusherNotifier
+from .wxpusher import WxPusherNotifier, WxPusherSendResult
 
 
 logger = logging.getLogger("radar.notifications")
+NOTIFICATION_DIAGNOSTIC_LOG_PATH = Path(__file__).resolve().parents[2] / "data" / "notification-delivery.jsonl"
+NOTIFICATION_TEST_LOG_PATH = Path(__file__).resolve().parents[2] / "data" / "notification-test.jsonl"
+_NOTIFICATION_LOG_LOCK = threading.Lock()
 
 ALERT_TYPES = {
     "reset_likely",
@@ -46,7 +60,7 @@ MONITOR_LABELS = {
 
 
 class Notifier(Protocol):
-    def send(self, title: str, content: str) -> None: ...
+    def send(self, title: str, content: str) -> Any: ...
 
 
 @dataclass(frozen=True)
@@ -57,6 +71,39 @@ class NotificationPayload:
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _notification_timestamp(value: datetime | None = None) -> str:
+    return (value or utc_now()).isoformat().replace("+00:00", "Z")
+
+
+def _safe_notification_text(settings: Settings, value: Any) -> str:
+    safe = " ".join(str(value or "").split())
+    for secret in (settings.wxpusher_app_token, settings.wxpusher_uid, settings.deepseek_api_key):
+        if secret:
+            safe = safe.replace(secret, "[redacted]")
+    return safe[:500]
+
+
+def _append_notification_log(event: str, settings: Settings, **fields: Any) -> None:
+    """Keep notification diagnostics durable through the shared event writer."""
+    environment = fields.pop("environment", None) or current_environment()
+    if os.getenv("PYTEST_CURRENT_TEST") and environment == "production":
+        environment = "test"
+    stream = "notifications" if environment == "production" else f"notifications-{environment}"
+    legacy_path = NOTIFICATION_DIAGNOSTIC_LOG_PATH if environment == "production" else NOTIFICATION_TEST_LOG_PATH
+    append_event(
+        stream,
+        event,
+        component="notifications",
+        instance_id=BACKEND_INSTANCE_ID,
+        trace_id=fields.pop("trace_id", None) or current_trace_id(),
+        request_id=fields.pop("request_id", None),
+        legacy_paths=(legacy_path,),
+        source="alert-manager",
+        environment=environment,
+        **fields,
+    )
 
 
 def as_utc(value: datetime | None) -> datetime | None:
@@ -113,6 +160,29 @@ class AlertManager:
         self.windows = windows or WindowsToastNotifier()
         self.retry_attempts = max(1, retry_attempts)
         self.retry_delay = max(0.0, retry_delay)
+        self.last_delivery_details: dict[str, Any] | None = None
+        config_fields = {
+            "enabled": settings.wxpusher_enabled,
+            "alerts_enabled": settings.alerts_enabled,
+            "dry_run": settings.alert_dry_run,
+            "app_token_configured": bool(settings.wxpusher_app_token),
+            "recipient_configured": bool(settings.wxpusher_uid),
+            "uid_length": len(settings.wxpusher_uid),
+            "windows_enabled": settings.windows_notifications_enabled,
+        }
+        logger.info(
+            "WXPUSHER_CONFIG_CHECK enabled=%s alerts_enabled=%s dry_run=%s app_token_configured=%s "
+            "recipient_configured=%s uid_length=%s windows_enabled=%s",
+            config_fields["enabled"],
+            config_fields["alerts_enabled"],
+            config_fields["dry_run"],
+            config_fields["app_token_configured"],
+            config_fields["recipient_configured"],
+            config_fields["uid_length"],
+            config_fields["windows_enabled"],
+        )
+        _append_notification_log("WXPUSHER_CONFIG_CHECK", settings, **config_fields)
+        _append_notification_log("WXPUSHER_PROVIDER_INITIALIZED", settings, **config_fields)
 
     def initialize_baseline(self, session: Session) -> NotificationBaseline:
         """Record the current state on process start without sending notifications."""
@@ -134,7 +204,7 @@ class AlertManager:
         logger.info("ALERT_BASELINE_INITIALIZED state=%s trigger_tweet_id=%s", baseline.radar_state, baseline.trigger_tweet_id)
         return baseline
 
-    def handle_radar_transition(self, session: Session, decision: RadarDecision) -> list[Alert]:
+    def handle_radar_transition(self, session: Session, decision: RadarDecision, *, trace_id: str | None = None) -> list[Alert]:
         baseline = session.get(NotificationBaseline, 1)
         if baseline is None:
             self.initialize_baseline(session)
@@ -162,6 +232,7 @@ class AlertManager:
                     tweet_id=decision.trigger_tweet_id or "radar:none",
                     radar_state=decision.state,
                     payload=payload,
+                    trace_id=trace_id,
                 )
             )
         baseline.radar_state = decision.state
@@ -198,9 +269,16 @@ class AlertManager:
     def send_test_alert(self, session: Session, channel: str) -> Alert | None:
         if channel not in {"wxpusher", "windows"}:
             raise ValueError("channel must be wxpusher or windows")
+        beijing_tz = timezone(timedelta(hours=8), name="Asia/Shanghai")
+        sent_at_bj = datetime.now(beijing_tz).isoformat(timespec="seconds")
         payload = NotificationPayload(
-            title="🧪 Codex Reset Radar 测试通知",
-            content="🧪 Codex Reset Radar 测试通知\n\n如果你看到这条消息，\n通知链路工作正常。",
+            title="TEST | Codex Reset Radar 通知测试",
+            content=(
+                "TEST\n\n"
+                "这是一条 Codex Reset Radar 微信通知渠道诊断消息。\n\n"
+                f"发送时间（北京时间）：{sent_at_bj}\n\n"
+                "如果你在微信中看到这条消息，说明 Radar → WxPusher → 微信的基础投递链路仍然可用。"
+            ),
         )
         alerts = self._dispatch(
             session,
@@ -209,6 +287,8 @@ class AlertManager:
             radar_state="TEST",
             payload=payload,
             channels=(channel,),
+            trace_id=f"alert-test-{uuid.uuid4().hex[:12]}",
+            environment="diagnostic",
         )
         return alerts[0] if alerts else None
 
@@ -294,10 +374,63 @@ class AlertManager:
         radar_state: str,
         payload: NotificationPayload,
         channels: tuple[str, ...] | None = None,
+        trace_id: str | None = None,
+        environment: str | None = None,
+    ) -> list[Alert]:
+        with observability_context(
+            trace_id=trace_id or current_trace_id() or f"alert-{uuid.uuid4().hex[:12]}",
+            environment=environment,
+        ):
+            return self._dispatch_with_trace(
+                session,
+                alert_type=alert_type,
+                tweet_id=tweet_id,
+                radar_state=radar_state,
+                payload=payload,
+                channels=channels,
+            )
+
+    def _dispatch_with_trace(
+        self,
+        session: Session,
+        *,
+        alert_type: str,
+        tweet_id: str,
+        radar_state: str,
+        payload: NotificationPayload,
+        channels: tuple[str, ...] | None = None,
     ) -> list[Alert]:
         if alert_type not in ALERT_TYPES:
             raise ValueError(f"unsupported alert type: {alert_type}")
         selected_channels = channels or self._configured_channels()
+        self.last_delivery_details = None
+        _append_notification_log(
+            "ALERT_RECEIVED",
+            self.settings,
+            alert_type=alert_type,
+            tweet_id=tweet_id,
+            radar_state=radar_state,
+            channels=",".join(selected_channels),
+        )
+        logger.info(
+            "ALERT_RECEIVED alert_type=%s tweet_id=%s radar_state=%s channels=%s",
+            alert_type,
+            tweet_id,
+            radar_state,
+            ",".join(selected_channels) or "-",
+        )
+        if not selected_channels:
+            reason = "disabled" if not self.settings.alerts_enabled or not self._configured_channels() else "no_recipient"
+            _append_notification_log(
+                "ALERT_SUPPRESSED",
+                self.settings,
+                alert_type=alert_type,
+                tweet_id=tweet_id,
+                radar_state=radar_state,
+                reason=reason,
+            )
+            logger.info("ALERT_SUPPRESSED alert_type=%s reason=%s", alert_type, reason)
+            return []
         results: list[Alert] = []
         for channel in selected_channels:
             existing = session.scalar(
@@ -316,7 +449,31 @@ class AlertManager:
                     radar_state,
                     channel,
                 )
+                _append_notification_log(
+                    "ALERT_SUPPRESSED",
+                    self.settings,
+                    alert_type=alert_type,
+                    tweet_id=tweet_id,
+                    radar_state=radar_state,
+                    channel=channel,
+                    reason="dedup",
+                )
                 continue
+            _append_notification_log(
+                "ALERT_DISPATCH_STARTED",
+                self.settings,
+                alert_type=alert_type,
+                tweet_id=tweet_id,
+                radar_state=radar_state,
+                channel=channel,
+            )
+            logger.info(
+                "ALERT_DISPATCH_STARTED alert_type=%s tweet_id=%s radar_state=%s channel=%s",
+                alert_type,
+                tweet_id,
+                radar_state,
+                channel,
+            )
             alert = Alert(
                 tweet_id=tweet_id,
                 alert_type=alert_type,
@@ -347,35 +504,120 @@ class AlertManager:
     def _deliver(self, channel: str, payload: NotificationPayload) -> tuple[str, str | None]:
         if self.settings.alert_dry_run:
             logger.info("ALERT_SKIPPED channel=%s reason=dry_run", channel)
+            self.last_delivery_details = {"channel": channel, "delivery_status": "not_attempted", "reason": "dry_run"}
+            _append_notification_log("ALERT_SUPPRESSED", self.settings, channel=channel, reason="dry_run")
             return "dry_run", None
         if not self.settings.alerts_enabled:
             logger.info("ALERT_SKIPPED channel=%s reason=alerts_disabled", channel)
+            self.last_delivery_details = {"channel": channel, "delivery_status": "not_attempted", "reason": "disabled"}
+            _append_notification_log("ALERT_SUPPRESSED", self.settings, channel=channel, reason="disabled")
             return "skipped", "alerts_disabled"
         if channel == "wxpusher" and (
             not self.settings.wxpusher_enabled
             or not self.settings.wxpusher_app_token
             or not self.settings.wxpusher_uid
         ):
+            self.last_delivery_details = {"channel": channel, "delivery_status": "not_attempted", "reason": "no_recipient"}
+            _append_notification_log("ALERT_SUPPRESSED", self.settings, channel=channel, reason="no_recipient")
             return "failed", "wxpusher_not_configured"
         if channel == "windows" and not self.settings.windows_notifications_enabled:
+            self.last_delivery_details = {"channel": channel, "delivery_status": "not_attempted", "reason": "disabled"}
+            _append_notification_log("ALERT_SUPPRESSED", self.settings, channel=channel, reason="disabled")
             return "failed", "windows_notifications_disabled"
         notifier = self.wxpusher if channel == "wxpusher" else self.windows if channel == "windows" else None
         if notifier is None:
+            self.last_delivery_details = {"channel": channel, "delivery_status": "not_attempted", "reason": "unsupported"}
+            _append_notification_log("ALERT_SUPPRESSED", self.settings, channel=channel, reason="unsupported")
             return "failed", "unsupported channel"
         last_error: str | None = None
         for attempt in range(1, self.retry_attempts + 1):
             try:
-                notifier.send(payload.title, payload.content)
+                if channel == "wxpusher":
+                    _append_notification_log(
+                        "WXPUSHER_REQUEST_STARTED",
+                        self.settings,
+                        channel=channel,
+                        attempt=attempt,
+                        content_length=len(payload.content),
+                        summary_length=len(payload.title[:100]),
+                        recipient_configured=bool(self.settings.wxpusher_uid),
+                    )
+                provider_result = notifier.send(payload.title, payload.content)
+                self.last_delivery_details = self._provider_details(channel, provider_result)
+                self.last_delivery_details["attempt"] = attempt
+                if channel == "wxpusher" and isinstance(provider_result, WxPusherSendResult):
+                    _append_notification_log(
+                        "WXPUSHER_REQUEST_SUCCESS",
+                        self.settings,
+                        channel=channel,
+                        attempt=attempt,
+                        http_status=provider_result.http_status,
+                        response_code=provider_result.response_code,
+                        send_record_id=provider_result.send_record_id,
+                        duration_ms=provider_result.duration_ms,
+                        delivery_status="accepted_async",
+                    )
                 event_prefix = "WXPUSHER" if channel == "wxpusher" else "WINDOWS_NOTIFICATION"
                 logger.info("%s_SENT channel=%s attempt=%s", event_prefix, channel, attempt)
                 return "sent", None
             except Exception as exc:  # notifier failures must never escape into Radar
                 last_error = self._safe_error(str(exc))
+                self.last_delivery_details = self._provider_error_details(channel, exc, attempt)
+                if channel == "wxpusher":
+                    _append_notification_log(
+                        "WXPUSHER_REQUEST_FAILED",
+                        self.settings,
+                        channel=channel,
+                        attempt=attempt,
+                        http_status=getattr(exc, "http_status", None),
+                        response_code=getattr(exc, "response_code", None),
+                        send_record_id=getattr(exc, "send_record_id", None),
+                        duration_ms=getattr(exc, "duration_ms", None),
+                        error_type=getattr(exc, "error_type", "unknown"),
+                        error=last_error,
+                    )
                 if attempt < self.retry_attempts and self.retry_delay:
+                    if channel == "wxpusher":
+                        _append_notification_log(
+                            "WXPUSHER_RETRY_SCHEDULED",
+                            self.settings,
+                            channel=channel,
+                            attempt=attempt,
+                            next_attempt=attempt + 1,
+                            retry_delay_seconds=self.retry_delay * attempt,
+                            error_type=getattr(exc, "error_type", "unknown"),
+                        )
                     time.sleep(self.retry_delay * attempt)
         event_prefix = "WXPUSHER" if channel == "wxpusher" else "WINDOWS_NOTIFICATION"
         logger.warning("%s_FAILED channel=%s error=%s", event_prefix, channel, last_error or "unknown")
         return "failed", last_error or "notification failed"
+
+    @staticmethod
+    def _provider_details(channel: str, result: Any) -> dict[str, Any]:
+        if isinstance(result, WxPusherSendResult):
+            return {
+                "channel": channel,
+                "http_status": result.http_status,
+                "response_code": result.response_code,
+                "message": result.message,
+                "send_record_id": result.send_record_id,
+                "duration_ms": result.duration_ms,
+                "delivery_status": "accepted_async",
+            }
+        return {"channel": channel, "provider_result": "not_available", "delivery_status": "accepted_by_provider"}
+
+    @staticmethod
+    def _provider_error_details(channel: str, error: Exception, attempt: int) -> dict[str, Any]:
+        return {
+            "channel": channel,
+            "attempt": attempt,
+            "http_status": getattr(error, "http_status", None),
+            "response_code": getattr(error, "response_code", None),
+            "send_record_id": getattr(error, "send_record_id", None),
+            "duration_ms": getattr(error, "duration_ms", None),
+            "error_type": getattr(error, "error_type", "unknown"),
+            "delivery_status": "not_accepted",
+        }
 
     def _load_monitor_states(self, raw: str | None) -> dict[str, str]:
         try:
@@ -385,7 +627,7 @@ class AlertManager:
         return parsed if isinstance(parsed, dict) else {}
 
     def _safe_error(self, message: str) -> str:
-        safe = message
+        safe = _safe_notification_text(self.settings, message)
         for secret in (self.settings.wxpusher_app_token, self.settings.wxpusher_uid):
             if secret:
                 safe = safe.replace(secret, "[redacted]")

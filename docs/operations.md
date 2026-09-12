@@ -4,6 +4,27 @@
 
 Run `start-radar.bat` from the repository root. It creates the local virtual environment and installs backend dependencies on first use, then starts Uvicorn bound to `127.0.0.1`.
 
+## Stop
+
+Run `stop-backend.bat` from the repository root, or run the PowerShell script directly:
+
+```powershell
+.\scripts\stop-backend.ps1
+```
+
+The script only matches the Backend started from this repository's
+`backend\.venv\Scripts\python.exe/pythonw.exe` with `app.main:app`,
+`--app-dir backend`, and port `8787`. It does not stop unrelated Python
+processes. The default mode waits for a non-forceful termination request;
+if the process does not exit, rerun with `-Force` only when you explicitly
+want to force it:
+
+```powershell
+.\scripts\stop-backend.ps1 -Force
+```
+
+Stopping the process does not delete or modify the SQLite database.
+
 ## Verify
 
 - Backend: `http://127.0.0.1:8787/health`
@@ -13,6 +34,30 @@ Run `start-radar.bat` from the repository root. It creates the local virtual env
 - Recent alerts: `http://127.0.0.1:8787/api/alerts`
 - Local test alert: `POST http://127.0.0.1:8787/api/alerts/test?channel=wxpusher`
 - Extension service-worker logs: the extension's service worker **Inspect views** page.
+
+## Unified observability
+
+The local read-only CLI uses the same SQLite database and JSONL event streams
+as the Backend:
+
+```powershell
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py summary
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py backend
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py component profile
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py component replies
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py component profile --instance-id <content-instance-id> --limit 100
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py component replies --trace-id <heartbeat-trace-id> --limit 100
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py outage profile
+\.\backend\.venv\Scripts\python.exe scripts\diagnose.py trace <trace-id>
+```
+
+The corresponding query endpoints are local-only and are not used by GitHub
+Pages: `/api/observability/summary`,
+`/api/observability/trace/{trace_id}`,
+`/api/observability/component/{component}`, and
+`/api/observability/errors`. Structured events are under
+`backend/data/observability/events/`; the human-readable rotating runtime log
+is `backend/data/observability/runtime/backend-runtime.log`.
 
 ## Profile / Replies diagnostics
 

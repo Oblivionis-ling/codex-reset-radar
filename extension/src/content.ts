@@ -18,8 +18,13 @@ const OBSERVATION_INTERVAL_MS = 2_000;
 const LIFECYCLE_DIAGNOSTIC_INTERVAL_MS = 30_000;
 const MUTATION_DIAGNOSTIC_THROTTLE_MS = 30_000;
 const LOCAL_SEEN_LIMIT = 500;
+const DIAGNOSTIC_RING_KEY = "codex-reset-radar-extension-diagnostic-ring";
+const DIAGNOSTIC_RING_LIMIT = 500;
 
 let activeSource = sourceForLocation(window.location.pathname);
+const CONTENT_INSTANCE_ID = `${activeSource === "with_replies" ? "replies" : activeSource === "profile_dom" ? "profile" : "page"}-cs-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
+let heartbeatSequence = 0;
+let ringWrite = Promise.resolve();
 let lastTweetSeen: string | null = null;
 let scanTimer: number | undefined;
 let scanRunning = false;
@@ -56,7 +61,25 @@ function errorText(error: unknown): string {
 }
 
 function localDiagnostic(event: string, details: Record<string, unknown> = {}): void {
+  const record = {
+    timestamp: new Date().toISOString(),
+    event,
+    component: componentForSource(),
+    instance_id: CONTENT_INSTANCE_ID,
+    trace_id: typeof details.trace_id === "string" ? details.trace_id : null,
+    sequence: typeof details.sequence === "number" ? details.sequence : null,
+    details
+  };
   console.info(`[Codex Reset Radar][${event}]`, details);
+  ringWrite = ringWrite.then(async () => {
+    try {
+      const stored = await chrome.storage.local.get(DIAGNOSTIC_RING_KEY);
+      const existing = Array.isArray(stored[DIAGNOSTIC_RING_KEY]) ? stored[DIAGNOSTIC_RING_KEY] as unknown[] : [];
+      await chrome.storage.local.set({ [DIAGNOSTIC_RING_KEY]: [...existing, record].slice(-DIAGNOSTIC_RING_LIMIT) });
+    } catch {
+      // The ring is best effort and must never interfere with collection.
+    }
+  }).catch(() => undefined);
 }
 
 async function sendRuntimeMessage(
@@ -88,6 +111,7 @@ function emitDiagnostic(
   const observedAt = new Date().toISOString();
   const component = componentForSource(source);
   const payloadDetails = {
+    content_instance_id: CONTENT_INSTANCE_ID,
     monitor: monitorForSource(source),
     url: window.location.href,
     document_visibility: document.visibilityState,
@@ -100,6 +124,9 @@ function emitDiagnostic(
     type: "DIAGNOSTIC",
     component,
     event,
+    instance_id: CONTENT_INSTANCE_ID,
+    sequence: typeof details.sequence === "number" ? details.sequence : undefined,
+    trace_id: typeof details.trace_id === "string" ? details.trace_id : undefined,
     observed_at: observedAt,
     details: payloadDetails
   };
@@ -125,6 +152,8 @@ function heartbeatMetadata(timerSource: "scan" | "interval"): Record<string, unk
   const actualElapsed = previousAttemptAtMs === undefined ? null : Math.round(now - previousAttemptAtMs);
   lastHeartbeatAttemptAtMs[timerSource] = now;
   return {
+    content_instance_id: CONTENT_INSTANCE_ID,
+    sequence: heartbeatSequence,
     monitor: monitorForSource(),
     timestamp: new Date().toISOString(),
     url: window.location.href,
@@ -169,22 +198,48 @@ async function sendHeartbeat(
   error: string | null = null,
   timerSource: "scan" | "interval" = "interval"
 ): Promise<void> {
-  if (!activeSource) return;
+  if (!activeSource) {
+    localDiagnostic("HEARTBEAT_SKIPPED_NO_ACTIVE_SOURCE", {
+      url: window.location.href,
+      reason: "route_guard_no_active_source",
+      content_instance_id: CONTENT_INSTANCE_ID
+    });
+    return;
+  }
+  heartbeatSequence += 1;
   const observedAt = new Date().toISOString();
+  const traceId = `hb-${componentForSource(activeSource)}-${CONTENT_INSTANCE_ID}-${heartbeatSequence}`;
   const message: HeartbeatMessage = {
     type: "HEARTBEAT",
     component: BACKEND_COMPONENTS[activeSource],
+    instance_id: CONTENT_INSTANCE_ID,
+    sequence: heartbeatSequence,
+    trace_id: traceId,
     observed_at: observedAt,
     state,
     last_tweet_seen: lastTweetSeen,
     error,
     metadata: heartbeatMetadata(timerSource)
   };
+  emitDiagnostic("HEARTBEAT_CREATED", {
+    component: message.component,
+    instance_id: CONTENT_INSTANCE_ID,
+    sequence: heartbeatSequence,
+    trace_id: traceId,
+    client_observed_at: observedAt,
+    timer_source: timerSource,
+    visibility: document.visibilityState,
+    ...observerStatus(),
+    has_target_dom: currentTargetDom()
+  });
   try {
     await sendRuntimeMessage(message, `heartbeat:${message.component}`);
     emitDiagnostic("CONTENT_SCRIPT_HEARTBEAT_SENT", {
       component: message.component,
+      instance_id: CONTENT_INSTANCE_ID,
+      sequence: heartbeatSequence,
       heartbeat_observed_at: observedAt,
+      trace_id: traceId,
       timer_source: timerSource,
       state,
       expected_heartbeat_interval_ms: message.metadata?.expected_heartbeat_interval_ms ?? null,
@@ -193,7 +248,10 @@ async function sendHeartbeat(
   } catch (sendError) {
     emitDiagnostic("CONTENT_SCRIPT_HEARTBEAT_FAILED", {
       component: message.component,
+      instance_id: CONTENT_INSTANCE_ID,
+      sequence: heartbeatSequence,
       heartbeat_observed_at: observedAt,
+      trace_id: traceId,
       timer_source: timerSource,
       state,
       error: errorText(sendError)
@@ -231,7 +289,11 @@ async function scan(reason: string): Promise<void> {
     if (batch.length > 0) {
       lastTweetSeen = batch[0].discovered_at;
       await remember(tweets.map((tweet) => tweet.tweet_id));
-      const message: IngestMessage = { type: "INGEST_TWEETS", tweets: batch };
+      const message: IngestMessage = {
+        type: "INGEST_TWEETS",
+        tweets: batch,
+        trace_id: `tweet-${CONTENT_INSTANCE_ID}-${Date.now().toString(36)}`
+      };
       await sendRuntimeMessage(message, `ingest:${activeSource}`);
     }
     const warning = pageWarning(tweets.length);

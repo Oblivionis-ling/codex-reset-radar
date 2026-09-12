@@ -7,7 +7,17 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import MonitorDiagnosticEvent, MonitorHealth, Tweet, TweetSource
+from app.models import HeartbeatHistory, MonitorDiagnosticEvent, MonitorHealth, Tweet, TweetSource
+from app.observability import (
+    BACKEND_INSTANCE_ID,
+    append_event,
+    current_request_id,
+    current_trace_id,
+    is_sqlite_lock_error,
+    redact_secret,
+    utc_now as observability_now,
+    utc_iso,
+)
 from app.schemas import DiagnosticPayload, HeartbeatPayload, TweetPayload
 
 
@@ -62,17 +72,68 @@ def ingest_one(session: Session, payload: TweetPayload) -> bool:
     return is_new
 
 
-def ingest_batch(session: Session, tweets: list[TweetPayload]) -> tuple[int, int]:
+def ingest_batch(session: Session, tweets: list[TweetPayload], *, trace_id: str | None = None) -> tuple[int, int]:
     created = 0
     for tweet in tweets:
         if ingest_one(session, tweet):
             created += 1
-    session.commit()
+    db_started = observability_now()
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        event_name = "SQLITE_LOCK_DETECTED" if is_sqlite_lock_error(exc) else "DB_OPERATION_FAILED"
+        append_event(
+            "backend",
+            event_name,
+            level="ERROR",
+            component="ingestion",
+            trace_id=trace_id or current_trace_id(),
+            error_type=type(exc).__name__,
+            metadata={
+                "operation": "tweet_ingestion",
+                "table": "tweets/tweet_sources",
+                "error": redact_secret(exc),
+                "suspected_contention": "reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+            },
+            operation="tweet_ingestion",
+            table="tweets/tweet_sources",
+            error=redact_secret(exc),
+            duration_ms=round((observability_now() - db_started).total_seconds() * 1000, 3),
+            suspected_contention="reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+        )
+        raise
+    duration_ms = round((observability_now() - db_started).total_seconds() * 1000, 3)
+    append_event(
+        "backend",
+        "DB_OPERATION_COMPLETED",
+        component="ingestion",
+        trace_id=trace_id or current_trace_id(),
+        duration_ms=duration_ms,
+        result="success",
+        metadata={"operation": "tweet_ingestion", "table": "tweets/tweet_sources"},
+        operation="tweet_ingestion",
+        table="tweets/tweet_sources",
+    )
+    if duration_ms > 500:
+        append_event(
+            "backend",
+            "DB_SLOW_OPERATION",
+            level="WARNING",
+            component="ingestion",
+            trace_id=trace_id or current_trace_id(),
+            duration_ms=duration_ms,
+            result="slow",
+            metadata={"operation": "tweet_ingestion", "table": "tweets/tweet_sources"},
+            operation="tweet_ingestion",
+            table="tweets/tweet_sources",
+        )
     return created, len(tweets) - created
 
 
 def record_heartbeat(session: Session, payload: HeartbeatPayload) -> MonitorHealth:
-    now = payload.observed_at or utc_now()
+    backend_received_at = observability_now()
+    now = payload.observed_at or backend_received_at
     health = session.get(MonitorHealth, payload.component)
     if health is None:
         health = MonitorHealth(
@@ -92,26 +153,224 @@ def record_heartbeat(session: Session, payload: HeartbeatPayload) -> MonitorHeal
         health.last_error = payload.error
         health.metadata_json = json.dumps(payload.metadata, ensure_ascii=False)
         health.updated_at = utc_now()
-    session.commit()
+    history_metadata = {
+        **payload.metadata,
+        "backend_instance_id": BACKEND_INSTANCE_ID,
+    }
+    history = HeartbeatHistory(
+        component=payload.component,
+        instance_id=payload.instance_id or (BACKEND_INSTANCE_ID if payload.component == "backend" else None),
+        sequence=payload.sequence,
+        trace_id=payload.trace_id or current_trace_id(),
+        request_id=payload.request_id or current_request_id(),
+        client_observed_at=now,
+        backend_received_at=backend_received_at,
+        state=payload.state,
+        error=redact_secret(payload.error) if payload.error else None,
+        metadata_json=json.dumps(history_metadata, ensure_ascii=False, default=str),
+    )
+    if history.sequence is not None and history.instance_id:
+        previous_history = session.scalar(
+            select(HeartbeatHistory)
+            .where(
+                HeartbeatHistory.component == payload.component,
+                HeartbeatHistory.instance_id == history.instance_id,
+                HeartbeatHistory.sequence.is_not(None),
+            )
+            .order_by(HeartbeatHistory.sequence.desc())
+            .limit(1)
+        )
+        if previous_history and history.sequence > (previous_history.sequence or 0) + 1:
+            append_event(
+                "backend",
+                "HEARTBEAT_SEQUENCE_GAP",
+                level="WARNING",
+                component=payload.component,
+                instance_id=history.instance_id,
+                trace_id=history.trace_id,
+                request_id=history.request_id,
+                sequence=history.sequence,
+                metadata={
+                    "previous_sequence": previous_history.sequence,
+                    "current_sequence": history.sequence,
+                    "missing_from": (previous_history.sequence or 0) + 1,
+                    "missing_to": history.sequence - 1,
+                },
+                previous_sequence=previous_history.sequence,
+                current_sequence=history.sequence,
+            )
+    session.add(history)
+    db_started = observability_now()
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        event_name = "SQLITE_LOCK_DETECTED" if is_sqlite_lock_error(exc) else "BACKEND_HEARTBEAT_DB_WRITE_FAILED"
+        append_event(
+            "backend",
+            event_name,
+            level="ERROR",
+            component="backend",
+            instance_id=payload.instance_id or (BACKEND_INSTANCE_ID if payload.component == "backend" else None),
+            trace_id=payload.trace_id or current_trace_id(),
+            request_id=payload.request_id or current_request_id(),
+            sequence=payload.sequence,
+            error_type=type(exc).__name__,
+            metadata={
+                "component": payload.component,
+                "table": "monitor_health/heartbeat_history",
+                "error": redact_secret(exc),
+                "suspected_contention": "reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+            },
+            operation="heartbeat_write",
+            table="monitor_health/heartbeat_history",
+            error=redact_secret(exc),
+            duration_ms=round((observability_now() - db_started).total_seconds() * 1000, 3),
+            suspected_contention="reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+        )
+        logger.exception("BACKEND_HEARTBEAT_DB_WRITE_FAILED component=%s", payload.component)
+        raise
+    db_committed_at = observability_now()
+    history.db_committed_at = db_committed_at
+    # The timestamp above is intentionally stored after the first commit.  A
+    # second tiny commit makes the client/backend/DB timing explicit while
+    # preserving the existing monitor_health semantics.
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        event_name = "SQLITE_LOCK_DETECTED" if is_sqlite_lock_error(exc) else "BACKEND_HEARTBEAT_DB_WRITE_FAILED"
+        append_event(
+            "backend",
+            event_name,
+            level="ERROR",
+            component="backend",
+            instance_id=payload.instance_id or (BACKEND_INSTANCE_ID if payload.component == "backend" else None),
+            trace_id=payload.trace_id or current_trace_id(),
+            request_id=payload.request_id or current_request_id(),
+            sequence=payload.sequence,
+            error_type=type(exc).__name__,
+            metadata={
+                "component": payload.component,
+                "table": "heartbeat_history",
+                "error": redact_secret(exc),
+                "suspected_contention": "reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+            },
+            operation="heartbeat_history_commit_timestamp",
+            table="heartbeat_history",
+            error=redact_secret(exc),
+            duration_ms=round((observability_now() - db_started).total_seconds() * 1000, 3),
+            suspected_contention="reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+        )
+        logger.exception("BACKEND_HEARTBEAT_DB_WRITE_FAILED component=%s table=heartbeat_history", payload.component)
+        raise
+    db_duration_ms = round((db_committed_at - db_started).total_seconds() * 1000, 3)
+    append_event(
+        "backend",
+        "HEARTBEAT_DB_COMMITTED",
+        component="backend",
+        instance_id=payload.instance_id or (BACKEND_INSTANCE_ID if payload.component == "backend" else None),
+        trace_id=payload.trace_id or current_trace_id(),
+        request_id=payload.request_id or current_request_id(),
+        sequence=payload.sequence,
+        duration_ms=db_duration_ms,
+        result="success",
+        metadata={
+            "component": payload.component,
+            "backend_instance_id": BACKEND_INSTANCE_ID,
+            "client_observed_at": utc_iso(now),
+            "backend_received_at": utc_iso(backend_received_at),
+            "db_committed_at": utc_iso(db_committed_at),
+            "db_duration_ms": db_duration_ms,
+        },
+        client_observed_at=utc_iso(now),
+        backend_received_at=utc_iso(backend_received_at),
+        db_committed_at=utc_iso(db_committed_at),
+        backend_instance_id=BACKEND_INSTANCE_ID,
+    )
     logger.info("Monitor heartbeat component=%s state=%s", payload.component, payload.state)
     return health
 
 
-def record_diagnostic(session: Session, payload: DiagnosticPayload) -> MonitorDiagnosticEvent:
+def record_diagnostic(
+    session: Session,
+    payload: DiagnosticPayload,
+    *,
+    commit: bool = True,
+) -> MonitorDiagnosticEvent:
     observed_at = payload.observed_at or utc_now()
+    details = dict(payload.details)
+    if payload.instance_id is not None:
+        details.setdefault("instance_id", payload.instance_id)
+    if payload.sequence is not None:
+        details.setdefault("sequence", payload.sequence)
+    if payload.trace_id is not None:
+        details.setdefault("trace_id", payload.trace_id)
+    if payload.request_id is not None:
+        details.setdefault("request_id", payload.request_id)
     event = MonitorDiagnosticEvent(
         component=payload.component,
         event=payload.event,
         observed_at=observed_at,
-        details_json=json.dumps(payload.details, ensure_ascii=False, default=str),
+        details_json=json.dumps(details, ensure_ascii=False, default=str),
         created_at=utc_now(),
     )
     session.add(event)
-    session.commit()
+    if not commit:
+        # Batch callers commit once after adding all events. The event ID is
+        # populated by that commit, so no per-event flush is needed.
+        return event
+    db_started = observability_now()
+    try:
+        session.commit()
+    except Exception as exc:
+        session.rollback()
+        event_name = "SQLITE_LOCK_DETECTED" if is_sqlite_lock_error(exc) else "DB_OPERATION_FAILED"
+        append_event(
+            "backend",
+            event_name,
+            level="ERROR",
+            component="backend",
+            trace_id=payload.trace_id or current_trace_id(),
+            request_id=payload.request_id or current_request_id(),
+            sequence=payload.sequence,
+            error_type=type(exc).__name__,
+            metadata={
+                "operation": "diagnostic_write",
+                "table": "monitor_diagnostic_events",
+                "error": redact_secret(exc),
+                "suspected_contention": "reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+            },
+            operation="diagnostic_write",
+            table="monitor_diagnostic_events",
+            error=redact_secret(exc),
+            duration_ms=round((observability_now() - db_started).total_seconds() * 1000, 3),
+            suspected_contention="reader_or_writer_contention" if event_name == "SQLITE_LOCK_DETECTED" else None,
+        )
+        raise
     logger.info(
         "Monitor diagnostic component=%s event=%s observed_at=%s",
         payload.component,
         payload.event,
         observed_at.isoformat(),
     )
+    duration_ms = round((observability_now() - db_started).total_seconds() * 1000, 3)
+    # Successful per-event DB completion is intentionally not duplicated in
+    # Backend JSONL. The authoritative row is monitor_diagnostic_events;
+    # only slow or failed writes become structured Backend events.
+    if duration_ms > 500:
+        append_event(
+            "backend",
+            "DB_SLOW_OPERATION",
+            level="WARNING",
+            component="diagnostics",
+            trace_id=payload.trace_id or current_trace_id(),
+            request_id=payload.request_id or current_request_id(),
+            sequence=payload.sequence,
+            duration_ms=duration_ms,
+            result="slow",
+            metadata={"operation": "diagnostic_write", "table": "monitor_diagnostic_events"},
+            operation="diagnostic_write",
+            table="monitor_diagnostic_events",
+        )
     return event

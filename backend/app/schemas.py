@@ -41,6 +41,10 @@ class TweetBatch(BaseModel):
 
 class HeartbeatPayload(BaseModel):
     component: str = Field(min_length=1, max_length=64)
+    instance_id: str | None = Field(default=None, max_length=128)
+    sequence: int | None = Field(default=None, ge=0)
+    trace_id: str | None = Field(default=None, max_length=160)
+    request_id: str | None = Field(default=None, max_length=160)
     observed_at: datetime | None = None
     last_tweet_seen: datetime | None = None
     state: Literal["healthy", "warning", "offline"] = "healthy"
@@ -51,8 +55,16 @@ class HeartbeatPayload(BaseModel):
 class DiagnosticPayload(BaseModel):
     component: str = Field(min_length=1, max_length=64)
     event: str = Field(min_length=1, max_length=64)
+    instance_id: str | None = Field(default=None, max_length=128)
+    sequence: int | None = Field(default=None, ge=0)
+    trace_id: str | None = Field(default=None, max_length=160)
+    request_id: str | None = Field(default=None, max_length=160)
     observed_at: datetime | None = None
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class DiagnosticBatchPayload(BaseModel):
+    events: list[DiagnosticPayload] = Field(default_factory=list, max_length=50)
 
 
 class ClassificationOutput(BaseModel):

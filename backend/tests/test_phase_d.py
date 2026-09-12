@@ -5,6 +5,8 @@ import sqlite3
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import pytest
+
 from scripts.public_export import build_snapshot, write_snapshot
 import app.main as backend_main
 
@@ -140,7 +142,7 @@ def test_github_mirror_failure_is_reported_without_escaping(monkeypatch) -> None
         lambda *args, **kwargs: SimpleNamespace(returncode=1, stdout="", stderr="network down"),
     )
 
-    assert backend_main._run_public_mirror_sync(SimpleNamespace(github_mirror_interval_seconds=300)) == "failed"
+    assert backend_main._run_public_mirror_sync(SimpleNamespace(github_mirror_interval_seconds=300)).status == "failed"
 
 
 def test_github_mirror_timing_events_are_persisted_without_secrets(monkeypatch) -> None:
@@ -193,8 +195,70 @@ def test_github_mirror_forwards_cadence_context_and_distinguishes_no_changes(mon
         previous_success_at=datetime(2026, 8, 30, 0, 55, tzinfo=timezone.utc),
     )
 
-    assert outcome == "skipped"
+    assert outcome.status == "skipped"
     command = calls[0][0]
     assert command[command.index("-Trigger") + 1] == "scheduled"
     assert command[command.index("-CycleStartedAt") + 1] == "2026-08-30T01:00:00Z"
     assert command[command.index("-PreviousSuccessAt") + 1] == "2026-08-30T00:55:00Z"
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("fatal: unable to access github.com:443: Could not connect", "network_connect"),
+        ("Recv failure: Connection was reset", "network_reset"),
+        ("Operation timed out", "network_timeout"),
+        ("Could not resolve host: github.com", "network_dns"),
+        ("remote: Permission denied", "auth_failed"),
+        ("failed to push some refs: non-fast-forward", "git_conflict"),
+        ("git clone failed: repository unavailable", "clone_failed"),
+        ("git fetch failed", "fetch_failed"),
+        ("git push failed", "push_failed"),
+    ],
+)
+def test_mirror_error_types_are_classified(message, expected) -> None:
+    assert backend_main._classify_mirror_error(message) == expected
+
+
+def test_mirror_script_retry_and_publish_fields_are_parsed(monkeypatch) -> None:
+    backend_main._log_mirror_script_events(
+        "PUBLIC_MIRROR_SYNC_FAILED cycle_started_at=2026-08-30T01:00:00Z "
+        "snapshot_generated_at=2026-08-30T01:00:01Z push_started_at=2026-08-30T01:00:02Z "
+        "sync_finished_at=2026-08-30T01:00:03Z duration_ms=3000 attempt=1 "
+        "previous_success_at=2026-08-30T00:55:00Z seconds_since_previous_success=303 "
+        "trigger=scheduled result=failed error_type=network_reset terminal=false reason=temporary reset\n"
+        "PUBLIC_MIRROR_RETRY_SCHEDULED cycle_started_at=2026-08-30T01:00:00Z "
+        "snapshot_generated_at=2026-08-30T01:00:01Z sync_finished_at=2026-08-30T01:00:03Z "
+        "duration_ms=3000 attempt=1 next_attempt=2 retry_delay_seconds=30 trigger=scheduled "
+        "result=retry_scheduled error_type=network_reset reason=temporary reset\n"
+        "PUBLIC_MIRROR_SYNC_SUCCESS cycle_started_at=2026-08-30T01:00:00Z "
+        "snapshot_generated_at=2026-08-30T01:00:01Z push_started_at=2026-08-30T01:00:33Z "
+        "sync_finished_at=2026-08-30T01:00:35Z published_at=2026-08-30T01:00:35Z "
+        "mirror_synced_at=2026-08-30T01:00:01Z duration_ms=35000 attempt=2 "
+        "previous_success_at=2026-08-30T00:55:00Z seconds_since_previous_success=335 "
+        "trigger=scheduled result=success terminal=true push_attempt=2\n"
+    )
+
+    records = [json.loads(line) for line in backend_main.MIRROR_CADENCE_LOG_PATH.read_text(encoding="utf-8").splitlines()]
+    assert records[0]["error_type"] == "network_reset"
+    assert records[0]["attempt"] == 1
+    assert records[1]["retry_delay_seconds"] == 30
+    assert records[2]["published_at"] == "2026-08-30T01:00:35Z"
+    assert records[2]["attempt"] == 2
+
+
+def test_mirror_job_lock_records_job_already_running(monkeypatch) -> None:
+    assert backend_main._MIRROR_JOB_LOCK.acquire(blocking=False)
+    try:
+        result = backend_main._run_public_mirror_sync(
+            SimpleNamespace(github_mirror_interval_seconds=300),
+            trigger="scheduled",
+            cycle_started_at=datetime(2026, 8, 30, 1, 0, tzinfo=timezone.utc),
+        )
+    finally:
+        backend_main._MIRROR_JOB_LOCK.release()
+
+    assert result.status == "skipped"
+    records = [json.loads(line) for line in backend_main.MIRROR_CADENCE_LOG_PATH.read_text(encoding="utf-8").splitlines()]
+    assert records[-1]["event"] == "PUBLIC_MIRROR_SYNC_SKIPPED"
+    assert records[-1]["reason"] == "job_already_running"
