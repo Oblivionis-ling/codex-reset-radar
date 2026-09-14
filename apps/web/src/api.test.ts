@@ -11,7 +11,7 @@ describe("V2 Radar API contract", () => {
 
   it("does not expose a confidence field", () => {
     const result = parseRadar({
-      version: "0.1.0-alpha.1",
+      version: "2.0.0-alpha.1",
       action_level: "UNKNOWN",
       horizon_24h: "UNKNOWN",
       horizon_48h: "UNKNOWN",

@@ -2,7 +2,7 @@
 
 Date: 2026-09-13
 
-Version: `0.1.0-alpha.1`
+Version: `2.0.0-alpha.1`
 
 Local Foundation HEAD before report commits: `34a14a6`
 

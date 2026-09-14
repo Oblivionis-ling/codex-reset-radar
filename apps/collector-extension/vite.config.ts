@@ -3,8 +3,8 @@ import { defineConfig } from "vite";
 const manifest = {
   manifest_version: 3,
   name: "Codex Reset Radar Transitional Collector",
-  version: "0.2.0",
-  version_name: "0.1.0-alpha.1",
+  version: "2.0.0",
+  version_name: "2.0.0-alpha.1",
   description: "Legacy browser collector adapter for the local Codex Reset Radar V2 Backend.",
   permissions: ["alarms", "storage", "tabs", "scripting"],
   host_permissions: ["https://x.com/*", "https://twitter.com/*", "http://127.0.0.1:8787/*", "http://localhost:8787/*"],

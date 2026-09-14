@@ -8,7 +8,7 @@ It collects Tibo's public X posts, preserves reset history, and exposes a stable
 
 ## V2 status
 
-The current release target is **V2 Foundation Alpha 1** (`0.1.0-alpha.1`). It provides:
+The current release target is **V2 Foundation Alpha 1** (`2.0.0-alpha.1`). It provides:
 
 - a FastAPI Backend with a new isolated SQLite schema;
 - a local Vite Web app that reads only `/api/v2/*`;
