@@ -1,5 +1,7 @@
 # Remote Main Divergence Report — 2026-09-13
 
+> Historical divergence record. The 2026-09-14 publication closeout implements the controlled normal-merge resolution described here without rewriting either history.
+
 ## Outcome
 
 V1 and V2 publishing was stopped before any push because the required fresh fetch found an unexpected remote commit. No force push, history rewrite, merge, or tag push was performed.

@@ -1,5 +1,7 @@
 # Codex Reset Radar V2 Foundation Alpha 1 Report
 
+> Historical Foundation acceptance record. Its publication status and dependency findings describe the state before the 2026-09-14 publication closeout; see `v2-alpha1-publication-report.md` for the resolved outcome.
+
 Date: 2026-09-13
 
 Version: `2.0.0-alpha.1`
