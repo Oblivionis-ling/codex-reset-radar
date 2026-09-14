@@ -1,10 +1,17 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { defineConfig } from "vite";
+
+const extensionDir = path.dirname(fileURLToPath(import.meta.url));
+const repositoryRoot = path.resolve(extensionDir, "../..");
+const appVersion = readFileSync(path.join(repositoryRoot, "VERSION"), "utf-8").trim();
 
 const manifest = {
   manifest_version: 3,
   name: "Codex Reset Radar Transitional Collector",
-  version: "2.0.0",
-  version_name: "2.0.0-alpha.1",
+  version: appVersion.split("-")[0],
+  version_name: appVersion,
   description: "Legacy browser collector adapter for the local Codex Reset Radar V2 Backend.",
   permissions: ["alarms", "storage", "tabs", "scripting"],
   host_permissions: ["https://x.com/*", "https://twitter.com/*", "http://127.0.0.1:8787/*", "http://localhost:8787/*"],
