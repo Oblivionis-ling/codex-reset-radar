@@ -19,6 +19,8 @@ The current release target is **V2 Foundation Alpha 1** (`2.0.0-alpha.1`). It pr
 
 The DeepSeek Judge, historical corpus, server collector, final UI, notification redesign, and overseas deployment are intentionally outside this alpha.
 
+The repository's `main` branch is the V2 local full-stack source. GitHub provides source history and CI only; it is not a live product endpoint.
+
 ## Architecture
 
 ```text
@@ -75,7 +77,7 @@ Stop only the recorded V2 processes with:
 
 Long-lived V2 data is limited to public Tibo posts, verified Full/Special Reset events, structured post analysis, necessary Radar judgements, and reviewed analysis artifacts. Routine heartbeats, request traces, browser lifecycle spam, timer ticks, logs, credentials, databases, and build artifacts are not committed.
 
-The legacy V1 database under `backend/data/` remains local and read-only until migration review is complete. The GitHub `data` branch is retained only as a legacy read-only snapshot and is not used by V2.
+The legacy V1 database under `backend/data/` remains local and read-only until migration review is complete. The GitHub `data` branch is a frozen legacy runtime snapshot: V2 neither reads it nor publishes new data to it.
 
 ## Radar product model
 
@@ -90,7 +92,7 @@ Alpha 1 correctly returns `UNKNOWN` until a later Judge is enabled. See [Product
 
 ## V1 legacy snapshot
 
-The final V1 working state is preserved by the annotated tag `v1-final-snapshot-2026-09-13`. Its local Backend → GitHub data branch → GitHub Pages architecture is archived and no longer developed as the active product runtime.
+The final V1 working state is preserved by the branch `archive/v1-final-2026-09-13` and annotated tag `v1-final-snapshot-2026-09-13`. Its local Backend → GitHub data branch → GitHub Pages architecture is archived and no longer developed as the active product runtime.
 
 Historical reports and source remain available under `docs/v1/`, `legacy/v1/`, and `apps/backend/legacy_v1/` on the V2 branch. Local V1 data is preserved but never committed.
 
