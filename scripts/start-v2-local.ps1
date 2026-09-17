@@ -150,7 +150,7 @@ catch {
     exit 1
 }
 
-Write-Host "Codex Reset Radar V2 Alpha 1 is running."
+Write-Host "Codex Reset Radar V2 Local Intelligence Alpha 2 is running."
 Write-Host "Web:            http://127.0.0.1:5173"
 Write-Host "Backend API:    http://127.0.0.1:8787/api/v2"
 Write-Host "Backend health: http://127.0.0.1:8787/api/v2/health"

@@ -11,6 +11,11 @@ export interface ResetEvent {
   title: string;
   summary: string;
   display_tone: "PURPLE" | "EVENT";
+  occurred_at_end?: string | null;
+  time_basis?: string;
+  scope?: string;
+  execution_stage?: string;
+  evidence_post_ids?: string[];
 }
 
 export interface RadarResponse {
@@ -22,8 +27,17 @@ export interface RadarResponse {
   data_health: string;
   reason_summary: string;
   judged_at: string | null;
+  valid_until: string | null;
+  judgement_id: number | null;
+  judgement_state: string;
+  estimated_start: string | null;
+  estimated_end: string | null;
+  estimate_basis: string;
+  evidence_post_ids: string[];
+  judge_runtime: Record<string, unknown>;
+  pipeline: Record<string, unknown>;
   next_reset: {
-    status: "waiting_for_verified_history" | "baseline";
+    status: "waiting_for_verified_history" | "baseline" | "expired";
     estimated_at: string | null;
     basis: string;
   };
@@ -39,6 +53,11 @@ export interface HealthResponse {
   database: { status: string; counts: Record<string, number> };
   collector: Record<string, { state: string; last_seen_at: string; sequence?: number | null }>;
   runtime: { github_mirror_enabled: boolean; pages_dependency: boolean; log_retention_days: number };
+  intelligence?: {
+    pipeline: Record<string, unknown>;
+    judge: Record<string, unknown>;
+    pending_jobs: number;
+  };
 }
 
 export interface TiboPost {
@@ -46,6 +65,17 @@ export interface TiboPost {
   tweet_id: string;
   posted_at: string | null;
   text: string;
+  original_text: string;
+  original_language: string;
+  translated_text: string | null;
+  analysis_status: string;
+  translation_status: string;
+  processing_error: string | null;
+  analysis: {
+    category?: string;
+    summary?: string;
+    evidence_quote?: string;
+  } | null;
   url: string;
   is_reply: boolean;
   source: string;
@@ -78,7 +108,12 @@ function resetEvent(value: unknown): ResetEvent | null {
     occurred_at: text(item.occurred_at),
     title: text(item.title, "Untitled reset event"),
     summary: text(item.summary),
-    display_tone: item.event_type === "SPECIAL_RESET" ? "PURPLE" : "EVENT"
+    display_tone: item.event_type === "SPECIAL_RESET" ? "PURPLE" : "EVENT",
+    occurred_at_end: typeof item.occurred_at_end === "string" ? item.occurred_at_end : null,
+    time_basis: text(item.time_basis, "unknown"),
+    scope: text(item.scope, "unknown"),
+    execution_stage: text(item.execution_stage, "unknown"),
+    evidence_post_ids: Array.isArray(item.evidence_post_ids) ? item.evidence_post_ids.map(String) : []
   };
 }
 
@@ -96,8 +131,17 @@ export function parseRadar(value: unknown): RadarResponse {
     data_health: text(item.data_health, "UNKNOWN"),
     reason_summary: text(item.reason_summary, "当前没有可靠判断。"),
     judged_at: typeof item.judged_at === "string" ? item.judged_at : null,
+    valid_until: typeof item.valid_until === "string" ? item.valid_until : null,
+    judgement_id: typeof item.judgement_id === "number" ? item.judgement_id : null,
+    judgement_state: text(item.judgement_state, "waiting"),
+    estimated_start: typeof item.estimated_start === "string" ? item.estimated_start : null,
+    estimated_end: typeof item.estimated_end === "string" ? item.estimated_end : null,
+    estimate_basis: text(item.estimate_basis, "当前没有可靠的信号时间范围。"),
+    evidence_post_ids: Array.isArray(item.evidence_post_ids) ? item.evidence_post_ids.map(String) : [],
+    judge_runtime: record(item.judge_runtime),
+    pipeline: record(item.pipeline),
     next_reset: {
-      status: next.status === "baseline" ? "baseline" : "waiting_for_verified_history",
+      status: next.status === "baseline" || next.status === "expired" ? next.status : "waiting_for_verified_history",
       estimated_at: typeof next.estimated_at === "string" ? next.estimated_at : null,
       basis: text(next.basis)
     },

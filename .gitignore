@@ -21,6 +21,8 @@ runtime/*
 !runtime/README.md
 data/analysis/*
 !data/analysis/README.md
+data/corpus/*
+!data/corpus/README.md
 *.db
 *.db-*
 *.sqlite

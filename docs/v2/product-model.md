@@ -27,6 +27,13 @@ A `SPECIAL_RESET` does not change `last_full_reset` or the current Full Reset cy
 
 ## Judge boundary
 
-Alpha 1 defines contracts and lifecycle rules only. A later DeepSeek Judge will make semantic judgements from bounded, attributable evidence. It will not be a hand-written keyword score and this project will not train an ML model in the V2 Foundation phase.
+The human-adjudicated policy (2026-09-18 local time) is that the main Action Level,
+24/48/72-hour horizons and estimated window concern the next **Full Reset only**.
+Issuing a reset card is separate information: its certainty or scheduled arrival must
+not, by itself, raise the main level. A mixed Full + Banked post still contributes its
+Full effect. This is a judgement boundary, not a forced GREEN rule or a lexical score.
+Special events keep their independent record/presentation and never open Full cycles.
+
+Alpha 2 implements the DeepSeek Judge using bounded, attributable evidence. The model performs semantic judgement; code validates output enums, evidence IDs, time fields, current-cycle association, and cumulative 24/48/72-hour ordering. It is not a hand-written keyword score and this project does not train an ML model.
 
 The public contract intentionally contains no confidence percentage, probability badge, or hidden chain-of-thought. Persisted analysis contains structured evidence and concise summaries only.
