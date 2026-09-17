@@ -61,6 +61,12 @@ review records, comparison outputs, hashes, and the remaining queue. Its state i
 events remain the only new production promotions. No other event/cycle, Judge result, or notification was
 written to production, and the running service still has not been replaced by this worktree.
 
+At the final runtime observation, the live database had naturally advanced to 368 posts, 14 events,
+20 cases, and zero pending jobs; Profile, Replies, and Search were healthy and the Web returned 200. The
+process still reported Judge Prompt `v2-reset-judge-2`, proving that the new Prompt/parser code had not
+been hot-reloaded. Git-derived commit metadata alone showed the new checkout commit and is not treated as
+deployment evidence.
+
 Regression after these changes: Backend 50 tests; Web 6 tests, typecheck, and build; Collector 12 tests,
 typecheck, and build. The 49-file commit whitelist excludes all seven third-party fetch/import/repair
 modules, review packages, databases, logs, and credentials. A clean checkout containing only that patch

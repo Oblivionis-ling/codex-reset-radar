@@ -35,6 +35,10 @@ GPT 从冻结原文逐条补齐并带输入哈希，标明为二次参考翻译�
 明确为 `CANDIDATE_PENDING_HUMAN`，不是最终已审语料。除此前两条 Plus/Pro 事件外，没有新的
 生产事件、周期、Judge 或通知写入；工作树代码仍未替换当前运行进程。
 
+最终运行观察时，生产库已由日常采集自然增长到 368 帖，仍为 14 事件、20 案例、pending jobs 0；
+Profile、Replies、Search 均 healthy，Web 200。运行中的 Radar 仍显示 Judge Prompt
+`v2-reset-judge-2`，因此没有把 Git commit 元数据变化误报为新版已经部署。
+
 最新回归：Backend 50 tests；Web 6 tests/typecheck/build；Collector 12 tests/typecheck/build。
 49 文件提交白名单排除了 7 个第三方补采/批量修复模块以及真实资产。只应用该白名单的干净检出
 通过 Backend 35 tests、Web/Collector 全部检查、空库启动与四个 API 200。该 smoke test 还发现并
