@@ -1,5 +1,37 @@
 # Codex Reset Radar V2 — unified corpus and product cross-check report
 
+## 2026-09-18 final field-scoped adjudication
+
+The user resolved the last 17 substantive items. The local reviewed corpus is now
+`reviewed-corpus-20260918-v1`, with status `FINAL_REVIEWED_WITH_DECLARED_LIMITATIONS`:
+
+- E1 (`2091709346371838240`) is `FULL_RESET` supplementary scope evidence for the existing E2 event;
+  it confirms Business-account coverage and creates neither a new event nor a new cycle.
+- E2 (`2091688655828246890`, event key `dbef3986a12f1e2c322cab12545c12fb`) and E3
+  (`2098685367058612394`, event key `fbe5eee0595fb6d2395a24281e9624da`) are human-confirmed
+  `FULL_RESET` cycle events. No additional scope, exact completion minute, title, summary, or whole-event
+  approval was inferred.
+- J1-J14 adopt the GPT reference only for `action_level`, `horizon_24h`, `horizon_48h`, and
+  `horizon_72h`. Reasons, evidence lists, estimated times, and whole Judge cards remain outside the
+  approval scope. The 14 historical decisions were not written into production `radar_judgements`.
+
+The final package contains 366 frozen posts, 14 event records, 20 cases, 705 review records and 104
+human decision records. The 17-item substantive queue is now zero. Declared limitations remain explicit:
+10 canonical input-integrity records, three human `INSUFFICIENT_INPUT` posts, and one adjudicated content
+relation (`2028649088594436225`) that still lacks the scope/time needed for a formal event.
+
+Before the production evidence amendment, an online SQLite backup was created at
+`runtime/data/codex-reset-radar-v2.pre-final-adjudication-20260918.db` with SHA-256
+`7be4b5d75a6ff86fed13f71cda5cdd2c411a366e6f716b4a1bc1c0e4ab8f3640`; `quick_check=ok` and foreign-key
+violations were zero. The isolated first pass updated two target rows, and the immediate repeat updated
+zero rows. Production remained at 14 events and 13 cycles; current cycle `214` and latest Full Reset
+`2026-09-12T08:09:17Z` were unchanged. No processing job, historical Judge, or notification was added.
+
+Local evidence is in
+`data/corpus/reviews/unified-review-20260917T094740Z/adjudication-20260918/reviewed-corpus-20260918-v1/`.
+The package, database, logs, and real corpus remain ignored local assets. The sections below preserve the
+earlier candidate and baseline stages for audit history; their pending counts are superseded by this section.
+
 ## 2026-09-18 full continuation after human adjudication
 
 The supplied 87 human records were preserved as field-scoped decisions and used to continue the task.

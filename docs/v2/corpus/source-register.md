@@ -1,7 +1,12 @@
 # Historical Corpus Source Register
 
-Updated 2026-09-17. Full copied material stays in ignored local storage. Source labels are claims, not
+Updated 2026-09-18. Full copied material stays in ignored local storage. Source labels are claims, not
 V2 verification outcomes.
+
+The final field-scoped review overlay is `reviewed-corpus-20260918-v1`. It changes no source ranking and
+does not turn third-party claims into primary verification. E1 (`2091709346371838240`) is now linked as
+supplementary Business-scope evidence to the existing E2 Full Reset; it remains one event, not an
+additional source confirmation or cycle.
 
 | Source ID | Entry / fixed version | Material obtained | Time represented | V2 use and limitation |
 |---|---|---|---|---|

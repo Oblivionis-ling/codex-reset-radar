@@ -21,13 +21,20 @@ Tweet/event.
 
 ## Current corpus inventory
 
-- 366 canonical posts: 308 realtime and 58 historical-only.
+- Frozen review package: 366 canonical posts, 308 realtime and 58 historical-only.
+- Live production at final adjudication: 368 posts, 14 formal events, 13 Full cycles, and 20 cases.
 - 279 source-evidence rows from seven post-bearing external sources.
 - 262 persisted source-claim dispositions.
 - 20 reviewed historical cases.
-- 12 formal events: 11 Full and one Banked Special.
+- The 14 formal events are 13 Full and one Banked Special. E1 is merged into E2 as scope evidence and
+  does not increase either event or cycle counts.
 - 7 evidence rows are `cross_source_correlated`; 272 are not independently verified.
 - 16 parent Tweet IDs were acquired; zero parent bodies were acquired in round 2.
+
+The field-scoped review version is `reviewed-corpus-20260918-v1`. Its 17 substantive adjudication items
+are resolved; 10 canonical input-integrity limitations, three human `INSUFFICIENT_INPUT` posts, and one
+adjudicated-but-not-event-promotable record remain explicit. These limitations do not reduce the unknown
+archive gaps shown above.
 
 The complete source snapshots remain in ignored local storage. Public reports contain counts, fixed
 versions, hashes, short evidence descriptions, and boundaries rather than republishing the corpus.

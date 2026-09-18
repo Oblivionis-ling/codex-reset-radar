@@ -1,7 +1,12 @@
 # Tibo language patterns — reviewed historical cases
 
 Current corpus version:
-`corpus-round2-20260917-994180c769c7@2026-09-17T06:40:00Z`.
+`reviewed-corpus-20260918-v1` (built from
+`corpus-round2-20260917-994180c769c7@2026-09-17T06:40:00Z`).
+
+The same 20 attributable historical cases remain eligible for retrieval. Final adjudication added
+field-scoped event/Judge decisions and an E1-to-E2 evidence link; it did not silently add cases, import
+the 14 historical Judge answers into production, or convert unresolved source gaps into negative cases.
 
 This is a 20-case attributable comparison set, not a probability model or keyword scoring rule. Cases
 are separated by use so same-post completion evidence is never reported as successful advance warning.
