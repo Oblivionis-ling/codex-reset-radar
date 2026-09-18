@@ -100,3 +100,6 @@ backend\.venv\Scripts\python.exe -m pytest apps\backend\tests\test_notifications
 
 Offline fixtures use in-memory transports. Their only success label is `OFFLINE_PASS`, never
 `DELIVERED`.
+
+The explicit `fallback-test --live` command simulates a failed/unknown WeChat result locally and sends
+only the SMTP fallback after interactive confirmation. It never contacts a WeChat provider.

@@ -67,6 +67,8 @@ are business/test assets.
 - Added verified-TLS SMTP, a separate SQLite delivery/dedup ledger and a one-hop email fallback.
 - Added `scripts/common-v2.ps1`; start and notification wrappers now share Python environment discovery.
 - Added one Windows entry, `test-notifications.bat`; non-live commands are network-blocked.
+- Added an explicit live SMTP fallback test that simulates WeChat failure/unknown locally, so fallback
+  can be verified without consuming a WeChat send.
 
 No message broker, plugin framework or production event wiring was added.
 

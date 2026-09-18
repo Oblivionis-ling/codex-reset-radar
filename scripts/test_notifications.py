@@ -18,7 +18,7 @@ from app.config import load_settings  # noqa: E402
 from app.logging_runtime import RuntimeLog  # noqa: E402
 from app.notifications.config import load_notification_settings  # noqa: E402
 from app.notifications.ledger import NotificationLedger  # noqa: E402
-from app.notifications.models import NotificationMessage  # noqa: E402
+from app.notifications.models import DeliveryState, NotificationMessage, NotificationResult  # noqa: E402
 from app.notifications.registry import CHANNELS, build_adapter, missing_configuration  # noqa: E402
 from app.notifications.selftest import run_offline_selftest  # noqa: E402
 from app.notifications.service import NotificationDispatcher  # noqa: E402
@@ -136,6 +136,53 @@ async def live_send(channel: str, *, fallback_email: bool) -> int:
         await transport.close()
 
 
+class _SimulatedWechatResult:
+    channel = "simulated_wechat"
+
+    def __init__(self, state: DeliveryState) -> None:
+        self.state = state
+
+    async def send(self, _message: NotificationMessage) -> NotificationResult:
+        return NotificationResult(
+            self.channel,
+            self.state,
+            self.state != DeliveryState.FAILED,
+            detail="local simulation; no WeChat provider request was made",
+        )
+
+
+async def live_email_fallback_test(reason: str) -> int:
+    settings = load_notification_settings()
+    missing = missing_configuration("smtp_email", settings)
+    if missing:
+        print("配置不完整：" + ", ".join(missing))
+        return 2
+    phrase = "SEND smtp_fallback"
+    print("微信结果仅在本地模拟；不会访问微信渠道。确认后会真实发送一封 SMTP 保底测试邮件。")
+    if input(f"输入 {phrase} 确认，其他输入取消：").strip() != phrase:
+        print("已取消；未发送任何消息。")
+        return 3
+    state = DeliveryState.FAILED if reason == "failure" else DeliveryState.UNKNOWN
+    ledger = NotificationLedger(settings.ledger_path)
+    dispatcher = NotificationDispatcher(ledger, query_attempts=0)
+    email = build_adapter("smtp_email", settings, None, network_enabled=True)
+    primary, fallback = await dispatcher.send_with_email_fallback(
+        _SimulatedWechatResult(state),
+        email,
+        NotificationMessage.test_message(),
+        dedup_key=f"manual-fallback:{reason}:{uuid.uuid4()}",
+    )
+    runtime = load_settings()
+    RuntimeLog(runtime.log_dir, runtime.log_retention_days, runtime.log_max_bytes).write(
+        "notification",
+        "manual_email_fallback_test",
+        metadata={"simulated_wechat_state": state.value, "real_wechat_send": False},
+    )
+    _json({"simulated_wechat": primary.as_dict(), "email_fallback": fallback.as_dict() if fallback else None})
+    print("SMTP 接受不等于邮箱已收到；请检查收件箱/垃圾箱并记录延迟。")
+    return 0
+
+
 def recent() -> int:
     settings = load_notification_settings()
     _json(NotificationLedger(settings.ledger_path).recent())
@@ -152,6 +199,7 @@ def interactive_menu() -> int:
             "4. 离线自测（拦截所有网络）\n"
             "5. 选择一个渠道真实发送\n"
             "6. 查看本地结果记录\n"
+            "7. 模拟微信失败/未确认并真实发送一封 SMTP 保底邮件\n"
             "0. 退出"
         )
         choice = input("请选择：").strip()
@@ -173,6 +221,12 @@ def interactive_menu() -> int:
             asyncio.run(live_send(channel, fallback_email=fallback))
         elif choice == "6":
             recent()
+        elif choice == "7":
+            reason = input("输入 failure 模拟明确失败，输入 unknown 模拟结果未确认：").strip().lower()
+            if reason not in {"failure", "unknown"}:
+                print("无效模拟类型。")
+                continue
+            asyncio.run(live_email_fallback_test(reason))
         elif choice == "0":
             print("已退出；没有因退出而发送消息。")
             return 0
@@ -189,6 +243,9 @@ def parser() -> argparse.ArgumentParser:
     send.add_argument("--channel", required=True, choices=CHANNELS)
     send.add_argument("--live", action="store_true", help="required in addition to interactive confirmation")
     send.add_argument("--fallback-email", action="store_true")
+    fallback = sub.add_parser("fallback-test")
+    fallback.add_argument("--reason", choices=("failure", "unknown"), default="failure")
+    fallback.add_argument("--live", action="store_true", help="required in addition to interactive confirmation")
     return current
 
 
@@ -211,6 +268,11 @@ def main() -> int:
             print("拒绝发送：真实发送必须显式提供 --live，并仍需交互确认。")
             return 2
         return asyncio.run(live_send(args.channel, fallback_email=args.fallback_email))
+    if args.command == "fallback-test":
+        if not args.live:
+            print("拒绝发送：SMTP 兜底测试必须显式提供 --live，并仍需交互确认。")
+            return 2
+        return asyncio.run(live_email_fallback_test(args.reason))
     return 2
 
 
