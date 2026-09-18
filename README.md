@@ -1,132 +1,101 @@
 # Codex Reset Radar
 
-Codex Reset Radar is a local-first, full-stack system for answering one practical question:
+Codex Reset Radar V2 is a local-first system that collects Tibo's public X posts, analyses Reset
+signals, maintains verified Reset events and exposes the current Radar through a local Dashboard.
 
-> Is the next Codex Reset approaching?
+Current accepted release: **V2 Local Intelligence Alpha 4** (`2.0.0-alpha.4`). The active runtime is
+local only; GitHub is source history and CI, not a data path.
 
-It collects Tibo's public X posts, preserves reset history, and exposes a stable product contract for a future semantic judge. The repository is the source, documentation, CI, and version history; GitHub is not part of the V2 runtime data path.
+## Start here
 
-## V2 status
+- [Local start, stop and validation](docs/v2/local-development.md)
+- [Current architecture](docs/v2/architecture.md)
+- [V2 API contract](docs/v2/api-contract.md)
+- [Data and corpus standard](docs/v2/corpus/corpus-standard.md)
+- [Notification preparation](docs/notifications/README.md)
+- [Notification user test guide](docs/notifications/testing-guide.md)
+- [Notification preparation and cleanup report](docs/maintenance/notification-prep-and-cleanup.md)
+- [Corpus phase closeout](docs/v2/corpus/corpus-closeout-report.md)
 
-The current release target is **V2 Local Intelligence Alpha 2** (`2.0.0-alpha.2`). It provides:
+Historical V1 material remains under `docs/v1/`. Concluded V2 corpus reports remain under
+`docs/v2/corpus/` so immutable manifests and evidence links keep their original paths.
 
-- a FastAPI Backend with a new isolated SQLite schema;
-- a local Vite Web app that reads only `/api/v2/*`;
-- the existing browser Extension as a transitional collector adapter;
-- bounded local JSONL logs and in-memory collector heartbeat state;
-- read-only V1 post migration with explicit Reset review candidates;
-- a persistent post-analysis, translation, Reset-event and DeepSeek Judge pipeline;
-- a source-attributed historical corpus with idempotent imports, evidence dispositions, reviewed cases,
-  and strict separation from realtime Judge/notification triggers;
-- one-command local start and project-scoped stop scripts.
-
-Server collection, final UI, notification redesign, and overseas deployment remain outside this alpha.
-
-The repository's `main` branch is the V2 local full-stack source. GitHub provides source history and CI only; it is not a live product endpoint.
-
-## Architecture
+## Local runtime
 
 ```text
 X public pages
-    |
-    v
-Transitional Collector Extension
-    |
-    v
-Local FastAPI Backend ----> V2 SQLite
-    |
-    v
-Local Vite Web
+    -> apps/collector-extension
+    -> apps/backend (FastAPI + DeepSeek pipeline)
+    -> runtime/data/codex-reset-radar-v2.db
+    -> apps/web (local Dashboard)
 ```
 
-No active V2 process reads `raw.githubusercontent.com`, writes the `data` branch, deploys Pages, or uses Git as a runtime database.
-
-## Repository structure
-
-```text
-apps/backend/               V2 API, database, tests, and V1 source archive
-apps/web/                   V2 local Dashboard foundation
-apps/collector-extension/   transitional Manifest V3 collector adapter
-docs/v1/                    V1 reports, contracts, and static-data snapshot
-docs/v2/                    V2 product and engineering contracts
-legacy/v1/                  V1 operational scripts and launchers
-scripts/                    V2 migration and local lifecycle scripts
-backend/data/               local legacy V1 data; ignored and preserved
-runtime/                    generated V2 database, logs, and PID records
-data/analysis/              generated migration review artifacts; ignored
-data/corpus/                ignored historical source snapshots and local evidence material
-```
-
-## Local development
-
-From the repository root, install the Backend, Web, and Extension dependencies as described in [Local development](docs/v2/local-development.md). Then run:
+Start and stop from the repository root:
 
 ```powershell
 .\start-v2-local.bat
+.\stop-v2-local.bat
 ```
-
-Local endpoints:
 
 - Web: `http://127.0.0.1:5173`
 - Backend API: `http://127.0.0.1:8787/api/v2`
 - Health: `http://127.0.0.1:8787/api/v2/health`
 
-Stop only the recorded V2 processes with:
+The stop command validates project PID records and never kills unrelated Python, Node or browser
+processes.
+
+## Notification preparation
+
+Notification code is prepared but is **not connected to Reset/Judge automation**. Backend startup,
+status, configuration checks, previews and offline self-tests send nothing. The only live path is the
+explicit interactive test command:
 
 ```powershell
-.\stop-v2-local.bat
+.\test-notifications.bat
 ```
 
-## Data policy
+Credentials stay in the ignored root `.env`; never commit them or paste them into chat. See the
+[testing guide](docs/notifications/testing-guide.md) before selecting a live test.
 
-Long-lived V2 data is limited to public Tibo posts, verified Full/Special Reset events, structured post analysis, necessary Radar judgements, and reviewed analysis artifacts. Routine heartbeats, request traces, browser lifecycle spam, timer ticks, logs, credentials, databases, and build artifacts are not committed.
+## Repository map
 
-The legacy V1 database under `backend/data/` remains local and read-only until migration review is complete. The GitHub `data` branch is a frozen legacy runtime snapshot: V2 neither reads it nor publishes new data to it.
+```text
+apps/backend/               active V2 Backend and tests
+apps/web/                   local Dashboard
+apps/collector-extension/   transitional Profile/Replies/Search collector
+docs/v2/                    current V2 contracts and retained phase evidence
+docs/notifications/         current notification configuration and test guide
+docs/maintenance/           current maintenance reports
+docs/v1/                    archived V1 contracts and reports
+scripts/                    current lifecycle, migration and test entries
+runtime/                    ignored databases, logs, PID records and test evidence
+data/corpus/                ignored corpus assets plus its tracked policy file
+local-archive/              ignored retired one-time tools (local only)
+```
 
-## Radar product model
+## Security and data policy
 
-- Action levels: `GREEN`, `YELLOW`, `ORANGE`, `RED`
-- Insufficient evidence: `UNKNOWN`, displayed as white
-- Horizons: `24H`, `48H`, `72H`
-- Special Reset events: displayed uniformly as `PURPLE`
-- Full Reset: a historical event that opens a new Reset cycle, not a persistent risk level
-- Confidence percentages: not part of the public V2 contract
-
-Alpha 2 runs the configured DeepSeek Judge; `UNKNOWN` now means the model could not make a reliable judgement or the runtime reports a specific processing/failure state. See [Product model](docs/v2/product-model.md).
-
-## V1 legacy snapshot
-
-The final V1 working state is preserved by the branch `archive/v1-final-2026-09-13` and annotated tag `v1-final-snapshot-2026-09-13`. Its local Backend → GitHub data branch → GitHub Pages architecture is archived and no longer developed as the active product runtime.
-
-Historical reports and source remain available under `docs/v1/`, `legacy/v1/`, and `apps/backend/legacy_v1/` on the V2 branch. Local V1 data is preserved but never committed.
-
-## Deployment plan
-
-V2 is validated as a complete local stack first. A later phase may deploy the Backend, database, Web, and future server collector to an overseas server. Docker, reverse proxy, TLS, domains, and production secrets are not part of Alpha 1.
-
-## Security
-
-- Never commit `.env`, API tokens, cookies, browser profiles, SQLite files, runtime logs, or generated corpora.
-- Copy `.env.example` to `.env` only for local configuration.
-- The Alpha 2 runtime calls the configured DeepSeek model for local analysis and Judge results, but does not send real notifications.
-- Tests use data explicitly labelled as synthetic fixtures; the repository must not invent Reset history or Tibo posts.
+- Never commit `.env`, tokens, cookies, browser profiles, SQLite files, runtime logs or complete real
+  corpora.
+- V1 runtime data is preserved locally and is not an active Backend.
+- Historical import/review must not trigger realtime Judge or notifications.
+- Tests use synthetic fixtures and may not invent production Reset history.
+- Notification results distinguish API acceptance, provider status and the user's phone observation.
 
 ## Validation
 
-Run from the repository root:
-
 ```powershell
 backend\.venv\Scripts\python.exe -m pytest apps\backend\tests -q
+
 cd apps\web
-npm ci
 npm test
 npm run typecheck
 npm run build
+
 cd ..\collector-extension
-npm ci
 npm test
 npm run typecheck
 npm run build
 ```
 
-GitHub Actions performs the same Backend, Web, and Collector checks. It does not host the Dashboard or publish runtime data.
+GitHub Actions runs the same product checks. It does not host the Dashboard or publish runtime data.

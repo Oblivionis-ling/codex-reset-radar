@@ -1,13 +1,11 @@
 # Historical Import and Verification
 
-## Entry point
+## Historical status
 
-```powershell
-backend\.venv\Scripts\python.exe scripts\import_historical_corpus.py --dry-run `
-  --start 2025-09-17T01:35:00Z --cutoff 2026-09-17T01:35:00Z
-```
-
-Remove `--dry-run` only after reviewing the preview. The default source set is ModelYard plus AIPlanWatch. Source and date filters, an AIPlanWatch page cap, a stable batch prefix, local snapshot suppression, and conservative batch rollback are available through `--help`.
+This is a retained description of the concluded corpus import process, not a current operator entry.
+The one-time import, analysis and repair scripts were never committed as product dependencies and are
+now preserved only under the ignored local archive. Current collection enters through the Extension and
+V2 collector API; historical data remains in the reviewed corpus/database.
 
 ## Four stages
 
@@ -31,14 +29,9 @@ After a successful source import, `corpus_coverage` is rebuilt for that batch as
 
 ## Resume and rollback
 
-A failed import is marked `PARTIAL` with its last source record key. Re-running with the same batch prefix is idempotent and continues through already-recorded source keys. A rollback is scoped to one exact batch:
-
-```powershell
-backend\.venv\Scripts\python.exe scripts\import_historical_corpus.py `
-  --rollback-batch historical-20260917T0135-modelyard
-```
-
-The rollback restores prior evidence/post state only if no newer update superseded it, removes batch-only historical posts, preserves unrelated evidence, and reports newer changes it deliberately skipped. It never truncates a corpus table or clears the database.
+A failed import was marked `PARTIAL` with its last source record key. Re-running the same batch prefix
+was idempotent. Batch rollback restored only prior evidence/post state when no newer update superseded
+it, preserved unrelated evidence and never truncated corpus tables.
 
 ## Event verification
 
@@ -49,9 +42,9 @@ Schema v5 also stores the external label in `source_claimed_status` and the V2 r
 `historical_event_dispositions`; a zero row count in `reset_event_candidates` must not be interpreted as
 zero unresolved historical claims.
 
-`scripts/import_historical_corpus_round2.py` reads only the bounded requested sources. Git inputs are
-pinned, TypeScript data is statically JSON-decoded, APIs are page/size/retry limited, and source
-snapshots remain ignored. Stable source and disposition keys make reruns idempotent.
+The round-two importer read only the bounded requested sources. Git inputs were pinned, TypeScript data
+was statically JSON-decoded, APIs were page/size/retry limited, and source snapshots remained ignored.
+Stable source and disposition keys made reruns idempotent.
 
 ## Judge retrieval
 

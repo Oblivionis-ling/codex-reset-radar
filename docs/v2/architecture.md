@@ -29,8 +29,10 @@ GitHub is used for source, docs, CI, and version history. The legacy `data` bran
 - `apps/web`: local Radar product surface and minimal `/ops` placeholder.
 - `apps/collector-extension`: existing Profile/Replies/Search collector adapted to V2 compatibility endpoints.
 - `scripts/migrate_v1_to_v2.py`: explicit read-only V1 import path.
-- `scripts/import_historical_corpus.py` and `scripts/import_historical_corpus_round2.py`: bounded,
-  historical-only evidence imports that never enter the realtime queue.
+- one-time historical import and repair tools are retired to an ignored local archive after corpus
+  closeout; active product code has no dependency on them.
+- `apps/backend/app/notifications`: prepared, disabled-by-default transports for explicit manual
+  tests; they are not connected to Reset/Judge events.
 - `runtime`: ignored V2 state with bounded JSONL logs and PID ownership records.
 
 ## Local security model
@@ -39,7 +41,7 @@ The default Backend binds to `127.0.0.1:8787`. CORS permits only the configured 
 
 ## Future boundaries
 
-Further corpus verification, a server collector, production notifications, Docker/host deployment, and
+Further corpus verification, a server collector, production notification wiring, Docker/host deployment, and
 final UI design remain separate later phases. Their future presence must not weaken the V2 data or
 runtime boundaries established here.
 

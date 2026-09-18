@@ -19,8 +19,11 @@ The Radar response accepts only `GREEN`, `YELLOW`, `ORANGE`, `RED`, and `UNKNOWN
 
 `POST /api/ingest/tweets`, `POST /api/heartbeat`, and the two `/api/diagnostics*` routes remain compatibility endpoints for the current Extension. Diagnostic compatibility requests are accepted but not persisted in the V2 core database.
 
-Historical import is deliberately not exposed as an HTTP collector route. `scripts/import_historical_corpus.py` performs explicit local batch imports with dry-run, date/source limits, idempotent evidence keys, checkpoints and batch rollback. It creates no realtime jobs and sends no notification.
+Historical import is deliberately not exposed as an HTTP collector route. The concluded corpus phase
+used bounded, local-only import tools with dry-run, idempotent evidence keys, checkpoints and rollback;
+those one-time tools are now retired to an ignored local archive. They are not part of a clean checkout
+or the active runtime.
 
 ## Compatibility and evolution
 
-Alpha 2 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.
+Alpha 4 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.

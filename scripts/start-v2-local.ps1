@@ -2,7 +2,8 @@
 param()
 
 $ErrorActionPreference = "Stop"
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "common-v2.ps1")
+$repositoryRoot = $script:CrrRepositoryRoot
 $backendRoot = Join-Path $repositoryRoot "apps\backend"
 $webRoot = Join-Path $repositoryRoot "apps\web"
 $runtimeRoot = Join-Path $repositoryRoot "runtime"
@@ -91,14 +92,7 @@ function Wait-Endpoint {
     throw "Timed out waiting for $Url"
 }
 
-$pythonCandidates = @(
-    (Join-Path $backendRoot ".venv\Scripts\python.exe"),
-    (Join-Path $repositoryRoot "backend\.venv\Scripts\python.exe")
-)
-$python = $pythonCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-if (-not $python) {
-    throw "No project Python environment found. Follow docs\v2\local-development.md to create apps\backend\.venv."
-}
+$python = Resolve-CrrPython -RepositoryRoot $repositoryRoot
 & $python -c "import fastapi, uvicorn" 2>$null
 if ($LASTEXITCODE -ne 0) {
     throw "The selected Python environment is missing V2 Backend dependencies: $python"

@@ -64,4 +64,8 @@ npm run typecheck
 npm run build
 ```
 
-Alpha 2 requires `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL` for the intelligence pipeline. An `UNKNOWN` result is valid only when the API also explains whether evidence is insufficient, processing is still running, the result is stale, or the model request failed. Verify in browser developer tools that the Web requests only localhost `/api/v2/*`; there must be no Raw GitHub, data-branch, or Pages request.
+Alpha 4 requires `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL` for the intelligence pipeline. An `UNKNOWN` result is valid only when the API also explains whether evidence is insufficient, processing is still running, the result is stale, or the model request failed. Verify in browser developer tools that the Web requests only localhost `/api/v2/*`; there must be no Raw GitHub, data-branch, or Pages request.
+
+Notification preparation is optional and does not affect Backend startup. Use
+`test-notifications.bat` and [the notification testing guide](../notifications/testing-guide.md);
+status, check, preview and selftest never send real messages.
