@@ -1,5 +1,28 @@
 # Codex Reset Radar V2 — unified corpus and product cross-check report
 
+## 2026-09-18 release acceptance correction
+
+The first Alpha 2 deployment acceptance exposed one production-only replay defect that the isolated
+fixtures had not covered. Existing event `5` already represented one Full Reset with evidence posts
+`2094251180121854309` and `2094252447271366730` over `02:29:25Z–02:34:27Z`. Reprocessing the second
+post reused neither the reviewed event key nor its range and briefly created duplicate event `16` and
+cycle `217`. The current cycle remained `214`, but the archive count was wrong, so Alpha 2 is not treated
+as the accepted runtime release.
+
+The generic reconciliation now reuses an existing event only when mechanism matches, evidence overlaps,
+and the represented time ranges overlap. Time proximity by itself still never merges events. A regression
+test covers the exact reviewed-range replay, while the existing same-time/different-evidence and nearby
+distinct-event tests remain. The repair release is `2.0.0-alpha.3`; the already published Alpha 2 tag is
+retained unchanged for audit history and superseded rather than moved.
+
+Before removing the duplicate, an online backup was written to
+`runtime/data/codex-reset-radar-v2.pre-duplicate-cleanup-20260918.db` (SHA-256
+`043c222b53800040244c21853fe4204e2a8b2c653f2644b0de2222a98152e836`). The isolated pass removed event
+`16` and cycle `217`; its immediate rerun removed nothing. The same precise repair was then applied to
+production, returning it to 14 events and 13 cycles while preserving both evidence IDs on event `5`,
+current cycle `214`, 368 posts, all processing jobs and all Judge records. SQLite integrity and foreign
+keys passed; no notification was sent.
+
 ## 2026-09-18 final field-scoped adjudication
 
 The user resolved the last 17 substantive items. The local reviewed corpus is now
