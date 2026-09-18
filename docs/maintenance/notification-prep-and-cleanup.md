@@ -112,6 +112,11 @@ builds/typechecks, and all 9 offline notification variants passed. A clean empty
 initialised schemas 1–6, returned no foreign-key violations and served a healthy Alpha 4 API with
 model processing disabled. The disposable worktree was then removed.
 
+The later explicit SMTP-fallback entry changed only the notification CLI and documentation. Final code
+commit `ff9a4e1b79af2fbf99177547a741874bfd47b1c5` received a second clean-checkout Backend run (54
+passed), all 9 offline channel checks, and a guarded `fallback-test` without `--live`; the guard exited
+before configuration or network access. That disposable worktree was also removed.
+
 The tracked Backend test count is 54. The previously untracked one-time historical test moved to the
 local archive and is intentionally not a release dependency; tests were not hidden or deleted to make
 the clean run pass.
@@ -130,7 +135,8 @@ the clean run pass.
 
 ### Git and release boundary
 
-- Local branch/checkpoint: `notification-prep-20260919` / `8a45d26`.
+- Local branch/checkpoints: `notification-prep-20260919`; implementation `8a45d26`, acceptance
+  `614027e`, explicit SMTP fallback `ff9a4e1`.
 - Remote push: not performed. CI: not started. Merge to `main`: not performed. Tag: not created.
 - App version remains `2.0.0-alpha.4` until manual channel tests justify a later release decision.
 - After cleanup, `docs/` contains 84 files / 3,468,120 bytes. The increase is the three current
