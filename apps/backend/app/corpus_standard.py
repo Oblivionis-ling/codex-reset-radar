@@ -11,6 +11,7 @@ from .db import Database
 
 
 CORPUS_STANDARD_VERSION = "crr-corpus-v1"
+CONTENT_POLICY_VERSION = "content-policy-v1"
 REVIEW_STATUSES = {
     "UNREVIEWED",
     "GPT_REVIEWED",
@@ -286,6 +287,36 @@ def validate_review_result(record: dict[str, Any]) -> None:
         raise CorpusValidationError("invalid reviewer kind")
     if not record.get("object_stable_id"):
         raise CorpusValidationError("review result requires object_stable_id")
+
+
+def validate_content_policy_record(record: dict[str, Any]) -> None:
+    if record.get("policy_version") != CONTENT_POLICY_VERSION:
+        raise CorpusValidationError("unsupported content policy version")
+    if not str(record.get("tweet_id") or "").strip():
+        raise CorpusValidationError("content policy requires tweet_id")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("content_hash") or "")):
+        raise CorpusValidationError("content policy requires a SHA-256 content_hash")
+    for field in (
+        "analysis_allowed", "event_promotion_allowed", "judge_evidence_allowed",
+        "historical_case_allowed",
+    ):
+        if not isinstance(record.get(field), bool):
+            raise CorpusValidationError(f"content policy {field} must be boolean")
+    if not str(record.get("reason") or "").strip():
+        raise CorpusValidationError("content policy requires a reason")
+    if not isinstance(record.get("decision_ids", []), list):
+        raise CorpusValidationError("content policy decision_ids must be a list")
+
+
+def apply_content_policy_records(
+    database: Database,
+    records: Iterable[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    results = []
+    for record in records:
+        validate_content_policy_record(record)
+        results.append(database.upsert_content_policy(record))
+    return results
 
 
 def write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:

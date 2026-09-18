@@ -10,7 +10,7 @@ from .db import ACTION_LEVELS, SPECIAL_TYPES, content_hash, normalise_time, text
 
 ANALYSIS_PROMPT_VERSION = "v2-post-semantics-8"
 TRANSLATION_PROMPT_VERSION = "v2-zh-translation-1"
-JUDGE_PROMPT_VERSION = "v2-reset-judge-4"
+JUDGE_PROMPT_VERSION = "v2-reset-judge-6"
 
 
 class JsonModel(Protocol):
@@ -262,7 +262,9 @@ async def judge(
                      "corpus_version": context.get("corpus_version"), "historical_cases": historical_cases}
     result = await client.complete_json(
         operation="radar_judge", system=SYSTEM_SAFETY,
-        user="综合判断下一次 Codex 完整额度重置 FULL_RESET 是否临近。主等级、24/48/72h 与预计窗口只回答完整重置，不回答发重置卡。发卡 BANKED/RESET_CARD、部分用户补偿和其他 SPECIAL_RESET 独立提示，不得仅凭其预告或确定性把完整重置主等级升色，也不得把发卡预计时间当作下一次完整重置时间；可在理由中单独说明特殊事件及其不影响完整周期。若同帖同时有完整重置和发卡，只让完整重置的效果用于主等级判断。这个边界不代表遇到发卡就硬降为 GREEN：其余独立完整重置信号仍需综合判断，证据不足可 UNKNOWN。等级含义：GREEN正常、YELLOW关注、ORANGE可能临近、RED近期强信号、UNKNOWN不能可靠判断。24/48/72h 是累计窗口，必须非递减。不要输出置信度百分比。已确认的过去 Reset 不能作为当前仍为红色的直接理由；相对时间以原帖时间为锚。default_reference_last_full_plus_7d 是界面周期参照，不是统计拟合、固定规律或任何将来 Reset 的证据。不得仅按该参照或旧事件加七天升至 ORANGE/RED；不得以它直接填充 estimated_start/estimated_end。没有独立的新前瞻依据时，两个预计时间均返回 null，区分“暂无新信号”和“数据不足”，仍自主判断等级，不制造精确到分钟的未来事实。historical_cases 是已经过去的类比材料，不是决定颜色的规则，也不是当前事件；必须同时考虑其中的特殊事件、不同含义和结果未知案例，并降低未直接核验或覆盖不足案例的权重。没有依据时不要编造时间。\n" + json.dumps({"required_schema": schema, "context": clean_context}, ensure_ascii=False),
+        user="综合判断下一次 Codex 完整额度重置 FULL_RESET 是否临近。主等级、24/48/72h 与预计窗口只回答完整重置，不回答发重置卡。发卡 BANKED/RESET_CARD、部分用户补偿和其他 SPECIAL_RESET 独立提示，不得仅凭其预告或确定性把完整重置主等级升色，也不得把发卡预计时间当作下一次完整重置时间；可在理由中单独说明特殊事件及其不影响完整周期。若同帖同时有完整重置和发卡，只让完整重置的效果用于主等级判断。这个边界不代表遇到发卡就硬降为 GREEN：其余独立完整重置信号仍需综合判断，证据不足可 UNKNOWN。等级含义：GREEN正常、YELLOW关注、ORANGE可能临近、RED近期强信号、UNKNOWN不能可靠判断。24/48/72h 是累计窗口，必须非递减，而且不是把主等级机械复制三次。action_level 回答从当前时点看下一次完整重置的总体行动等级；各 horizon 回答该累计窗口内下一次完整重置的临近程度。 "
+             + "按以下通用时间语义校准，但仍结合全部上下文自主判断：已经完成的本轮完整重置只作为新周期起点，不能继续当作下一次重置的 RED；若其后没有新的前瞻信号，通常为主等级 GREEN、24h GREEN、48h GREEN、72h YELLOW，其中 72h 的 YELLOW 只是宽窗口关注，不代表有具体时间依据。已经公告或正在执行、但尚未确认完成传播的本轮完整重置同样不等于“下一次”重置；若没有独立的下一轮信号，通常为主等级 GREEN、24h GREEN、48h YELLOW、72h YELLOW，用较长窗口表达当前事件尚在收尾，而不是维持 RED。明确写出将在 24 小时内或当天明确截止时刻前到来的 FULL_RESET 公告是近时强信号，应为主等级与 24/48/72h 全部 RED；这条只适用于明确公告，不适用于玩笑或模糊暗示。明确指向次日的 reset 动作或第一人称 reset button 意图，即使带玩笑、if/can 等条件语气且尚不足以创建正式事件，仍是强前瞻暗示，通常为主等级 ORANGE、24h ORANGE、48h RED、72h RED。多个时间上相邻且相互印证的次日信号（例如一条说 reset 很快但不是今天，另一条说次日里程碑/庆祝并要求用户留意 Codex）也按强次日暗示处理；不要仅因单条缺范围或机制就各自降成普通闲聊。若文本同时说明今天的动作已经发生、又把较模糊的庆祝或另一动作移到明天，必须分别理解已发生与未来部分；未来部分缺少完整重置机制/范围时可作为 YELLOW 关注，并在覆盖明天的较长累计窗口升至 ORANGE，但不能无依据升为 RED。 "
+             + "不要输出置信度百分比。已确认的过去 Reset 不能作为当前仍为红色的直接理由；相对时间以原帖时间为锚。default_reference_last_full_plus_7d 是界面周期参照，不是统计拟合、固定规律或任何将来 Reset 的证据。不得仅按该参照或旧事件加七天升至 ORANGE/RED；不得以它直接填充 estimated_start/estimated_end。没有独立的新前瞻依据时，两个预计时间均返回 null，区分“暂无新信号”和“数据不足”，仍自主判断等级，不制造精确到分钟的未来事实。historical_cases 是已经过去的类比材料，不是决定颜色的规则，也不是当前事件；必须同时考虑其中的特殊事件、不同含义和结果未知案例，并降低未直接核验或覆盖不足案例的权重。没有依据时不要编造时间。\n" + json.dumps({"required_schema": schema, "context": clean_context}, ensure_ascii=False),
     )
     level_fields = ("action_level", "horizon_24h", "horizon_48h", "horizon_72h")
     nested = result.get("required_schema")

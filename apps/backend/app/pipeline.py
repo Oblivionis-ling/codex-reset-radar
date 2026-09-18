@@ -151,6 +151,16 @@ class IntelligencePipeline:
         post = self.database.get_post(post_id)
         if not post:
             raise ValueError(f"post {post_id} no longer exists")
+        policy = self.database.content_policy(post_id)
+        if policy is not None and not policy["analysis_allowed"]:
+            self.database.mark_post_input_restricted(post_id, str(policy["reason"]))
+            self.runtime_log.write("app", "POST_INPUT_RESTRICTED", metadata={
+                "post_id": post_id,
+                "tweet_id": post["tweet_id"],
+                "policy_status": policy["policy_status"],
+                "policy_version": policy["policy_version"],
+            })
+            return
         post_hash = str(post["text_hash"])
         analysis = self.database.latest_analysis(post_id, post_hash, ANALYSIS_PROMPT_VERSION, self.model)
         if analysis is None:
@@ -158,13 +168,20 @@ class IntelligencePipeline:
             analysis_id = self.database.save_analysis(post_id, post_hash, self.model, ANALYSIS_PROMPT_VERSION, analysis)
             self.runtime_log.write("llm", "POST_ANALYSIS_SAVED", metadata={"post_id": post_id, "tweet_id": post["tweet_id"], "analysis_id": analysis_id, "category": analysis["category"]})
 
-        for disposition, record in event_records(post, analysis):
-            if disposition == "confirmed":
-                saved = self.database.upsert_reset_event(record)
-                self.runtime_log.write("app", "RESET_EVENT_UPSERTED", metadata={"event_id": saved["id"], "event_type": saved["event_type"], "tweet_id": post["tweet_id"]})
-            else:
-                candidate_id = self.database.upsert_candidate(record if disposition == "ambiguous" else candidate_record(post, analysis, record))
-                self.runtime_log.write("app", "RESET_CANDIDATE_UPSERTED", metadata={"candidate_id": candidate_id, "tweet_id": post["tweet_id"]})
+        if self.database.content_use_allowed(post, "event_promotion"):
+            for disposition, record in event_records(post, analysis):
+                if disposition == "confirmed":
+                    saved = self.database.upsert_reset_event(record)
+                    self.runtime_log.write("app", "RESET_EVENT_UPSERTED", metadata={"event_id": saved["id"], "event_type": saved["event_type"], "tweet_id": post["tweet_id"]})
+                else:
+                    candidate_id = self.database.upsert_candidate(record if disposition == "ambiguous" else candidate_record(post, analysis, record))
+                    self.runtime_log.write("app", "RESET_CANDIDATE_UPSERTED", metadata={"candidate_id": candidate_id, "tweet_id": post["tweet_id"]})
+        else:
+            self.runtime_log.write("app", "POST_EVENT_PROMOTION_RESTRICTED", metadata={
+                "post_id": post_id,
+                "tweet_id": post["tweet_id"],
+                "policy_status": policy["policy_status"] if policy else "restricted",
+            })
 
         if post.get("translation_status") != "COMPLETED" or not post.get("translated_text"):
             try:
