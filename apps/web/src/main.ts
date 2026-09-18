@@ -109,7 +109,7 @@ function renderOps(health: HealthResponse, warning = ""): string {
 }
 
 function shell(content: string, backendVersion: string): string {
-  return `<div class="shell"><header class="topbar"><a class="brand" href="#/">CRR <span>V2 Alpha 2</span></a><nav aria-label="主导航"><a href="#/">Radar</a><a href="#/ops">Ops</a></nav></header>${content}<footer><span>Codex Reset Radar ${escapeHtml(__APP_VERSION__)}</span><span>Backend ${escapeHtml(backendVersion)}</span><span>Local intelligence runtime</span></footer></div>`;
+  return `<div class="shell"><header class="topbar"><a class="brand" href="#/">CRR <span>${escapeHtml(__APP_VERSION__)}</span></a><nav aria-label="主导航"><a href="#/">Radar</a><a href="#/ops">Ops</a></nav></header>${content}<footer><span>Codex Reset Radar ${escapeHtml(__APP_VERSION__)}</span><span>Backend ${escapeHtml(backendVersion)}</span><span>Local intelligence runtime</span></footer></div>`;
 }
 
 function render(data: DashboardData, warning = ""): void {

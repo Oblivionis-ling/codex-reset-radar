@@ -84,8 +84,17 @@ CREATE TABLE IF NOT EXISTS reset_event_candidates(
  occurred_at_start TEXT,occurred_at_end TEXT,time_basis TEXT NOT NULL,scope TEXT NOT NULL,execution_stage TEXT NOT NULL,
  evidence_post_ids TEXT NOT NULL,summary TEXT NOT NULL,analysis_json TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS pipeline_state(key TEXT PRIMARY KEY,value_json TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS post_content_policies(
+ post_id INTEGER NOT NULL REFERENCES tibo_posts(id) ON DELETE CASCADE,content_hash TEXT NOT NULL,
+ policy_status TEXT NOT NULL,analysis_allowed INTEGER NOT NULL CHECK(analysis_allowed IN (0,1)),
+ event_promotion_allowed INTEGER NOT NULL CHECK(event_promotion_allowed IN (0,1)),
+ judge_evidence_allowed INTEGER NOT NULL CHECK(judge_evidence_allowed IN (0,1)),
+ historical_case_allowed INTEGER NOT NULL CHECK(historical_case_allowed IN (0,1)),
+ reason TEXT NOT NULL,decision_ids_json TEXT NOT NULL DEFAULT '[]',policy_version TEXT NOT NULL,
+ applied_at TEXT NOT NULL,PRIMARY KEY(post_id,content_hash));
 CREATE INDEX IF NOT EXISTS ix_processing_jobs_status ON processing_jobs(status,next_attempt_at,id);
 CREATE INDEX IF NOT EXISTS ix_reset_candidates_status ON reset_event_candidates(status,updated_at DESC);
+CREATE INDEX IF NOT EXISTS ix_post_content_policies_post ON post_content_policies(post_id,content_hash);
 """
 
 CORPUS_TABLES_SQL = """
@@ -234,12 +243,143 @@ class Database:
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(3,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(4,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(5,?)", (now,))
+            connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(6,?)", (now,))
 
     def counts(self) -> dict[str, int]:
         with self.connect() as connection:
             return {table: int(connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]) for table in (
                 "tibo_posts", "reset_events", "reset_event_candidates", "post_analysis", "radar_judgements", "processing_jobs",
-                "post_source_evidence", "historical_cases", "historical_import_batches", "historical_event_dispositions")}
+                "post_content_policies", "post_source_evidence", "historical_cases", "historical_import_batches",
+                "historical_event_dispositions")}
+
+    def upsert_content_policy(self, policy: dict[str, Any]) -> dict[str, Any]:
+        """Attach use restrictions to one immutable content version.
+
+        Policies are deliberately keyed by both the post and its content hash. A
+        later corrected capture does not inherit an obsolete restriction, but it
+        stays quarantined until that new version receives an explicit policy.
+        Posts that have never had a policy keep the normal realtime defaults.
+        """
+        tweet_id = str(policy["tweet_id"])
+        expected_hash = str(policy["content_hash"])
+        fields = (
+            "analysis_allowed",
+            "event_promotion_allowed",
+            "judge_evidence_allowed",
+            "historical_case_allowed",
+        )
+        if any(not isinstance(policy.get(field), bool) for field in fields):
+            raise ValueError("content policy use flags must be booleans")
+        decision_ids = [str(item) for item in policy.get("decision_ids") or []]
+        with self.connect() as connection:
+            post = connection.execute(
+                "SELECT id,text_hash FROM tibo_posts WHERE tweet_id=?", (tweet_id,)
+            ).fetchone()
+            if post is None:
+                raise ValueError(f"unknown content-policy tweet ID: {tweet_id}")
+            connection.execute(
+                """INSERT INTO post_content_policies(
+                post_id,content_hash,policy_status,analysis_allowed,event_promotion_allowed,
+                judge_evidence_allowed,historical_case_allowed,reason,decision_ids_json,policy_version,applied_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(post_id,content_hash) DO UPDATE SET
+                policy_status=excluded.policy_status,analysis_allowed=excluded.analysis_allowed,
+                event_promotion_allowed=excluded.event_promotion_allowed,
+                judge_evidence_allowed=excluded.judge_evidence_allowed,
+                historical_case_allowed=excluded.historical_case_allowed,reason=excluded.reason,
+                decision_ids_json=excluded.decision_ids_json,policy_version=excluded.policy_version,
+                applied_at=excluded.applied_at""",
+                (
+                    post["id"], expected_hash, str(policy.get("policy_status") or "RESTRICTED"),
+                    *(1 if policy[field] else 0 for field in fields),
+                    str(policy.get("reason") or "reviewed content-use policy"),
+                    json.dumps(decision_ids, ensure_ascii=False),
+                    str(policy.get("policy_version") or "content-policy-v1"), utc_now(),
+                ),
+            )
+        return {
+            "tweet_id": tweet_id,
+            "content_hash": expected_hash,
+            "current_content_hash": str(post["text_hash"]),
+            "applies_to_current_content": expected_hash == str(post["text_hash"]),
+        }
+
+    def content_policy(self, post_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            post = connection.execute("SELECT text_hash FROM tibo_posts WHERE id=?", (post_id,)).fetchone()
+            if post is None:
+                return None
+            exact = connection.execute(
+                "SELECT * FROM post_content_policies WHERE post_id=? AND content_hash=?",
+                (post_id, post["text_hash"]),
+            ).fetchone()
+            if exact is not None:
+                result = dict(exact)
+                result["decision_ids"] = json.loads(result.pop("decision_ids_json") or "[]")
+                for field in (
+                    "analysis_allowed", "event_promotion_allowed", "judge_evidence_allowed",
+                    "historical_case_allowed",
+                ):
+                    result[field] = bool(result[field])
+                result["content_version_matches"] = True
+                return result
+            history = connection.execute(
+                "SELECT 1 FROM post_content_policies WHERE post_id=? LIMIT 1", (post_id,)
+            ).fetchone()
+        if history is None:
+            return None
+        return {
+            "post_id": post_id,
+            "content_hash": str(post["text_hash"]),
+            "policy_status": "CONTENT_VERSION_CHANGED_REVIEW_REQUIRED",
+            "analysis_allowed": False,
+            "event_promotion_allowed": False,
+            "judge_evidence_allowed": False,
+            "historical_case_allowed": False,
+            "reason": "content changed after a reviewed restriction; re-analysis is required",
+            "decision_ids": [],
+            "policy_version": "content-policy-v1",
+            "content_version_matches": False,
+        }
+
+    def content_use_allowed(self, post: dict[str, Any], use: str) -> bool:
+        field = {
+            "analysis": "analysis_allowed",
+            "event_promotion": "event_promotion_allowed",
+            "judge_evidence": "judge_evidence_allowed",
+            "historical_case": "historical_case_allowed",
+        }.get(use)
+        if field is None:
+            raise ValueError(f"unknown content use: {use}")
+        policy = self.content_policy(int(post["id"]))
+        return policy is None or bool(policy[field])
+
+    def restricted_tweet_ids(self, use: str) -> set[str]:
+        column = {
+            "analysis": "analysis_allowed",
+            "event_promotion": "event_promotion_allowed",
+            "judge_evidence": "judge_evidence_allowed",
+            "historical_case": "historical_case_allowed",
+        }.get(use)
+        if column is None:
+            raise ValueError(f"unknown content use: {use}")
+        with self.connect() as connection:
+            rows = connection.execute(
+                f"""SELECT p.tweet_id FROM tibo_posts p
+                WHERE EXISTS(SELECT 1 FROM post_content_policies any_policy WHERE any_policy.post_id=p.id)
+                AND NOT EXISTS(SELECT 1 FROM post_content_policies exact_policy
+                    WHERE exact_policy.post_id=p.id AND exact_policy.content_hash=p.text_hash
+                    AND exact_policy.{column}=1)"""
+            ).fetchall()
+        return {str(row["tweet_id"]) for row in rows}
+
+    def mark_post_input_restricted(self, post_id: int, reason: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """UPDATE tibo_posts SET analysis_status='INPUT_RESTRICTED',processing_error=?,updated_at=?
+                WHERE id=?""",
+                (reason[:1000], utc_now(), post_id),
+            )
 
     def upsert_posts_detailed(self, posts: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
@@ -692,6 +832,7 @@ class Database:
             else:
                 rows = connection.execute("SELECT * FROM historical_cases WHERE active=1 ORDER BY posted_at DESC").fetchall()
         current_post_ids = {int(post["id"]) for post in posts if post.get("id") is not None}
+        restricted_tweet_ids = self.restricted_tweet_ids("historical_case")
         corpus_text = " ".join(str(post.get("original_text") or post.get("text") or "").lower() for post in posts)
         keyword_tags = {
             "banked": ("banked", "reset card"), "explicit_future": ("will", "landing", "next hour", "tomorrow"),
@@ -713,6 +854,12 @@ class Database:
                 continue
             item["pattern_tags"] = json.loads(item.pop("pattern_tags_json") or "[]")
             item["related_tweet_ids"] = json.loads(item.pop("related_tweet_ids_json") or "[]")
+            if item.get("post_id") is not None:
+                linked_post = self.get_post(int(item["post_id"]))
+                if linked_post and not self.content_use_allowed(linked_post, "historical_case"):
+                    continue
+            if restricted_tweet_ids.intersection(str(value) for value in item["related_tweet_ids"]):
+                continue
             overlap = len(current_tags.intersection(item["pattern_tags"]))
             score = overlap * 10 + self._verification_rank(item["verification_status"])
             scored.append((score, item))
@@ -1021,14 +1168,44 @@ class Database:
         return dict(row) if row else None
 
     def judgement_context(self, post_limit: int = 24, *, as_of: str | datetime | None = None) -> dict[str, Any]:
-        source_posts = [p for p in self.list_posts(post_limit, as_of=as_of) if p.get("analysis")]
+        candidates = self.list_posts(min(100, max(post_limit * 4, post_limit)), as_of=as_of)
+        source_posts = [
+            post for post in candidates
+            if post.get("analysis") and self.content_use_allowed(post, "judge_evidence")
+        ][:post_limit]
         posts = [{"tweet_id": p["tweet_id"], "posted_at": p["posted_at"], "text": p["original_text"],
                   "is_reply": p["is_reply"], "analysis": p.get("analysis")}
                  for p in source_posts]
-        return {"posts": posts, "reset_events": self.list_reset_events(12, as_of=as_of),
-                "last_full_reset": self.last_full_reset(as_of=as_of),
-                "current_cycle": self.current_cycle(as_of=as_of),
-                "previous_judgement": self.latest_judgement(as_of=as_of),
+        restricted = self.restricted_tweet_ids("judge_evidence")
+        eligible_events: list[dict[str, Any]] = []
+        for event in self.list_reset_events(200, as_of=as_of):
+            original_evidence = [str(item) for item in event.get("evidence_post_ids") or []]
+            eligible_evidence = [item for item in original_evidence if item not in restricted]
+            if original_evidence and not eligible_evidence:
+                continue
+            current = dict(event)
+            current["evidence_post_ids"] = eligible_evidence
+            eligible_events.append(current)
+        reset_events = eligible_events[:12]
+        last_full_reset = next((event for event in eligible_events if event["event_type"] == "FULL_RESET"), None)
+        current_cycle = None
+        if last_full_reset is not None:
+            with self.connect() as connection:
+                row = connection.execute(
+                    "SELECT * FROM reset_cycles WHERE opened_by_reset_event_id=?",
+                    (last_full_reset["id"],),
+                ).fetchone()
+            if row is not None:
+                current_cycle = dict(row)
+                current_cycle["ended_at"] = None
+                current_cycle["closed_by_reset_event_id"] = None
+        previous_judgement = self.latest_judgement(as_of=as_of)
+        if previous_judgement and not self.judgement_is_usable(previous_judgement, at=as_of):
+            previous_judgement = None
+        return {"posts": posts, "reset_events": reset_events,
+                "last_full_reset": last_full_reset,
+                "current_cycle": current_cycle,
+                "previous_judgement": previous_judgement,
                 "corpus_version": self.corpus_version(),
                 "historical_cases": self.retrieve_historical_cases(source_posts, as_of=as_of)}
 
@@ -1047,6 +1224,9 @@ class Database:
             missing = sorted(set(evidence) - found)
             if missing:
                 raise ValueError(f"unknown evidence tweet IDs: {', '.join(missing)}")
+            restricted = sorted(set(evidence).intersection(self.restricted_tweet_ids("judge_evidence")))
+            if restricted:
+                raise ValueError(f"content-policy-ineligible evidence tweet IDs: {', '.join(restricted)}")
         with self.connect() as connection:
             cursor = connection.execute("""INSERT INTO radar_judgements(created_at,action_level,horizon_24h,horizon_48h,horizon_72h,
                 data_health,reason_summary,evidence_post_ids,special_event_ids,model,prompt_version,estimated_start,estimated_end,
@@ -1076,6 +1256,20 @@ class Database:
             return None
         result = dict(row); result["evidence_post_ids"] = json.loads(result["evidence_post_ids"]); result["special_event_ids"] = json.loads(result["special_event_ids"]); result["historical_case_ids"] = json.loads(result.get("historical_case_ids") or "[]"); result["raw"] = json.loads(result.pop("raw_json") or "{}")
         return result
+
+    def judgement_is_usable(
+        self,
+        judgement: dict[str, Any],
+        *,
+        at: str | datetime | None = None,
+    ) -> bool:
+        reference = normalise_time(at) if at is not None else utc_now()
+        if judgement.get("status") != "COMPLETED" or not judgement.get("valid_until"):
+            return False
+        if str(judgement["valid_until"]) < str(reference):
+            return False
+        evidence = {str(item) for item in judgement.get("evidence_post_ids") or []}
+        return not evidence.intersection(self.restricted_tweet_ids("judge_evidence"))
 
     def set_state(self, key: str, value: Any) -> None:
         with self.connect() as connection:

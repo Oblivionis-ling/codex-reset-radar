@@ -83,6 +83,7 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
 
     def radar_payload() -> dict[str, Any]:
         judgement = database.latest_judgement()
+        judgement_usable = bool(judgement and database.judgement_is_usable(judgement))
         judge_state = database.get_state("judge", {"status": "waiting"})
         pipeline_state = database.get_state("pipeline", {"status": "waiting"})
         last_full = database.last_full_reset()
@@ -91,7 +92,7 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
             for event in database.list_reset_events(20)
             if event["event_type"] == "SPECIAL_RESET"
         ][:5]
-        if judgement:
+        if judgement and judgement_usable:
             payload = {
                 "action_level": judgement["action_level"],
                 "horizon_24h": judgement["horizon_24h"],
@@ -115,11 +116,19 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
             }
         else:
             state = str(judge_state.get("status") or pipeline_state.get("status") or "waiting")
-            reason = {
-                "processing": "采集正常，首次 DeepSeek 判断正在进行中。",
-                "failed": f"采集数据仍保留，但模型请求失败：{judge_state.get('last_error') or '未知错误'}",
-                "blocked": "DeepSeek 未配置，无法生成可靠判断。",
-            }.get(state, "首次判断尚未完成。")
+            if judgement:
+                state = "stale" if judgement.get("valid_until") and judgement["valid_until"] < datetime.now(UTC).isoformat().replace("+00:00", "Z") else "invalid"
+                reason = (
+                    "最近一次判断已过有效期，当前不再显示其等级。"
+                    if state == "stale"
+                    else "最近一次判断引用了当前不可用的内容，已停止作为实时结论展示。"
+                )
+            else:
+                reason = {
+                    "processing": "采集正常，首次 DeepSeek 判断正在进行中。",
+                    "failed": f"采集数据仍保留，但模型请求失败：{judge_state.get('last_error') or '未知错误'}",
+                    "blocked": "DeepSeek 未配置，无法生成可靠判断。",
+                }.get(state, "首次判断尚未完成。")
             payload = {
                 "action_level": "UNKNOWN",
                 "horizon_24h": "UNKNOWN",
@@ -129,14 +138,14 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                 "reason_summary": reason,
                 "evidence_post_ids": [],
                 "special_event_ids": [],
-                "model": None,
-                "prompt_version": "v2-reset-judge-1",
-                "judged_at": None,
-                "valid_until": None,
+                "model": judgement.get("model") if judgement else None,
+                "prompt_version": judgement.get("prompt_version") if judgement else "v2-reset-judge-1",
+                "judged_at": judgement.get("created_at") if judgement else None,
+                "valid_until": judgement.get("valid_until") if judgement else None,
                 "estimated_start": None,
                 "estimated_end": None,
                 "estimate_basis": "当前尚无已完成的模型判断。",
-                "judgement_id": None,
+                "judgement_id": judgement.get("id") if judgement else None,
                 "corpus_version": database.corpus_version(),
                 "historical_case_ids": [],
                 "judgement_state": state,
