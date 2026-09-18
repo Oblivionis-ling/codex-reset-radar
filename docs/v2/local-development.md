@@ -64,4 +64,4 @@ npm run typecheck
 npm run build
 ```
 
-The correct Alpha 1 Radar state can be entirely `UNKNOWN`. Verify in browser developer tools that the Web requests only localhost `/api/v2/*`; there must be no Raw GitHub, data-branch, or Pages request.
+Alpha 2 requires `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL` for the intelligence pipeline. An `UNKNOWN` result is valid only when the API also explains whether evidence is insufficient, processing is still running, the result is stale, or the model request failed. Verify in browser developer tools that the Web requests only localhost `/api/v2/*`; there must be no Raw GitHub, data-branch, or Pages request.

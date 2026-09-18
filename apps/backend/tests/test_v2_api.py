@@ -5,7 +5,7 @@ def test_health_exposes_shared_version_and_no_github_runtime(client):
     response = client.get("/api/v2/health")
     assert response.status_code == 200
     payload = response.json()
-    assert payload["version"] == "2.0.0-alpha.1"
+    assert payload["version"] == "2.0.0-alpha.2"
     assert payload["status"] == "healthy"
     assert payload["runtime"]["github_mirror_enabled"] is False
     assert payload["runtime"]["pages_dependency"] is False

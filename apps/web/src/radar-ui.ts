@@ -21,6 +21,12 @@ export function formatTime(value: string | null): string {
   return Number.isFinite(date.getTime()) ? date.toLocaleString("zh-CN", { hour12: false }) : "未知";
 }
 
+export function compactBasis(value: string): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  const firstSentence = normalized.match(/^.*?[。！？]/)?.[0]?.trim() ?? normalized;
+  return firstSentence.length > 180 ? `${firstSentence.slice(0, 177)}…` : firstSentence;
+}
+
 export function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replaceAll("&", "&amp;")

@@ -8,16 +8,19 @@ It collects Tibo's public X posts, preserves reset history, and exposes a stable
 
 ## V2 status
 
-The current release target is **V2 Foundation Alpha 1** (`2.0.0-alpha.1`). It provides:
+The current release target is **V2 Local Intelligence Alpha 2** (`2.0.0-alpha.2`). It provides:
 
 - a FastAPI Backend with a new isolated SQLite schema;
 - a local Vite Web app that reads only `/api/v2/*`;
 - the existing browser Extension as a transitional collector adapter;
 - bounded local JSONL logs and in-memory collector heartbeat state;
 - read-only V1 post migration with explicit Reset review candidates;
+- a persistent post-analysis, translation, Reset-event and DeepSeek Judge pipeline;
+- a source-attributed historical corpus with idempotent imports, evidence dispositions, reviewed cases,
+  and strict separation from realtime Judge/notification triggers;
 - one-command local start and project-scoped stop scripts.
 
-The DeepSeek Judge, historical corpus, server collector, final UI, notification redesign, and overseas deployment are intentionally outside this alpha.
+Server collection, final UI, notification redesign, and overseas deployment remain outside this alpha.
 
 The repository's `main` branch is the V2 local full-stack source. GitHub provides source history and CI only; it is not a live product endpoint.
 
@@ -51,6 +54,7 @@ scripts/                    V2 migration and local lifecycle scripts
 backend/data/               local legacy V1 data; ignored and preserved
 runtime/                    generated V2 database, logs, and PID records
 data/analysis/              generated migration review artifacts; ignored
+data/corpus/                ignored historical source snapshots and local evidence material
 ```
 
 ## Local development
@@ -88,7 +92,7 @@ The legacy V1 database under `backend/data/` remains local and read-only until m
 - Full Reset: a historical event that opens a new Reset cycle, not a persistent risk level
 - Confidence percentages: not part of the public V2 contract
 
-Alpha 1 correctly returns `UNKNOWN` until a later Judge is enabled. See [Product model](docs/v2/product-model.md).
+Alpha 2 runs the configured DeepSeek Judge; `UNKNOWN` now means the model could not make a reliable judgement or the runtime reports a specific processing/failure state. See [Product model](docs/v2/product-model.md).
 
 ## V1 legacy snapshot
 
@@ -104,7 +108,7 @@ V2 is validated as a complete local stack first. A later phase may deploy the Ba
 
 - Never commit `.env`, API tokens, cookies, browser profiles, SQLite files, runtime logs, or generated corpora.
 - Copy `.env.example` to `.env` only for local configuration.
-- The Alpha 1 runtime does not send real notifications or call a semantic Judge.
+- The Alpha 2 runtime calls the configured DeepSeek model for local analysis and Judge results, but does not send real notifications.
 - Tests use data explicitly labelled as synthetic fixtures; the repository must not invent Reset history or Tibo posts.
 
 ## Validation
