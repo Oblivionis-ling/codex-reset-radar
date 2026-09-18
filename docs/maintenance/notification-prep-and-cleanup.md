@@ -91,7 +91,50 @@ pending/unknown, status queries, absent optional config, redaction, Unicode/leng
 retry, SMTP success/auth/refusal/TLS/timeout, fallback dedup and network blocking. Results and full
 product regression are recorded below after final execution.
 
-<!-- FINAL_VALIDATION_RESULTS -->
+### Working tree
+
+- Backend: 54 passed, including 14 notification-specific tests.
+- Web: 6 passed; typecheck passed; production build passed.
+- Collector Extension: 12 passed; typecheck passed; production build passed.
+- Unified offline selftest: 9 channel variants `OFFLINE_PASS`; real sends 0.
+- `prepare`, `preview`, startup reuse and a `send` command without `--live` were exercised; none sent.
+- `git diff --check`: passed. Changed-file secret scan: no credential found.
+- Changed/current documentation links: passed; unrelated retained V1 reports still contain pre-existing
+  links to removed V1 fixtures/screenshots and were not rewritten as current documentation.
+
+### Clean checkout
+
+Commit `8a45d268e7b289d458e67fc4b2a278d0c8320f44` was checked out into a disposable worktree containing
+only committed files. Results matched the working tree: Backend 54, Web 6, Collector 12, both frontend
+builds/typechecks, and all 9 offline notification variants passed. A clean empty SQLite database
+initialised schemas 1–6, returned no foreign-key violations and served a healthy Alpha 4 API with
+model processing disabled. The disposable worktree was then removed.
+
+The tracked Backend test count is 54. The previously untracked one-time historical test moved to the
+local archive and is intentionally not a release dependency; tests were not hidden or deleted to make
+the clean run pass.
+
+### Current runtime
+
+- Backend `2.0.0-alpha.4`: `127.0.0.1:8787`, PID 22728, healthy.
+- Web: `127.0.0.1:5173`, PID 5768, HTTP 200.
+- Profile / Replies / Search: healthy; 370 posts, 14 events, 132 judgements.
+- Pipeline and Judge: ready; current Judge ID 132 was produced by normal scheduling, not this
+  notification preparation.
+- The two long-running processes started before this branch commit. They were deliberately reused
+  because notification preparation is not imported by the Backend runtime; restarting could cause an
+  unnecessary model schedule. The manual notification CLI loads the committed code on each run.
+- No product-database migration or write was required, so no new production backup was necessary.
+
+### Git and release boundary
+
+- Local branch/checkpoint: `notification-prep-20260919` / `8a45d26`.
+- Remote push: not performed. CI: not started. Merge to `main`: not performed. Tag: not created.
+- App version remains `2.0.0-alpha.4` until manual channel tests justify a later release decision.
+- After cleanup, `docs/` contains 84 files / 3,468,120 bytes. The increase is the three current
+  notification/maintenance documents; actual disk release remains 0 bytes.
+
+Overall preparation state: **READY_FOR_USER_TEST**.
 
 ## Stop point
 
