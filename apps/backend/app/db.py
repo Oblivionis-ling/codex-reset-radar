@@ -887,19 +887,30 @@ class Database:
         with self.connect() as connection:
             existing = connection.execute("SELECT * FROM reset_events WHERE event_key=?", (event_key,)).fetchone()
             if existing is None and not event.get("event_key"):
-                # Compatibility with already assigned legacy keys. Exact time and
-                # overlapping evidence identify the same occurrence; time alone
-                # must never merge two independently evidenced events.
+                # Compatibility with already assigned legacy keys. A reviewed
+                # event can already carry a time range and the later evidence
+                # post. Reprocessing that post must reuse the reviewed event,
+                # but proximity or time alone must never merge independent
+                # events. Require both shared evidence and overlapping ranges.
                 matches = connection.execute(
-                    "SELECT * FROM reset_events WHERE event_type=? AND special_type IS ? AND occurred_at=?",
-                    (event_type, special_type, occurred_at),
+                    "SELECT * FROM reset_events WHERE event_type=? AND special_type IS ?",
+                    (event_type, special_type),
                 ).fetchall()
-                compatible = [row for row in matches if
-                    (set(json.loads(row["evidence_post_ids"] or "[]")) & set(evidence)) or
-                    (not evidence and not json.loads(row["evidence_post_ids"] or "[]")
-                     and row["source_post_id"] == event.get("source_post_id"))]
+                incoming_end = normalise_time(event.get("occurred_at_end")) or occurred_at
+                compatible = []
+                for row in matches:
+                    row_evidence = set(json.loads(row["evidence_post_ids"] or "[]"))
+                    row_end = row["occurred_at_end"] or row["occurred_at"]
+                    ranges_overlap = occurred_at <= row_end and row["occurred_at"] <= incoming_end
+                    if (row_evidence & set(evidence) and ranges_overlap) or (
+                        not evidence and not row_evidence and row["occurred_at"] == occurred_at
+                        and row["source_post_id"] == event.get("source_post_id")
+                    ):
+                        compatible.append(row)
                 if len(compatible) == 1:
                     existing = compatible[0]
+                elif len(compatible) > 1:
+                    raise ValueError("reset evidence overlaps multiple existing events")
             if existing:
                 if existing["event_type"] != event_type or existing["special_type"] != special_type:
                     raise ValueError("explicit event key cannot change event mechanism")

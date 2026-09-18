@@ -109,6 +109,29 @@ def test_two_explicitly_linked_reports_of_same_reset_merge_evidence(settings):
     assert merged["evidence_post_ids"] == ["fixture-a", "fixture-b"]
 
 
+def test_reviewed_event_range_prevents_reprocessing_its_evidence_as_a_duplicate(settings):
+    database = Database(settings.database_path)
+    database.initialize()
+    reviewed = event("FULL_RESET", "2026-09-01T02:29:00Z") | {
+        "event_key": "reviewed-existing-event",
+        "occurred_at_end": "2026-09-01T02:34:00Z",
+        "scope": "all_paid",
+        "evidence_post_ids": ["fixture-a", "fixture-b"],
+    }
+    existing = database.record_reset_event(reviewed)
+    replayed = event("FULL_RESET", "2026-09-01T02:34:00Z") | {
+        "scope": "all_paid",
+        "evidence_post_ids": ["fixture-b"],
+    }
+
+    merged = database.record_reset_event(replayed)
+
+    assert merged["id"] == existing["id"]
+    assert merged["evidence_post_ids"] == ["fixture-a", "fixture-b"]
+    assert len(database.list_reset_events()) == 1
+    assert len(database.cycles()) == 1
+
+
 def test_nearby_distinct_resets_survive_restarts_without_cycle_id_changes(settings):
     database = Database(settings.database_path)
     database.initialize()
