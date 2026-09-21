@@ -25,7 +25,7 @@ GitHub is used for source, docs, CI, and version history. The legacy `data` bran
 ## Components
 
 - `apps/backend/app`: active V2 Backend.
-- `apps/backend/legacy_v1`: archived V1 Backend source; not imported by V2.
+- `legacy/v1/backend`: archived V1 Backend source; not imported by V2.
 - `apps/web`: local Radar product surface and minimal `/ops` placeholder.
 - `apps/collector-extension`: existing Profile/Replies/Search collector adapted to V2 compatibility endpoints.
 - `scripts/migrate_v1_to_v2.py`: explicit read-only V1 import path.
@@ -59,7 +59,8 @@ old results and late model results are discarded before promotion. Previously re
 are preserved and conflicting context reanalysis is recorded for review.
 
 Live browser contract verification is tracked in
-`../maintenance/reply-context-fix-report.md`; offline tests are not delivery evidence.
+[the historical reply-context report](../archive/incidents/reply-context-fix-report.md) and
+[current repair acceptance](../maintenance/judge-context-and-health-fix-report.md); offline tests are not delivery evidence.
 
 ## Local security model
 

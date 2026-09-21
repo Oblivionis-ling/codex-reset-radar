@@ -34,6 +34,14 @@ not, by itself, raise the main level. A mixed Full + Banked post still contribut
 Full effect. This is a judgement boundary, not a forced GREEN rule or a lexical score.
 Special events keep their independent record/presentation and never open Full cycles.
 
-Alpha 2 implements the DeepSeek Judge using bounded, attributable evidence. The model performs semantic judgement; code validates output enums, evidence IDs, time fields, current-cycle association, and cumulative 24/48/72-hour ordering. It is not a hand-written keyword score and this project does not train an ML model.
+The current pipeline implements the DeepSeek Judge using bounded, attributable evidence. The model performs semantic judgement; code validates output enums, evidence IDs, time fields, current-cycle association, and cumulative 24/48/72-hour ordering. It is not a hand-written keyword score and this project does not train an ML model.
+
+An invalid, expired or stale-data result produces a white current action area with an explicit
+reason. A last-known result may be shown separately, never relabelled fresh after a heartbeat.
+Genuine model UNKNOWN is distinguished from a failed validation or request.
+
+Purple pending Banked/reset-card announcements are labelled “待核验 / 尚未确认发放”.
+They are not completed special events, do not change Full cycles and do not imply personal receipt.
+An ambiguous date remains unknown; stale collection also makes announcements last-known information.
 
 The public contract intentionally contains no confidence percentage, probability badge, or hidden chain-of-thought. Persisted analysis contains structured evidence and concise summaries only.

@@ -1,7 +1,5 @@
 # V2 Backend
 
-The active V2 Backend is a small FastAPI application backed by a new SQLite database under runtime/data. It does not start a GitHub Mirror task, publish public-data, or depend on Pages.
+FastAPI、SQLite、持久任务、DeepSeek 分析/翻译/Judge。正式代码在 `app/`，回归在 `tests/`；历史源码归档于 `legacy/v1/backend/`，不被 V2 导入。
 
-Run all commands from the repository root. See docs/v2/local-development.md.
-
-The legacy_v1 directory is retained as transitional source reference and migration context. It is not imported by the V2 startup path.
+从项目根目录使用 `start-v2-local.bat`。安装与测试命令统一查[本地运行指南](../../docs/v2/local-development.md)，接口查[API 契约](../../docs/v2/api-contract.md)。生产数据库位于 `runtime/data/`，不提交 Git。

@@ -21,10 +21,19 @@ cd ..\collector-extension
 npm ci
 cd ..\..
 
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-If the preserved V1 environment at `backend/.venv` already satisfies the V2 requirements, the launcher can temporarily use it. A fresh `apps/backend/.venv` is preferred for reproducibility.
+The launcher uses only `apps/backend/.venv/Scripts/python.exe`. It fails with setup instructions
+when that environment is missing; there is no silent fallback to the old V1 environment.
+Do not copy or move an existing virtual environment between paths: recreate it from dependencies.
+
+Build the Collector with `npm run build` in `apps/collector-extension`, then use Edge's extensions
+page (Developer mode, Load unpacked) to select the absolute project `apps/collector-extension/dist`.
+Verify the extension details show that directory; a successful disk build alone does not prove it.
+Keep the signed-in Profile `https://x.com/thsottiaux` and Replies
+`https://x.com/thsottiaux/with_replies` pages available. After an explicit extension update, reload
+the extension and refresh those pages. Do not close the daily browser or export cookies.
 
 ## Start and stop
 
@@ -32,7 +41,9 @@ If the preserved V1 environment at `backend/.venv` already satisfies the V2 requ
 .\start-v2-local.bat
 ```
 
-The launcher starts the Backend and Web as hidden child processes, records their exact PID, process start time, executable, and command line under ignored `runtime/pids/`, and checks both HTTP endpoints. It will not start an unrelated fallback Backend.
+The launcher asks the Windows WMI service to create a hidden launcher outside the calling terminal or Codex app's process lifetime. That launcher starts Backend and Web, records their exact PID, process start time, executable, and command line under ignored `runtime/pids/`, and checks both HTTP endpoints. Closing or updating the calling app does not own these new processes. Existing healthy project processes are reused; after upgrading from the old launcher, run stop then start once to replace old processes. A WMI failure is reported without silently falling back to attached child processes.
+
+This is an on-demand launch, not a Windows service, auto-start task, or crash watchdog. Windows logout/reboot still requires starting the project again. No account password or administrator task registration is required. Startup diagnostics are appended to `runtime/launcher/startup.log`; previous stdout/stderr files are timestamped before a fresh launch so restart does not erase the previous exit evidence.
 
 ```powershell
 .\stop-v2-local.bat
@@ -48,7 +59,19 @@ URLs:
 
 Runtime stdout/stderr is written under `runtime/launcher/`; application JSONL logs are under `runtime/logs/`. Both locations are ignored.
 
+The database is `runtime/data/codex-reset-radar-v2.db`; preserve its SQLite sidecars while running.
+Health GETs do not create heartbeats or call the model. Log retention does not apply to corpus,
+backups, decisions or fixed acceptance evidence. Data policy: [local assets](../../data/README.md).
+
 ## Validation
+
+Windows launcher isolation regression (harmless test processes only; no model calls):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\test-v2-detached-launch.ps1
+```
+
+It kills the test caller's process tree and verifies that the WMI-created test process survives. It cleans up its own probe afterwards. This tests process isolation without closing the user's Codex session.
 
 ```powershell
 apps\backend\.venv\Scripts\python.exe -m pytest apps\backend\tests -q

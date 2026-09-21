@@ -24,7 +24,7 @@
 
 原文/翻译严格分离。现有语言盘点为英文 267、中文 71、未知 3；没有把中文反向翻译成英文原文。外部证据中 35 条为来源标记的 direct copy，46 条为第三方 quote；14 条 quote 可能截断，完整回复上下文仍未取得。
 
-详细结果：[historical-corpus-report.md](corpus/historical-corpus-report.md)
+详细结果：[historical-corpus-report.md](historical-corpus-report.md)
 
 ## 3. 覆盖
 
@@ -50,7 +50,7 @@
 
 覆盖不足的结论已经明确：不能计算可靠预测概率，不能把关键词变成固定升色规则，不能把没有找到后续事件当作负样本，也不能把确认帖发布时间冒充精确后台执行时间。
 
-详细分析：[tibo-language-patterns.md](corpus/tibo-language-patterns.md)
+详细分析：[tibo-language-patterns.md](../../v2/corpus/tibo-language-patterns.md)
 
 ## 6. Judge 集成
 
@@ -86,7 +86,7 @@ WxPusher 保持固定备选，不恢复为默认主渠道。标准应用具备 U
 
 真实发送：**未执行**。
 
-完整证据与 1/100/1,000 用户容量比较见 [wechat-channel-research.md](notifications/wechat-channel-research.md)。
+完整证据与 1/100/1,000 用户容量比较见 [wechat-channel-research.md](../notifications/wechat-channel-research.md)。
 
 ## 8. 回归与数据安全
 

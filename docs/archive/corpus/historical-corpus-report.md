@@ -95,7 +95,7 @@ API 的 `corpus.conflicts` 现在采用“冲突证据行”口径，值为 15�
 
 ## 7. 表达分析
 
-实际分析见 [tibo-language-patterns.md](tibo-language-patterns.md)。目前有证据支持的六类观察是：
+实际分析见 [tibo-language-patterns.md](../../v2/corpus/tibo-language-patterns.md)。目前有证据支持的六类观察是：
 
 1. 明确动作、完成态和适用范围是最强信号。
 2. `will land`、`by ...`、`tomorrow` 等未来时点有用，但时间可能修正。

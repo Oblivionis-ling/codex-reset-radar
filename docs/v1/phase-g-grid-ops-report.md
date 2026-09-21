@@ -83,11 +83,11 @@ Phase G 的 Dashboard 视觉重构已在本地完成，业务数据与路由保�
 
 验收截图：
 
-- [中文 Desktop 首页](phase-g-screenshots/overview-zh-desktop.png)
-- [English Desktop 首页](phase-g-screenshots/overview-en-desktop.png)
-- [中文 Tweets](phase-g-screenshots/tweets-zh-desktop.png)
-- [中文 Resets](phase-g-screenshots/resets-zh-desktop.png)
-- [390px 中文首页](phase-g-screenshots/overview-zh-mobile.png)
+- [中文 Desktop 首页](design/phase-g-screenshots/overview-zh-desktop.png)
+- [English Desktop 首页](design/phase-g-screenshots/overview-en-desktop.png)
+- [中文 Tweets](design/phase-g-screenshots/tweets-zh-desktop.png)
+- [中文 Resets](design/phase-g-screenshots/resets-zh-desktop.png)
+- [390px 中文首页](design/phase-g-screenshots/overview-zh-mobile.png)
 
 ## Tests
 

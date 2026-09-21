@@ -88,7 +88,19 @@ The current posts API includes `reply_context` and `context_acquisition`. Recons
 parents observed after a replay cutoff are conservatively excluded, even if their claimed
 posting time is earlier. Body-only canonical cache hits do not manufacture ancestor relations.
 
-### `schema_versions`
+### Content policy and Judge storage boundary
+
+`post_content_policies` stores content-version-scoped restrictions and field-level review
+provenance. Restrictions apply before event promotion and before text reaches Judge through
+recent posts, associated context or historical cases; a site label alone is not a quality rule.
+
+SQLite stores Judge model output in `raw_json`; the sole database decoding boundary exposes
+internal `raw`. `input_versions` records actual semantic input hashes; new rows also keep
+`input_post_ids`, triggers and pending inputs. Malformed JSON/types or conflicting representations
+are explicit contract errors, not an empty legacy dictionary. Validation checks expiry, cycle,
+evidence eligibility and target/parent/ancestor versions without rewriting old answers.
+
+### Schema version ledger
 
 Applied database schema versions and timestamps.
 
