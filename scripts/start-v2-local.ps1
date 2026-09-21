@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([switch]$DetachedWorker)
 
 $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "common-v2.ps1")
@@ -12,6 +12,18 @@ $launcherLogRoot = Join-Path $runtimeRoot "launcher"
 $appVersion = (Get-Content -LiteralPath (Join-Path $repositoryRoot "VERSION") -Raw).Trim()
 
 New-Item -ItemType Directory -Force -Path $pidRoot, $launcherLogRoot | Out-Null
+
+if ($DetachedWorker) {
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    $rootHash = [BitConverter]::ToString($hasher.ComputeHash([Text.Encoding]::UTF8.GetBytes($repositoryRoot.ToLowerInvariant()))).Replace('-', '')
+    $hasher.Dispose()
+    $startupMutex = New-Object System.Threading.Mutex($false, "Local\CRR-Start-$rootHash")
+    try { $ownsStartup = $startupMutex.WaitOne(30000) }
+    catch [System.Threading.AbandonedMutexException] { $ownsStartup = $true }
+    if (-not $ownsStartup) { throw "Another project startup is still running." }
+    # Process exit releases this lock, including when startup fails.
+    Start-Transcript -Path (Join-Path $launcherLogRoot "startup.log") -Append | Out-Null
+}
 
 function Get-RecordedProcess {
     param([string]$Name)
@@ -92,6 +104,38 @@ function Wait-Endpoint {
     throw "Timed out waiting for $Url"
 }
 
+# WMI creates the launcher in the Windows service's process context, outside
+# the invoking terminal/app's job and packaged-app lifetime. Do not replace
+# this with Start-Process: a hidden window does not detach a Windows job.
+if (-not $DetachedWorker) {
+    $existingBackend = Get-RecordedProcess -Name "backend"
+    $existingWeb = Get-RecordedProcess -Name "web"
+    Assert-PortAvailable -Port 8787 -AllowedProcess $existingBackend
+    Assert-PortAvailable -Port 5173 -AllowedProcess $existingWeb
+    $powershell = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
+    $command = '"{0}" -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{1}" -DetachedWorker' -f $powershell, $PSCommandPath
+    $workerId = Start-CrrDetachedProcess -CommandLine $command
+    $deadline = [datetime]::UtcNow.AddSeconds(60)
+    do {
+        $worker = Get-Process -Id $workerId -ErrorAction SilentlyContinue
+        if (-not $worker) { break }
+        Start-Sleep -Milliseconds 500
+    } while ([datetime]::UtcNow -lt $deadline)
+    if ($worker) { throw "Detached startup timed out. See runtime/launcher/startup.log; the worker may still be starting." }
+    $backendProcess = Get-RecordedProcess -Name "backend"
+    $webProcess = Get-RecordedProcess -Name "web"
+    if (-not $backendProcess -or -not $webProcess) {
+        throw "Detached startup failed. See runtime/launcher/startup.log and backend.stderr.log."
+    }
+    Assert-PortAvailable -Port 8787 -AllowedProcess $backendProcess
+    Assert-PortAvailable -Port 5173 -AllowedProcess $webProcess
+    Wait-Endpoint -Url "http://127.0.0.1:8787/api/v2/health"
+    Wait-Endpoint -Url "http://127.0.0.1:5173/"
+    Write-Host "CRR $appVersion running. Backend PID $($backendProcess.Id); Web PID $($webProcess.Id)."
+    Write-Host "Web: http://127.0.0.1:5173/ | Stop: stop-v2-local.bat"
+    return
+}
+
 $python = Resolve-CrrPython -RepositoryRoot $repositoryRoot
 & $python -c "import fastapi, uvicorn" 2>$null
 if ($LASTEXITCODE -ne 0) {
@@ -117,6 +161,9 @@ try {
     if (-not $backendProcess) {
         $backendStdout = Join-Path $launcherLogRoot "backend.stdout.log"
         $backendStderr = Join-Path $launcherLogRoot "backend.stderr.log"
+        foreach ($log in @($backendStdout, $backendStderr)) {
+            if (Test-Path -LiteralPath $log) { Move-Item -LiteralPath $log -Destination "$log.$([datetime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ'))" }
+        }
         $backendLauncher = Start-Process -FilePath $python -ArgumentList @(
             "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8787"
         ) -WorkingDirectory $backendRoot -WindowStyle Hidden -RedirectStandardOutput $backendStdout -RedirectStandardError $backendStderr -PassThru
@@ -132,8 +179,11 @@ try {
     if (-not $webProcess) {
         $webStdout = Join-Path $launcherLogRoot "web.stdout.log"
         $webStderr = Join-Path $launcherLogRoot "web.stderr.log"
+        foreach ($log in @($webStdout, $webStderr)) {
+            if (Test-Path -LiteralPath $log) { Move-Item -LiteralPath $log -Destination "$log.$([datetime]::UtcNow.ToString('yyyyMMddTHHmmssfffffffZ'))" }
+        }
         $webProcess = Start-Process -FilePath $node -ArgumentList @(
-            $viteEntry, "--host", "127.0.0.1", "--port", "5173", "--strictPort"
+            ('"{0}"' -f $viteEntry), "--host", "127.0.0.1", "--port", "5173", "--strictPort"
         ) -WorkingDirectory $webRoot -WindowStyle Hidden -RedirectStandardOutput $webStdout -RedirectStandardError $webStderr -PassThru
         Save-ProcessRecord -Name "web" -Process $webProcess -CommandMarkers @("vite.js", "5173")
     }
