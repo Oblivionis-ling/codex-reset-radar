@@ -75,7 +75,7 @@ CREATE INDEX IF NOT EXISTS ix_radar_judgements_created_at ON radar_judgements(cr
 
 V2_TABLES_SQL = """
 CREATE TABLE IF NOT EXISTS processing_jobs(
- id INTEGER PRIMARY KEY AUTOINCREMENT,job_type TEXT NOT NULL CHECK(job_type='POST_PROCESSING'),entity_key TEXT NOT NULL,
+ id INTEGER PRIMARY KEY AUTOINCREMENT,job_type TEXT NOT NULL CHECK(job_type IN ('POST_PROCESSING','REPLY_CONTEXT')),entity_key TEXT NOT NULL,
  payload_json TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN ('PENDING','RUNNING','COMPLETED','FAILED')),
  attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at TEXT,last_error TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,
  UNIQUE(job_type,entity_key));
@@ -191,6 +191,8 @@ EVIDENCE_COLUMNS = {
 class Database:
     def __init__(self, path: Path) -> None:
         self.path = path
+        from .reply_context import ReplyContexts
+        self.contexts = ReplyContexts(self)
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
@@ -222,6 +224,19 @@ class Database:
             self._add_columns(connection, "reset_events", EVENT_COLUMNS)
             self._add_columns(connection, "radar_judgements", JUDGEMENT_COLUMNS)
             connection.executescript(V2_TABLES_SQL)
+            jobs_sql = connection.execute("SELECT sql FROM sqlite_master WHERE name='processing_jobs'").fetchone()[0]
+            if "CHECK(job_type='POST_PROCESSING')" in jobs_sql:
+                # Transactional compatibility migration: preserve job IDs, results and retry state.
+                connection.execute('BEGIN IMMEDIATE')
+                migrated = jobs_sql.replace('processing_jobs(', 'processing_jobs_context_migration(', 1).replace(
+                    "CHECK(job_type='POST_PROCESSING')", "CHECK(job_type IN ('POST_PROCESSING','REPLY_CONTEXT'))")
+                connection.execute(migrated)
+                connection.execute('INSERT INTO processing_jobs_context_migration SELECT * FROM processing_jobs')
+                connection.execute('DROP TABLE processing_jobs')
+                connection.execute('ALTER TABLE processing_jobs_context_migration RENAME TO processing_jobs')
+                connection.commit()
+            from .reply_context import SCHEMA as CONTEXT_SCHEMA
+            connection.executescript(CONTEXT_SCHEMA)
             connection.executescript(CORPUS_TABLES_SQL)
             self._add_columns(connection, "post_source_evidence", EVIDENCE_COLUMNS)
             connection.execute(
@@ -244,6 +259,7 @@ class Database:
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(4,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(5,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(6,?)", (now,))
+            connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(7,?)", (now,))
 
     def counts(self) -> dict[str, int]:
         with self.connect() as connection:
@@ -408,7 +424,15 @@ class Database:
 
                 original = str(row["original_text"] or row["text"] or "")
                 language = str(row["original_language"] or text_language(original))
+                is_reply = bool(row['is_reply'] or post.get('is_reply'))
+                relation = connection.execute('SELECT body_json FROM reply_context_nodes WHERE tweet_id=?',(tweet_id,)).fetchone()
+                if relation:
+                    observed_relation=json.loads(relation['body_json'])
+                    if observed_relation.get('relation_source')=='x_replied_to_field':
+                        is_reply=observed_relation.get('parent_id') is not None
                 old_hash = str(row["text_hash"] or content_hash(original))
+                if relation and ' '.join(incoming.split()) == ' '.join(original.split()):
+                    incoming_hash=old_hash
                 translated, status, queue = row["translated_text"], "duplicate", False
                 if incoming and incoming_hash != old_hash:
                     if language == "en" and incoming_language == "zh":
@@ -419,15 +443,15 @@ class Database:
                         original, language, old_hash, status, queue = incoming, incoming_language, incoming_hash, "updated", True
                 connection.execute(
                     """UPDATE tibo_posts SET posted_at=COALESCE(?,posted_at),text=?,original_text=?,original_language=?,
-                    original_text_source='collector_capture',translated_text=?,text_hash=?,url=?,is_reply=?,
+                    original_text_source=CASE WHEN ?='context_detail_original' THEN 'x_detail_response' ELSE original_text_source END,translated_text=?,text_hash=?,url=?,is_reply=?,
                     reply_to_tweet_id=COALESCE(?,reply_to_tweet_id),last_seen_at=?,updated_at=?,
                     source=CASE WHEN ?!='duplicate' THEN ? ELSE source END,
                     collected_at=CASE WHEN ?!='duplicate' THEN ? ELSE collected_at END,
                     analysis_status=CASE WHEN ? THEN 'PENDING' ELSE analysis_status END,
                     translation_status=CASE WHEN ? THEN CASE WHEN ?='zh' THEN 'COMPLETED' ELSE 'PENDING' END ELSE translation_status END,
                     processing_error=CASE WHEN ? THEN NULL ELSE processing_error END WHERE id=?""",
-                    (normalise_time(post.get("posted_at")), original, original, language, translated, old_hash,
-                     str(post.get("url") or row["url"]), 1 if post.get("is_reply") else 0, post.get("reply_to_tweet_id"), now, now,
+                    (normalise_time(post.get("posted_at")), original, original, language, str(post.get('source') or ''), translated, old_hash,
+                     str(post.get("url") or row["url"]), int(is_reply), post.get("reply_to_tweet_id"), now, now,
                      status, str(post.get("source") or "collector_adapter"), status, normalise_time(post.get("collected_at")) or now,
                      queue, queue, language, queue, row["id"]),
                 )
@@ -924,7 +948,20 @@ class Database:
                 (SELECT a.analysis_json FROM post_analysis a WHERE a.post_id=p.id AND a.analysis_type='post_semantics' AND a.status='COMPLETED' ORDER BY a.id DESC LIMIT 1) latest_analysis_json
                 FROM tibo_posts p {where} ORDER BY COALESCE(p.posted_at,p.collected_at) DESC,p.id DESC LIMIT ?""",
                 params).fetchall()
-        return [self._post(row) for row in rows]
+        output = []
+        for row in rows:
+            post = self.contexts.input(self._post(row), cutoff)
+            if post.get('is_reply'):
+                job=self.contexts.job(post['tweet_id'])
+                post['context_acquisition']={'status':job['status'],'reason':job['last_error']} if job else {'status':'PENDING','reason':'RELATION_UNCONFIRMED'}
+            analysis = post.get('analysis')
+            if analysis and post.get('is_reply') and analysis.get('_input_hash') != post['input_hash']:
+                post['analysis'] = None
+                post['analysis_status'] = 'CONTEXT_CHANGED'
+            elif analysis and analysis.get('context_sufficient') is False:
+                post['analysis_status']='INSUFFICIENT_INPUT'
+            output.append(post)
+        return output
 
     def bootstrap_posts(self, candidate_ids: list[str], recent_limit: int = 12, hours: int = 72) -> list[dict[str, Any]]:
         cutoff = normalise_time(datetime.now(UTC) - timedelta(hours=hours))
@@ -936,10 +973,12 @@ class Database:
                 rows += connection.execute(f"SELECT * FROM tibo_posts WHERE ingestion_mode!='historical' AND tweet_id IN ({placeholders})", candidate_ids).fetchall()
         return list({int(row["id"]): self._post(row) for row in rows}.values())
 
-    def enqueue_post(self, post_id: int, identity: str) -> bool:
+    def enqueue_post(self, post_id: int, identity: str, *, retry_failed: bool = True) -> bool:
         now = utc_now()
         with self.connect() as connection:
             existing = connection.execute("SELECT status FROM processing_jobs WHERE job_type='POST_PROCESSING' AND entity_key=?", (identity,)).fetchone()
+            if existing and not retry_failed:
+                return False
             connection.execute("""INSERT INTO processing_jobs(job_type,entity_key,payload_json,status,attempts,created_at,updated_at)
                 VALUES('POST_PROCESSING',?,?,'PENDING',0,?,?) ON CONFLICT(job_type,entity_key) DO UPDATE SET
                 status=CASE WHEN processing_jobs.status='FAILED' THEN 'PENDING' ELSE processing_jobs.status END,
@@ -950,7 +989,7 @@ class Database:
 
     def recover_jobs(self) -> int:
         with self.connect() as connection:
-            return int(connection.execute("UPDATE processing_jobs SET status='PENDING',next_attempt_at=NULL,updated_at=? WHERE status='RUNNING'", (utc_now(),)).rowcount)
+            return int(connection.execute("UPDATE processing_jobs SET status='PENDING',next_attempt_at=NULL,updated_at=? WHERE status='RUNNING' AND job_type='POST_PROCESSING'", (utc_now(),)).rowcount)
 
     def claim_post_job(self) -> dict[str, Any] | None:
         now = utc_now()
@@ -977,7 +1016,7 @@ class Database:
 
     def pending_job_count(self) -> int:
         with self.connect() as connection:
-            return int(connection.execute("SELECT COUNT(*) FROM processing_jobs WHERE status IN ('PENDING','RUNNING')").fetchone()[0])
+            return int(connection.execute("SELECT COUNT(*) FROM processing_jobs WHERE job_type='POST_PROCESSING' AND status IN ('PENDING','RUNNING')").fetchone()[0])
 
     def save_analysis(self, post_id: int, post_hash: str, model: str, prompt_version: str, analysis: dict[str, Any]) -> int:
         now = utc_now()
@@ -991,7 +1030,7 @@ class Database:
                  str(analysis.get("summary") or ""), now, post_hash, json.dumps(analysis, ensure_ascii=False), "COMPLETED", now))
             row = connection.execute("SELECT id FROM post_analysis WHERE post_id=? AND analysis_type='post_semantics' AND content_hash=? AND prompt_version=? AND model=?",
                                      (post_id, post_hash, prompt_version, model)).fetchone()
-            connection.execute("UPDATE tibo_posts SET analysis_status='COMPLETED',processing_error=NULL,updated_at=? WHERE id=? AND text_hash=?", (now, post_id, post_hash))
+            connection.execute("UPDATE tibo_posts SET analysis_status=?,processing_error=NULL,updated_at=? WHERE id=? AND text_hash=?", ('INSUFFICIENT_INPUT' if analysis.get('context_sufficient') is False else 'COMPLETED',now, post_id, analysis.get('_text_hash', post_hash)))
         return int(row["id"])
 
     def save_translation(self, post_id: int, post_hash: str, translation: str | None, error: str | None = None) -> None:
@@ -1150,6 +1189,60 @@ class Database:
                 row = connection.execute("SELECT * FROM reset_events WHERE event_type='FULL_RESET' ORDER BY occurred_at DESC,id DESC LIMIT 1").fetchone()
         return self._event(row) if row else None
 
+    def special_announcements(self, *, at: datetime | None = None) -> list[dict]:
+        """Read-only, short-lived candidate view; never changes formal events/cycles."""
+        now = at or datetime.now(UTC)
+        result = []
+        formal = {tid for event in self.list_reset_events(200) for tid in event['evidence_post_ids']}
+        for candidate in self.list_candidates(100):
+            if (candidate['status'] != 'NEEDS_REVIEW' or candidate['event_type'] != 'SPECIAL_RESET'
+                    or candidate['special_type'] not in ('BANKED', 'RESET_CARD')
+                    or candidate['execution_stage'] != 'announced'):
+                continue
+            ids = candidate['evidence_post_ids']
+            if len(ids) != 1 or ids[0] in formal:
+                continue
+            post = self.get_post_by_tweet_id(ids[0])
+            if not post or not post.get('posted_at') or not self.content_use_allowed(post, 'judge_evidence'):
+                continue
+            age = (now - datetime.fromisoformat(post['posted_at'].replace('Z', '+00:00'))).total_seconds()
+            if age < 0 or age > 7 * 86400:
+                continue
+            analysis = candidate['analysis']
+            if analysis.get('_input_hash') != self.contexts.input(post)['input_hash'] or not analysis.get('context_sufficient', True):
+                continue
+            end = candidate.get('occurred_at_end') or candidate.get('occurred_at_start')
+            if end and candidate['time_basis'] == 'explicit_text' and datetime.fromisoformat(end.replace('Z','+00:00')) < now:
+                continue
+            result.append({'candidate_id': candidate['id'], 'tweet_id': ids[0],
+                           'url': f"https://x.com/thsottiaux/status/{ids[0]}",
+                           'posted_at': post['posted_at'], 'summary': candidate['summary'],
+                           'scope': candidate['scope'], 'special_type': candidate['special_type'],
+                           'label': '重置卡相关预告 · 待核验', 'status_text': '尚未确认发放',
+                           'scheduled_at': candidate['occurred_at_start'] if candidate['time_basis']=='explicit_text' else None})
+        return result[:5]
+
+    def judge_pending_inputs(self, *, include_deferred: bool = False) -> list[dict]:
+        """Only due, recent realtime processing can delay a judge; no future retry barrier."""
+        stamp = utc_now()
+        cutoff = normalise_time(datetime.now(UTC) - timedelta(days=7))
+        with self.connect() as c:
+            rows = c.execute("""SELECT j.id,j.status,j.next_attempt_at,p.tweet_id FROM processing_jobs j
+                JOIN tibo_posts p ON p.id=json_extract(j.payload_json,'$.post_id')
+                WHERE j.job_type='POST_PROCESSING' AND (j.status IN ('PENDING','RUNNING') OR (? AND j.status='FAILED'))
+                AND p.ingestion_mode!='historical' AND p.posted_at>=?
+                AND (? OR j.status='RUNNING' OR j.next_attempt_at IS NULL OR j.next_attempt_at<=?)""", (include_deferred,cutoff,include_deferred,stamp)).fetchall()
+        return [dict(row) for row in rows]
+
+    def request_post_reprocess(self, post_id: int, identity: str) -> bool:
+        """Explicit supported requeue; semantic/model caches are still honored by the worker."""
+        queued = self.enqueue_post(post_id, identity)
+        with self.connect() as c:
+            changed = c.execute("""UPDATE processing_jobs SET status='PENDING',attempts=0,
+                next_attempt_at=NULL,last_error=NULL,updated_at=? WHERE job_type='POST_PROCESSING'
+                AND entity_key=? AND status='COMPLETED'""", (utc_now(),identity)).rowcount
+        return queued or bool(changed)
+
     def cycles(self) -> list[dict[str, Any]]:
         with self.connect() as connection:
             return [dict(row) for row in connection.execute("SELECT * FROM reset_cycles ORDER BY started_at,id").fetchall()]
@@ -1174,7 +1267,8 @@ class Database:
             if post.get("analysis") and self.content_use_allowed(post, "judge_evidence")
         ][:post_limit]
         posts = [{"tweet_id": p["tweet_id"], "posted_at": p["posted_at"], "text": p["original_text"],
-                  "is_reply": p["is_reply"], "analysis": p.get("analysis")}
+                  "is_reply": p["is_reply"], "analysis": p.get("analysis"),
+                  "reply_context": p.get('reply_context'), "input_hash": p.get('input_hash')}
                  for p in source_posts]
         restricted = self.restricted_tweet_ids("judge_evidence")
         eligible_events: list[dict[str, Any]] = []
@@ -1254,8 +1348,91 @@ class Database:
                 row = connection.execute("SELECT * FROM radar_judgements ORDER BY created_at DESC,id DESC LIMIT 1").fetchone()
         if not row:
             return None
-        result = dict(row); result["evidence_post_ids"] = json.loads(result["evidence_post_ids"]); result["special_event_ids"] = json.loads(result["special_event_ids"]); result["historical_case_ids"] = json.loads(result.get("historical_case_ids") or "[]"); result["raw"] = json.loads(result.pop("raw_json") or "{}")
+        return self.normalize_judgement(dict(row))
+
+    @staticmethod
+    def normalize_judgement(value: dict[str, Any]) -> dict[str, Any]:
+        """Only boundary decoder: SQL JSON -> internal raw/list fields; never hide bad JSON."""
+        result = dict(value)
+        errors = []
+        for key, expected in (("evidence_post_ids", list), ("special_event_ids", list),
+                              ("historical_case_ids", list), ("raw_json", dict)):
+            target = 'raw' if key == 'raw_json' else key
+            if key not in result:
+                if target not in result:
+                    errors.append(f'MISSING_{target.upper()}')
+                continue
+            data = result.pop(key)
+            try:
+                decoded = json.loads(data) if isinstance(data, str) else data
+                if not isinstance(decoded, expected):
+                    raise TypeError()
+                if key != target and target in result and result[target] != decoded:
+                    errors.append('CONFLICTING_RAW_REPRESENTATIONS')
+                result[target] = decoded
+            except (ValueError, TypeError):
+                errors.append(f'INVALID_{target.upper()}')
+                result[target] = None
+        if not isinstance(result.get('raw'), dict):
+            errors.append('INVALID_RAW')
+        result['contract_errors'] = list(dict.fromkeys(errors))
         return result
+
+    def validate_judgement(self, judgement: dict[str, Any] | None, *, at: str | datetime | None = None) -> dict:
+        def verdict(reason: str, **details) -> dict:
+            return {'valid': reason == 'VALID', 'reason': reason, **details}
+        if not judgement:
+            return verdict('NO_JUDGEMENT')
+        if judgement.get('contract_errors') or 'raw_json' in judgement or not isinstance(judgement.get('raw'), dict):
+            return verdict('CONTRACT_ERROR', errors=judgement.get('contract_errors') or ['EXPECTED_NORMALIZED_RAW'])
+        if judgement.get('status') != 'COMPLETED':
+            return verdict('NOT_COMPLETED')
+        try:
+            reference = datetime.fromisoformat((normalise_time(at) if at else utc_now()).replace('Z', '+00:00'))
+            expiry = datetime.fromisoformat(judgement['valid_until'].replace('Z', '+00:00'))
+            created = datetime.fromisoformat(judgement['created_at'].replace('Z', '+00:00'))
+            if expiry.tzinfo is None or created.tzinfo is None or expiry <= created:
+                return verdict('INVALID_TIME')
+            if expiry <= reference:
+                return verdict('EXPIRED')
+            if created > reference:
+                return verdict('FUTURE_JUDGEMENT')
+        except (KeyError, ValueError, TypeError, AttributeError):
+            return verdict('INVALID_TIME')
+        if any(judgement.get(k) not in ACTION_LEVELS for k in ('action_level','horizon_24h','horizon_48h','horizon_72h')):
+            return verdict('INVALID_LEVELS')
+        cycle = self.current_cycle(as_of=at)
+        if judgement.get('cycle_id') != (cycle['id'] if cycle else None):
+            return verdict('CYCLE_CHANGED')
+        evidence = judgement.get('evidence_post_ids')
+        if not isinstance(evidence, list) or any(not isinstance(t, str) for t in evidence):
+            return verdict('INVALID_EVIDENCE')
+        raw = judgement['raw']
+        versions = raw.get('input_versions')
+        if versions is not None and (not isinstance(versions, dict) or
+                any(not isinstance(t, str) or not isinstance(v, str) or not re.fullmatch(r'[0-9a-f]{64}', v) for t, v in versions.items())):
+            return verdict('INVALID_INPUT_VERSIONS')
+        expected = raw.get('input_post_ids')
+        if expected is not None and (not isinstance(expected, list) or any(not isinstance(t,str) for t in expected)
+                                     or set(expected) != set(versions or {})):
+            return verdict('INCOMPLETE_INPUT_VERSIONS')
+        for tid in evidence:
+            post = self.get_post_by_tweet_id(tid)
+            if not post:
+                return verdict('EVIDENCE_MISSING', tweet_id=tid)
+            if not self.content_use_allowed(post, 'judge_evidence'):
+                return verdict('CONTENT_RESTRICTED', tweet_id=tid)
+            if (versions is not None or (post.get('is_reply') and self.contexts.job(tid))) and tid not in (versions or {}):
+                return verdict('MISSING_INPUT_VERSION', tweet_id=tid)
+        for tid, version in (versions or {}).items():
+            post = self.get_post_by_tweet_id(tid)
+            if not post:
+                return verdict('INPUT_MISSING', tweet_id=tid)
+            if not self.content_use_allowed(post, 'judge_evidence'):
+                return verdict('CONTENT_RESTRICTED', tweet_id=tid)
+            if self.contexts.input(post, normalise_time(at) if at else None)['input_hash'] != version:
+                return verdict('INPUT_CHANGED', tweet_id=tid)
+        return verdict('VALID')
 
     def judgement_is_usable(
         self,
@@ -1263,13 +1440,7 @@ class Database:
         *,
         at: str | datetime | None = None,
     ) -> bool:
-        reference = normalise_time(at) if at is not None else utc_now()
-        if judgement.get("status") != "COMPLETED" or not judgement.get("valid_until"):
-            return False
-        if str(judgement["valid_until"]) < str(reference):
-            return False
-        evidence = {str(item) for item in judgement.get("evidence_post_ids") or []}
-        return not evidence.intersection(self.restricted_tweet_ids("judge_evidence"))
+        return self.validate_judgement(judgement, at=at)['valid']
 
     def set_state(self, key: str, value: Any) -> None:
         with self.connect() as connection:

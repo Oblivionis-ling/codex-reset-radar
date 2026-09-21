@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from hashlib import sha256
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import Settings, load_settings
+from .collector_health import collector_health, FUTURE_SKEW_SECONDS
 from .db import Database, next_reset_baseline
 from .deepseek import DeepSeekClient
 from .intelligence import JsonModel
@@ -19,6 +22,8 @@ from .version import APP_VERSION, runtime_commit
 
 def create_app(settings: Settings | None = None, intelligence_client: JsonModel | None = None) -> FastAPI:
     runtime_settings = settings or load_settings()
+    loaded_fingerprint = sha256(b''.join((Path(__file__).parent/name).read_bytes()
+        for name in ('main.py','db.py','pipeline.py','intelligence.py','reply_context.py','collector_health.py'))).hexdigest()[:16]
     database = Database(runtime_settings.database_path)
     runtime_log = RuntimeLog(
         runtime_settings.log_dir,
@@ -83,7 +88,10 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
 
     def radar_payload() -> dict[str, Any]:
         judgement = database.latest_judgement()
-        judgement_usable = bool(judgement and database.judgement_is_usable(judgement))
+        validation = database.validate_judgement(judgement)
+        health_view = collector_health(collector_state)
+        judgement_usable = bool(validation['valid'] and judgement['data_health'] == 'HEALTHY'
+                                 and health_view['data_health'] == 'HEALTHY')
         judge_state = database.get_state("judge", {"status": "waiting"})
         pipeline_state = database.get_state("pipeline", {"status": "waiting"})
         last_full = database.last_full_reset()
@@ -117,24 +125,27 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
         else:
             state = str(judge_state.get("status") or pipeline_state.get("status") or "waiting")
             if judgement:
-                state = "stale" if judgement.get("valid_until") and judgement["valid_until"] < datetime.now(UTC).isoformat().replace("+00:00", "Z") else "invalid"
-                reason = (
-                    "最近一次判断已过有效期，当前不再显示其等级。"
-                    if state == "stale"
-                    else "最近一次判断引用了当前不可用的内容，已停止作为实时结论展示。"
-                )
+                code = validation['reason']
+                state = 'data_stale' if validation['valid'] else 'stale' if code == 'EXPIRED' else 'invalid'
+                reason = ('采集数据过期或本次判断基于陈旧数据；暂不能可靠判断。下方仅保留最后已知结果。'
+                          if validation['valid'] else {
+                              'EXPIRED': '上次判断已过期，等待新的判断。',
+                              'INPUT_CHANGED': '输入或父帖上下文已经变化，旧结果失效，等待重判。',
+                              'CYCLE_CHANGED': '完整 Reset 周期已变化，旧结果失效，等待重判。',
+                              'CONTENT_RESTRICTED': '判断使用的内容已受限制，旧结果不能作为当前依据。',
+                          }.get(code, f'已有判断，但校验失败：{code}。'))
             else:
                 reason = {
-                    "processing": "采集正常，首次 DeepSeek 判断正在进行中。",
+                    "processing": "尚未生成判断，DeepSeek 正在处理。",
                     "failed": f"采集数据仍保留，但模型请求失败：{judge_state.get('last_error') or '未知错误'}",
                     "blocked": "DeepSeek 未配置，无法生成可靠判断。",
-                }.get(state, "首次判断尚未完成。")
+                }.get(state, "尚未生成判断。")
             payload = {
                 "action_level": "UNKNOWN",
                 "horizon_24h": "UNKNOWN",
                 "horizon_48h": "UNKNOWN",
                 "horizon_72h": "UNKNOWN",
-                "data_health": "UNKNOWN",
+                "data_health": judgement.get('data_health', 'UNKNOWN') if judgement else health_view['data_health'],
                 "reason_summary": reason,
                 "evidence_post_ids": [],
                 "special_event_ids": [],
@@ -144,7 +155,7 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                 "valid_until": judgement.get("valid_until") if judgement else None,
                 "estimated_start": None,
                 "estimated_end": None,
-                "estimate_basis": "当前尚无已完成的模型判断。",
+                "estimate_basis": reason,
                 "judgement_id": judgement.get("id") if judgement else None,
                 "corpus_version": database.corpus_version(),
                 "historical_case_ids": [],
@@ -156,6 +167,13 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
             "next_reset": next_reset_baseline(last_full),
             "last_full_reset": last_full,
             "special_resets": special,
+            "special_announcements": database.special_announcements(),
+            "validation": validation,
+            "current_data_health": health_view['data_health'],
+            "judgement_data_health": judgement.get('data_health') if judgement else None,
+            "display_mode": ('model_unknown' if judgement_usable and judgement['action_level']=='UNKNOWN' else
+                             'current' if judgement_usable else 'last_known' if validation['valid'] else 'unavailable'),
+            "last_known_result": {k: judgement.get(k) for k in ('id','action_level','horizon_24h','horizon_48h','horizon_72h','created_at','valid_until','reason_summary','data_health')} if judgement else None,
             "judge_runtime": judge_state,
             "pipeline": pipeline_state,
         }
@@ -163,19 +181,23 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
     @application.get("/api/v2/health")
     @application.get("/health")
     def health() -> dict[str, Any]:
+        health_view = collector_health(collector_state)
         return {
             "status": "healthy",
             "service": "codex-reset-radar-v2",
             "version": APP_VERSION,
             "commit": runtime_commit(),
             "database": {"status": "ready", "counts": database.counts()},
-            "collector": collector_state,
+            "collector": health_view['collector'],
+            "data_health": health_view['data_health'],
             "runtime": {
                 "github_mirror_enabled": False,
                 "pages_dependency": False,
                 "log_retention_days": runtime_settings.log_retention_days,
                 "intelligence_enabled": pipeline is not None,
                 "intelligence_model": runtime_settings.deepseek_model if pipeline is not None else None,
+                "reply_context_version": "reply-context-v1",
+                "reply_context_fingerprint": loaded_fingerprint,
             },
             "intelligence": {
                 "pipeline": database.get_state("pipeline", {"status": "waiting"}),
@@ -189,9 +211,72 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
     def radar() -> dict[str, Any]:
         return radar_payload()
 
+    @application.post('/api/v2/judge/request')
+    async def request_current_judge() -> dict:
+        if pipeline is None:
+            raise HTTPException(503, 'Model pipeline is not configured')
+        pipeline.request_judge('manual_current_judge')
+        return {'queued': True, 'coalesced': True}
+
+    @application.post('/api/v2/posts/{tweet_id}/reprocess')
+    async def reprocess_post(tweet_id: str) -> dict:
+        post = database.get_post_by_tweet_id(tweet_id)
+        if not post:
+            raise HTTPException(404, 'Known post required')
+        if pipeline is None:
+            raise HTTPException(503, 'Model pipeline is not configured')
+        queued = database.request_post_reprocess(post['id'], pipeline.identity(post))
+        if queued:
+            pipeline.request_judge('explicit_post_reprocess')
+        return {'queued':queued, 'cache_policy':'reuse_identical_semantic_input'}
+
     @application.get("/api/v2/posts")
     def posts(limit: int = Query(default=20, ge=1, le=100)) -> dict[str, Any]:
         return {"items": database.list_posts(limit), "count": database.counts()["tibo_posts"]}
+
+    @application.post('/api/v2/context/claim')
+    def context_claim() -> dict:
+        return {'job':database.contexts.claim()}
+
+    @application.get('/api/v2/context/cache/{tweet_id}')
+    def context_cache(tweet_id: str) -> dict:
+        return {'node':database.contexts.node(tweet_id)}
+
+    @application.post('/api/v2/context/retry/{tweet_id}')
+    def context_retry(tweet_id: str) -> dict:
+        post=database.get_post_by_tweet_id(tweet_id)
+        if not post or not post['is_reply']:
+            raise HTTPException(404,'Known reply required')
+        database.contexts.ensure(tweet_id)
+        with database.connect() as c:
+            changed=c.execute("UPDATE processing_jobs SET status='PENDING',attempts=0,next_attempt_at=NULL,last_error=NULL WHERE job_type='REPLY_CONTEXT' AND entity_key=? AND status!='RUNNING'",(tweet_id,)).rowcount
+        return {'queued':bool(changed)}
+
+    @application.post('/api/v2/context/result')
+    async def context_result(payload: dict) -> dict:
+        # Compare semantic inputs, not receipt times: an identical cached reply
+        # must not schedule another paid analysis or Judge call.
+        with database.connect() as c:
+            rows=c.execute("SELECT id FROM tibo_posts WHERE is_reply=1 AND posted_at>=datetime('now','-7 days') AND ingestion_mode!='historical'").fetchall()
+        before={row['id']:database.contexts.input(database.get_post(row['id']))['input_hash'] for row in rows}
+        try:
+            accepted = database.contexts.complete(int(payload['id']),str(payload['lease']),payload.get('nodes',[]),payload.get('reason'))
+        except (KeyError,TypeError,ValueError) as error:
+            raise HTTPException(422,str(error)) from error
+        if accepted and pipeline:
+            # Shared ancestors can invalidate several replies, coalesced by semantic identity.
+            changed=False
+            for post_id, old_hash in before.items():
+                post=database.get_post(post_id)
+                if database.contexts.input(post)['input_hash']==old_hash:
+                    continue
+                changed=True
+                identity=pipeline.identity(post)
+                database.enqueue_post(post['id'],identity,retry_failed=False)
+            if changed:
+                pipeline.request_judge('reply_context_updated')
+        runtime_log.write('collector','REPLY_CONTEXT_RESULT',metadata={'job_id':payload.get('id'),'accepted':accepted,'nodes':len(payload.get('nodes',[])),'reason':payload.get('reason')})
+        return {'accepted':accepted}
 
     @application.get("/api/v2/resets")
     def resets(limit: int = Query(default=50, ge=1, le=200)) -> dict[str, Any]:
@@ -218,28 +303,32 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
         return {"accepted": accepted, "received": len(payload.tweets), **counts, "queued": queued, "items": results}
 
     @application.post("/api/v2/collector/posts")
-    def collector_posts(payload: CollectorBatch) -> dict[str, Any]:
+    async def collector_posts(payload: CollectorBatch) -> dict[str, Any]:
         return ingest_batch(payload)
 
     @application.post("/api/ingest/tweets")
-    def legacy_collector_posts(payload: CollectorBatch) -> dict[str, Any]:
+    async def legacy_collector_posts(payload: CollectorBatch) -> dict[str, Any]:
         return ingest_batch(payload)
 
     def receive_heartbeat(payload: CollectorHeartbeat) -> dict[str, Any]:
-        required = ("profile_monitor", "replies_monitor")
-        before_ready = all(name in collector_state for name in required)
-        previous_state = collector_state.get(payload.component, {}).get("state")
+        before_health = collector_health(collector_state)['data_health']
         observed = payload.observed_at or datetime.now(UTC)
         if observed.tzinfo is None:
             observed = observed.replace(tzinfo=UTC)
+        stamp = observed.astimezone(UTC).isoformat().replace("+00:00", "Z")
+        previous = collector_state.get(payload.component, {})
+        if observed > datetime.now(UTC) + timedelta(seconds=FUTURE_SKEW_SECONDS):
+            return {'accepted': False, 'persisted': False, 'reason': 'CLOCK_SKEW'}
+        if previous.get('last_seen_at') and stamp <= previous['last_seen_at']:
+            return {'accepted': False, 'persisted': False, 'reason': 'OLD_HEARTBEAT'}
         collector_state[payload.component] = {
             "state": payload.state,
             "instance_id": payload.instance_id,
             "sequence": payload.sequence,
-            "last_seen_at": observed.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            "last_seen_at": stamp,
+            "received_at": datetime.now(UTC).isoformat().replace('+00:00','Z'),
         }
-        after_ready = all(name in collector_state for name in required)
-        if pipeline is not None and ((not before_ready and after_ready) or (previous_state is not None and previous_state != payload.state)):
+        if pipeline is not None and before_health != collector_health(collector_state)['data_health']:
             pipeline.request_judge("collector_health_transition")
         return {"accepted": True, "persisted": False}
 

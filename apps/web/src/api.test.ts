@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { actionLevel, parseRadar } from "./api";
 
 describe("V2 Radar API contract", () => {
+  it('keeps stale health, model unknown, validation and previews distinct',()=>{
+    const result=parseRadar({action_level:'UNKNOWN',data_health:'STALE',current_data_health:'HEALTHY',
+      judgement_data_health:'STALE',display_mode:'last_known',validation:{valid:true,reason:'VALID'},
+      last_known_result:{action_level:'ORANGE'},special_announcements:[
+        {candidate_id:3,tweet_id:'100',summary:'Synthetic banked preview',scope:'unknown',scheduled_at:null},
+        {candidate_id:4,tweet_id:'javascript:alert(1)'}]});
+    expect(result.display_mode).toBe('last_known');
+    expect(result.judgement_data_health).toBe('STALE');
+    expect(result.current_data_health).toBe('HEALTHY');
+    expect(result.validation.valid).toBe(true);
+    expect(result.special_announcements).toHaveLength(1);
+    expect(result.special_announcements[0].scheduled_at).toBeNull();
+    expect(result.special_resets).toEqual([]);
+  });
   it("accepts the four action levels plus UNKNOWN", () => {
     expect(["GREEN", "YELLOW", "ORANGE", "RED", "UNKNOWN"].map(actionLevel)).toEqual([
       "GREEN", "YELLOW", "ORANGE", "RED", "UNKNOWN"
