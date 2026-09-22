@@ -61,3 +61,14 @@ includes `reply_context` and `context_acquisition` alongside analysis/translatio
 ### Evolution boundary
 
 Alpha 4 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.
+
+### Optional decision provenance
+
+Radar adds `decision` with `decision_engine` (`laya`, `deepseek`, or
+`deepseek_fallback`), `decision_mode`, `question_schema`, `evidence_prompt`,
+`fallback_reason`, `forecast_candidate_id` and `decision_package_hash`.
+Legacy rows can have null provenance. Probabilities and full evidence packages
+are not returned by this view. `DECISION_MODE_CHANGED` / `DECISION_CONFIG_CHANGED`
+invalidate incompatible results; they do not rewrite historical rows.
+All existing expiry, generation-vs-current health, input-version and cycle rules
+remain in force. The optional feature is not a claim of production acceptance.

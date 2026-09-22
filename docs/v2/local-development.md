@@ -92,3 +92,17 @@ Alpha 4 requires `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, and `DEEPSEEK_MODEL` f
 Notification preparation is optional and does not affect Backend startup. Use
 `test-notifications.bat` and [the notification testing guide](../notifications/testing-guide.md);
 status, check, preview and selftest never send real messages.
+
+## Optional Laya environment
+
+The default `CRR_DECISION_MODE=deepseek_only` requires no local model or ML packages.
+Use the independent pinned `apps/laya-worker/requirements.txt` and the fixed-revision
+download command in [the integration report](../maintenance/laya-integration-report.md).
+Set `CRR_LAYA_MODEL_PATH` to its completed model directory and
+`CRR_LAYA_CHECKPOINT_REVISION` to the full SHA; startup never downloads weights.
+CPU defaults: 2 threads, 90s startup and 15s inference limits. Backend remains light.
+`CRR_LAYA_FALLBACK=deepseek_only` makes one old Judge invocation on failure;
+`unknown` stops the attempt with an explicit unavailable state, not a fabricated
+successful model response. Do not enable production hybrid before its quality gate.
+Switching back to `deepseek_only` uses the existing safe project restart; environments
+and weights may be retained locally without being loaded.

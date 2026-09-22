@@ -23,7 +23,8 @@ from .version import APP_VERSION, runtime_commit
 def create_app(settings: Settings | None = None, intelligence_client: JsonModel | None = None) -> FastAPI:
     runtime_settings = settings or load_settings()
     loaded_fingerprint = sha256(b''.join((Path(__file__).parent/name).read_bytes()
-        for name in ('main.py','db.py','pipeline.py','intelligence.py','reply_context.py','collector_health.py'))).hexdigest()[:16]
+        for name in ('main.py','db.py','pipeline.py','intelligence.py','reply_context.py','collector_health.py',
+                     'hybrid_decision.py','laya_worker.py','config.py'))).hexdigest()[:16]
     database = Database(runtime_settings.database_path)
     runtime_log = RuntimeLog(
         runtime_settings.log_dir,
@@ -57,6 +58,7 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                 collector_state=collector_state,
                 repository_root=runtime_settings.database_path.resolve().parents[2],
                 judge_interval_seconds=runtime_settings.judge_interval_seconds,
+                decision_settings=runtime_settings.decision_settings,
             )
             await pipeline.start()
         else:
@@ -89,6 +91,15 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
     def radar_payload() -> dict[str, Any]:
         judgement = database.latest_judgement()
         validation = database.validate_judgement(judgement)
+        raw_decision = (judgement or {}).get('raw') or {}
+        local_run = raw_decision.get('laya')
+        local_identity = local_run.get('identity') if isinstance(local_run, dict) else None
+        configured_mode = runtime_settings.decision_settings.mode if runtime_settings.decision_settings else 'deepseek_only'
+        if validation['valid'] and raw_decision.get('decision_mode', 'deepseek_only') != configured_mode:
+            validation = {**validation, 'valid': False, 'reason': 'DECISION_MODE_CHANGED'}
+        if (validation['valid'] and configured_mode == 'deepseek_laya'
+                and raw_decision.get('decision_config_identity') != runtime_settings.decision_settings.identity()):
+            validation = {**validation, 'valid': False, 'reason': 'DECISION_CONFIG_CHANGED'}
         health_view = collector_health(collector_state)
         judgement_usable = bool(validation['valid'] and judgement['data_health'] == 'HEALTHY'
                                  and health_view['data_health'] == 'HEALTHY')
@@ -175,6 +186,10 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                              'current' if judgement_usable else 'last_known' if validation['valid'] else 'unavailable'),
             "last_known_result": {k: judgement.get(k) for k in ('id','action_level','horizon_24h','horizon_48h','horizon_72h','created_at','valid_until','reason_summary','data_health')} if judgement else None,
             "judge_runtime": judge_state,
+            "decision": {**{key: raw_decision.get(key) for key in
+                         ('decision_engine', 'decision_mode', 'question_schema', 'evidence_prompt',
+                          'fallback_reason', 'forecast_candidate_id', 'decision_package_hash')},
+                         'laya_identity': local_identity if isinstance(local_identity, dict) else None},
             "pipeline": pipeline_state,
         }
 

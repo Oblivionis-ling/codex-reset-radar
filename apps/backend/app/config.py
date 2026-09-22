@@ -5,6 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .laya_worker import DecisionSettings
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
@@ -25,6 +29,7 @@ class Settings:
     deepseek_timeout_seconds: float = 45.0
     deepseek_retries: int = 2
     judge_interval_seconds: int = 3600
+    decision_settings: DecisionSettings | None = None
 
 
 def _path(value: str, fallback: str) -> Path:
@@ -34,6 +39,7 @@ def _path(value: str, fallback: str) -> Path:
 
 def load_settings() -> Settings:
     load_dotenv(REPOSITORY_ROOT / ".env", override=False)
+    from .laya_worker import DecisionSettings
     origins = tuple(
         origin.strip()
         for origin in os.getenv(
@@ -59,4 +65,5 @@ def load_settings() -> Settings:
         deepseek_timeout_seconds=max(5.0, float(os.getenv("DEEPSEEK_TIMEOUT_SECONDS", "45"))),
         deepseek_retries=max(0, min(3, int(os.getenv("DEEPSEEK_RETRIES", "2")))),
         judge_interval_seconds=max(60, int(os.getenv("CRR_JUDGE_INTERVAL_SECONDS", "3600"))),
+        decision_settings=DecisionSettings.from_environment(),
     )

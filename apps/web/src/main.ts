@@ -112,7 +112,8 @@ function renderHome(radar: RadarResponse, health: HealthResponse, posts: TiboPos
     </section>
     <section class="horizon-grid" aria-label="Reset horizons">${horizons.map(([label, level]) => `<article class="horizon level-${tone(level)}"><span>${label}</span>${statusBadge(level)}<p>${escapeHtml(actionCopy(level))}</p></article>`).join("")}</section>
     <section class="content-grid">
-      <article class="panel why-panel"><header><span class="eyebrow">WHY</span><h2>DeepSeek 判断依据</h2></header><p class="reason">${escapeHtml(radar.reason_summary)}</p>
+      <article class="panel why-panel"><header><span class="eyebrow">WHY</span><h2>${radar.decision?.decision_engine==='laya'?'Laya 决策 · DeepSeek 证据':'DeepSeek 判断依据'}</h2></header><p class="reason">${escapeHtml(radar.reason_summary)}</p>
+      ${radar.decision?.decision_engine==='deepseek_fallback'?`<p>本轮已回退至 DeepSeek：${escapeHtml(String(radar.decision.fallback_reason || '本地决策不可用'))}</p>`:''}
         <div class="evidence-list" aria-label="判断证据">${evidenceLinks(radar.evidence_post_ids)}</div>
         <dl><div><dt>Data Health</dt><dd>${escapeHtml(radar.data_health)}</dd></div><div><dt>Judge</dt><dd>${escapeHtml(radar.judgement_id ? `#${radar.judgement_id}` : judgeState)}</dd></div><div><dt>判断时间</dt><dd>${escapeHtml(formatTime(radar.judged_at))}</dd></div><div><dt>有效至</dt><dd>${escapeHtml(formatTime(radar.valid_until))}</dd></div></dl>
       </article>

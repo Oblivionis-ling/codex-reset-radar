@@ -49,6 +49,7 @@ export interface RadarResponse {
   display_mode: string;
   validation: { valid: boolean; reason: string };
   last_known_result: Record<string, unknown> | null;
+  decision?: Record<string, unknown>;
 }
 
 export interface HealthResponse {
@@ -135,6 +136,7 @@ export function parseRadar(value: unknown): RadarResponse {
   const special = Array.isArray(item.special_resets) ? item.special_resets.map(resetEvent).filter((event): event is ResetEvent => Boolean(event)) : [];
   return {
     version: text(item.version, "unknown"),
+    decision: record(item.decision),
     action_level: actionLevel(item.action_level),
     horizon_24h: actionLevel(item.horizon_24h),
     horizon_48h: actionLevel(item.horizon_48h),

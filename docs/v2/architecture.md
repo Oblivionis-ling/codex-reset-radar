@@ -79,3 +79,16 @@ not a second application architecture. Isolated historical replay imports standa
 normal ingest and persistent task pipeline, uses the current DeepSeek analysis/translation/Judge path,
 and writes only below `runtime/review`. GPT reference labels are never loaded into the replay database or
 production retrieval context.
+
+## Optional local choice worker (feature-gated)
+
+`CRR_DECISION_MODE=deepseek_only` remains the accepted default. The optional
+`deepseek_laya` path calls the same Provider/context builder for neutral evidence,
+then a private persistent stdio worker chooses the four levels and a bounded time
+candidate. It rejoins the existing Judge storage and validity path, never the
+fact-event or cycle mutation path. Heavy dependencies belong only to
+`apps/laya-worker/.venv`. Load/timeouts are asynchronous and kill/reap the worker.
+No extra scheduler or notification path is introduced. Model failures are explicit
+fallbacks; score vectors are private diagnostics, not Reset probabilities.
+Quality acceptance and installation evidence live in
+[the Laya integration report](../maintenance/laya-integration-report.md).

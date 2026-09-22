@@ -74,6 +74,8 @@ class DeepSeekClient:
                 self.runtime_log.write("llm", "LLM_REQUEST_SUCCEEDED", metadata={
                     "operation": operation, "model": self.model, "attempt": attempt,
                     "duration_ms": round((time.perf_counter() - started) * 1000),
+                    "usage": {key: value for key, value in payload.get('usage', {}).items()
+                              if isinstance(value, (int, float))},
                 })
                 return result
             except httpx.HTTPStatusError as error:
@@ -81,7 +83,7 @@ class DeepSeekClient:
                 retryable = status in {408, 409, 429} or status >= 500
                 category = "auth" if status in {401, 403} else "rate_limit" if status == 429 else "http"
                 last_error = DeepSeekError(f"DeepSeek HTTP {status}", category=category, retryable=retryable)
-            except (httpx.ConnectError, httpx.NetworkError) as error:
+            except (httpx.ConnectError, httpx.NetworkError, httpx.RemoteProtocolError) as error:
                 last_error = DeepSeekError(f"DeepSeek network error: {type(error).__name__}", category="network", retryable=True)
             except httpx.TimeoutException:
                 last_error = DeepSeekError("DeepSeek request timed out", category="timeout", retryable=True)
