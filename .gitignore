@@ -9,6 +9,7 @@ htmlcov/
 *.log
 .DS_Store
 _tmp/
+local-archive/
 
 # V1 runtime data stays local and read-only during migration.
 backend/data/*

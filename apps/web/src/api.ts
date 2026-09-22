@@ -43,6 +43,12 @@ export interface RadarResponse {
   };
   last_full_reset: ResetEvent | null;
   special_resets: ResetEvent[];
+  special_announcements: { candidate_id: number; tweet_id: string; posted_at: string; summary: string; scope: string; scheduled_at: string | null }[];
+  current_data_health: string;
+  judgement_data_health: string;
+  display_mode: string;
+  validation: { valid: boolean; reason: string };
+  last_known_result: Record<string, unknown> | null;
 }
 
 export interface HealthResponse {
@@ -51,7 +57,7 @@ export interface HealthResponse {
   version: string;
   commit: string;
   database: { status: string; counts: Record<string, number> };
-  collector: Record<string, { state: string; last_seen_at: string; sequence?: number | null }>;
+  collector: Record<string, { state: string; last_seen_at: string; sequence?: number | null; reported_state?: string; age_seconds?: number | null; reason?: string }>;
   runtime: { github_mirror_enabled: boolean; pages_dependency: boolean; log_retention_days: number };
   intelligence?: {
     pipeline: Record<string, unknown>;
@@ -71,10 +77,15 @@ export interface TiboPost {
   analysis_status: string;
   translation_status: string;
   processing_error: string | null;
+  reply_context?: { state: string; missing: string[]; direct_parent_id?: string | null;
+    nodes: { tweet_id: string; author: string; posted_at: string; text: string; url: string; depth: number }[] };
+  context_acquisition?: { status: string; reason: string | null };
   analysis: {
     category?: string;
     summary?: string;
     evidence_quote?: string;
+    _analysed_at?: string;
+    context_sufficient?: boolean;
   } | null;
   url: string;
   is_reply: boolean;
@@ -146,7 +157,16 @@ export function parseRadar(value: unknown): RadarResponse {
       basis: text(next.basis)
     },
     last_full_reset: lastFull,
-    special_resets: special
+    special_resets: special,
+    special_announcements: (Array.isArray(item.special_announcements) ? item.special_announcements : []).map(record)
+      .filter(a=>typeof a.candidate_id==='number' && /^\d+$/.test(text(a.tweet_id)))
+      .map(a=>({candidate_id:a.candidate_id as number,tweet_id:text(a.tweet_id),posted_at:text(a.posted_at),
+        summary:text(a.summary),scope:text(a.scope,'unknown'),scheduled_at:typeof a.scheduled_at==='string'?a.scheduled_at:null})),
+    current_data_health: text(item.current_data_health, 'UNKNOWN'),
+    judgement_data_health: text(item.judgement_data_health, 'UNKNOWN'),
+    display_mode: text(item.display_mode, 'unavailable'),
+    validation: {valid:record(item.validation).valid===true,reason:text(record(item.validation).reason,'UNKNOWN')},
+    last_known_result: item.last_known_result ? record(item.last_known_result) : null
   };
 }
 

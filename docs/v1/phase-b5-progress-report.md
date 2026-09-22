@@ -104,7 +104,7 @@ Phase B.5 的分类校准工作已经完成，107 条唯一 Tweet 已完成最�
 
 ## 6. Gold Set 与自动化验证
 
-Gold Set：[backend/tests/fixtures/tibo_gold_set.json](../backend/tests/fixtures/tibo_gold_set.json)
+Gold Set：[backend/tests/fixtures/tibo_gold_set.json](../../legacy/v1/backend/tests/fixtures/tibo_gold_set.json)
 
 - 共 22 条：20 条真实 Tweet、2 条手工边界句；
 - 至少包含 5 unrelated、3 codex_related、3 quota_information；

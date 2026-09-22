@@ -2,7 +2,8 @@
 param()
 
 $ErrorActionPreference = "Stop"
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+. (Join-Path $PSScriptRoot "common-v2.ps1")
+$repositoryRoot = $script:CrrRepositoryRoot
 $pidRoot = Join-Path $repositoryRoot "runtime\pids"
 $hadMismatch = $false
 

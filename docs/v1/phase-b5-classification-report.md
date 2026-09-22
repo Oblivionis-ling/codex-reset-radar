@@ -99,7 +99,7 @@ Final 的 1 条冲突是 `2093573991965557198`：Rule=`codex_related`，AI=`rese
 
 ## 6. Gold Set
 
-Gold Set 文件：[backend/tests/fixtures/tibo_gold_set.json](../backend/tests/fixtures/tibo_gold_set.json)
+Gold Set 文件：[backend/tests/fixtures/tibo_gold_set.json](../../legacy/v1/backend/tests/fixtures/tibo_gold_set.json)
 
 - 5 条 `unrelated`
 - 3 条 `codex_related`

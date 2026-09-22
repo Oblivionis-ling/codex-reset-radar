@@ -62,7 +62,45 @@ Historical replay queries accept a bounded `as_of`: future posts, events, cycles
 outcomes are excluded, and a tested post cannot retrieve its own existing case. Default live calls omit
 `as_of` and retain current-time behavior.
 
-### `schema_versions`
+### Reply context mapping (schema 7)
+
+- `reply_context_nodes`: current bounded context capture, with author, text/language,
+  timestamp, direct-parent relation proof, completeness and stable hash. It is context-only;
+  other authors never enter `tibo_posts` or Tibo post counts. Existing canonical Tibo bodies
+  are reused when assembling model input.
+- `reply_context_history`: immutable per-content-version observations for audit. Repeated
+  sightings do not add history rows. Later observations are excluded from historical `as_of`.
+- `reply_context_inputs`: exact structured inputs keyed by semantic input hash, including
+  explicit missing context. These local real assets are ignored by Git with the database.
+- `processing_jobs`: accepts `POST_PROCESSING` and `REPLY_CONTEXT`. Schema 7 migrates the
+  previous job-type CHECK constraint transactionally while preserving IDs and retry state.
+  Context leases use `next_attempt_at` and an opaque token in `payload_json`; duplicate or
+  expired receipts cannot update content. Context tasks do not indefinitely block Judge.
+
+For replies, the analysis `content_hash` now identifies the target text plus ordered context,
+confirmed relations and meaningful availability. `analysis_json._text_hash` retains the target
+body hash; `_input_hash` and `_analysed_at` identify the actual input version. Acquisition times,
+heartbeats and attempt counts are excluded. Translation versions are recorded in
+`pipeline_state.reply_translation:<post_id>`. Judge raw results retain `input_versions` for
+current-result validation. An old Judge is never rewritten to match a new context.
+
+The current posts API includes `reply_context` and `context_acquisition`. Reconstructed
+parents observed after a replay cutoff are conservatively excluded, even if their claimed
+posting time is earlier. Body-only canonical cache hits do not manufacture ancestor relations.
+
+### Content policy and Judge storage boundary
+
+`post_content_policies` stores content-version-scoped restrictions and field-level review
+provenance. Restrictions apply before event promotion and before text reaches Judge through
+recent posts, associated context or historical cases; a site label alone is not a quality rule.
+
+SQLite stores Judge model output in `raw_json`; the sole database decoding boundary exposes
+internal `raw`. `input_versions` records actual semantic input hashes; new rows also keep
+`input_post_ids`, triggers and pending inputs. Malformed JSON/types or conflicting representations
+are explicit contract errors, not an empty legacy dictionary. Validation checks expiry, cycle,
+evidence eligibility and target/parent/ancestor versions without rewriting old answers.
+
+### Schema version ledger
 
 Applied database schema versions and timestamps.
 

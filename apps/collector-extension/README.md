@@ -1,19 +1,7 @@
-# Transitional Collector Adapter
+# V2 Collector Extension
 
-This Manifest V3 extension is the legacy/transitional browser collector for V2 Alpha 1. It keeps the existing Profile, Replies, and Search collection path available while the future server collector remains out of scope.
+Manifest V3 的 Profile、Replies、Search 采集与受控父帖补全适配器。源码在 `src/`，构建产物在 `dist/`；只向本地 Backend 提交公开内容和临时健康信息。
 
-It sends normalized public posts and ephemeral health/diagnostic messages only to the local Backend at `http://127.0.0.1:8787`. The V2 Backend does not persist routine heartbeat or browser lifecycle spam.
+在本目录执行 `npm test`、`npm run typecheck`、`npm run build`。浏览器手动加载步骤见[运行指南](../../docs/v2/local-development.md)，父帖边界见[架构](../../docs/v2/architecture.md)。
 
-## Build
-
-Run from the repository root:
-
-```powershell
-cd apps/collector-extension
-npm ci
-npm test
-npm run typecheck
-npm run build
-```
-
-Load `apps/collector-extension/dist` as an unpacked extension. It does not read browser cookies or use an X API credential.
+磁盘构建成功不证明 Edge 已加载该目录或版本，实际加载需在扩展详情核实。不要删除正在加载的 dist。

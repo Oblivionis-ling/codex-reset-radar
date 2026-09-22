@@ -25,8 +25,9 @@ function handleFromHref(href: string): string | null {
 }
 
 function ownStatusLink(card: Element): HTMLAnchorElement | null {
-  const links = Array.from(card.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]'));
-  return links.find((link) => /\/(?:thsottiaux|thsottiaux\/status)\//i.test(link.getAttribute("href") ?? "")) ?? links[0] ?? null;
+  const time = Array.from(card.querySelectorAll<HTMLTimeElement>('time[datetime]'))
+    .find(element => element.closest('article') === card && !element.closest('[data-testid="quoteTweet"]'));
+  return time?.closest<HTMLAnchorElement>('a[href*="/status/"]') ?? null;
 }
 
 function extractId(card: Element): string | null {
@@ -36,33 +37,22 @@ function extractId(card: Element): string | null {
 }
 
 function isTiboCard(card: Element): boolean {
-  const links = Array.from(card.querySelectorAll<HTMLAnchorElement>("a[href]"));
-  return links.some((link) => handleFromHref(link.getAttribute("href") ?? "") === "thsottiaux");
+  return handleFromHref(ownStatusLink(card)?.getAttribute('href') ?? '') === 'thsottiaux';
 }
 
 function extractText(card: Element): string {
-  const semantic = card.querySelector<HTMLElement>('[data-testid="tweetText"]');
+  const semantic = Array.from(card.querySelectorAll<HTMLElement>('[data-testid="tweetText"]'))
+    .find(element => element.closest('article') === card && !element.closest('[data-testid="quoteTweet"], [role="link"]'));
   if (semantic) return clean(semantic.innerText || semantic.textContent);
 
   // X has changed Tweet text selectors several times. Remove nested quoted cards
   // and controls before using the remaining readable card text as a fallback.
-  const clone = card.cloneNode(true) as HTMLElement;
-  clone.querySelectorAll("article article, button, time, svg, img").forEach((node) => node.remove());
-  const candidates = Array.from(clone.querySelectorAll<HTMLElement>('[dir="auto"], [lang]'))
-    .map((node) => clean(node.innerText || node.textContent))
-    .filter((value) => value.length > 0)
-    .sort((a, b) => b.length - a.length);
-  return candidates[0] ?? clean(clone.innerText || clone.textContent);
+  return ''; // UI chrome is never a replacement for a tweet body.
 }
 
 function extractReplyTarget(card: Element, tweetId: string): string | null {
-  const readable = clean(card.textContent).toLowerCase();
-  const looksLikeReply = /replying to|回复|回应/.test(readable);
-  if (!looksLikeReply) return null;
-  const ids = Array.from(card.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]'))
-    .map((link) => link.getAttribute("href")?.match(STATUS_RE)?.[1] ?? null)
-    .filter((id): id is string => Boolean(id) && id !== tweetId);
-  return ids[0] ?? null;
+  void card; void tweetId;
+  return null; // Quote/status links and mentions do not prove replied_to.
 }
 
 function candidateCards(root: ParentNode): Element[] {
@@ -98,7 +88,7 @@ export function extractTweets(root: ParentNode, source: TweetSource, discoveredA
       text: extractText(card),
       created_at: time?.dateTime || time?.getAttribute("datetime") || null,
       url: absoluteUrl(`/thsottiaux/status/${tweetId}`),
-      is_reply: source === "with_replies" || Boolean(replyTo),
+      is_reply: source === "with_replies" || /replying to|回复|回应/i.test(card.textContent ?? '') || Boolean(replyTo),
       reply_to: replyTo,
       discovered_at: discoveredAt.toISOString(),
       source

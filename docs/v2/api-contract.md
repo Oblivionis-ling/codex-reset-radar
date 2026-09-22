@@ -19,8 +19,45 @@ The Radar response accepts only `GREEN`, `YELLOW`, `ORANGE`, `RED`, and `UNKNOWN
 
 `POST /api/ingest/tweets`, `POST /api/heartbeat`, and the two `/api/diagnostics*` routes remain compatibility endpoints for the current Extension. Diagnostic compatibility requests are accepted but not persisted in the V2 core database.
 
-Historical import is deliberately not exposed as an HTTP collector route. `scripts/import_historical_corpus.py` performs explicit local batch imports with dry-run, date/source limits, idempotent evidence keys, checkpoints and batch rollback. It creates no realtime jobs and sends no notification.
+Historical import is deliberately not exposed as an HTTP collector route. The concluded corpus phase
+used bounded, local-only import tools with dry-run, idempotent evidence keys, checkpoints and rollback;
+those one-time tools are now retired to an ignored local archive. They are not part of a clean checkout
+or the active runtime.
 
-## Compatibility and evolution
+## Current result and health metadata
 
-Alpha 2 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.
+`GET /radar` includes `judgement_id`, `judged_at`, `valid_until`, `validation`
+(`valid`, `reason`, optional `details`), `current_data_health`, `judgement_data_health`,
+`display_mode`, `last_known_result`, `judge_runtime` and `pipeline`.
+`display_mode` is `current`, `model_unknown`, `last_known` or `unavailable`.
+Existing but invalid/expired results are not described as never generated. A valid result
+based on STALE data stays last-known even after new heartbeats; fresh collection schedules
+a new judgement without rewriting history. Last-known colors are not current action advice.
+
+`special_announcements` is separate from `special_resets`: current eligible Banked/reset-card
+candidates include candidate/tweet identity, original URL, publication time, summary, scope,
+subtype, pending label/status and nullable `scheduled_at`. This view creates no event/cycle.
+
+`GET /health` exposes a shared derived `data_health` and per-collector `reported_state`,
+derived `state`, `last_seen_at`, `age_seconds`, `checked_at`, `reason`, instance and sequence
+where present. Missing/old heartbeats decay after the existing 15-minute threshold; accepted
+client observation time is not replaced by receipt time. Health/Radar GETs are read-only.
+
+### Explicit task endpoints (not configuration checks)
+
+| Method/path | Semantics |
+| --- | --- |
+| POST `/api/v2/judge/request` | Coalesces a manual Judge request; 503 if model pipeline absent. May call the paid model. |
+| POST `/api/v2/posts/{tweet_id}/reprocess` | Known-post reprocessing, identical semantic input reuses caches; 404 unknown post, 503 absent pipeline. |
+| POST `/api/v2/context/claim` | Claims an existing context task/lease; returns `job` or null. |
+| GET `/api/v2/context/cache/{tweet_id}` | Returns context-only cached `node` or null. |
+| POST `/api/v2/context/retry/{tweet_id}` | Explicit retry of a known reply's non-running context task; does not fabricate context. |
+| POST `/api/v2/context/result` | Accepts task `id`, `lease`, `nodes`, optional `reason`; validates lease/context, returns `accepted`; meaningful changed inputs enqueue existing processing. |
+
+The claim/retry/result endpoints mutate task state. They are not health probes. Result payload
+shape is validated by the context implementation; malformed input returns 422. The posts API
+includes `reply_context` and `context_acquisition` alongside analysis/translation status.
+
+### Evolution boundary
+
+Alpha 4 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.

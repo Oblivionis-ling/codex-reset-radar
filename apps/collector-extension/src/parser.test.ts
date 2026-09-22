@@ -14,9 +14,8 @@ describe("Tweet DOM parser", () => {
   it("extracts a Tibo Tweet and ignores a quoted non-Tibo article", () => {
     const document = setDom(`
       <article data-testid="tweet">
-        <a href="/thsottiaux/status/100"><span>@thsottiaux</span></a>
+        <a href="/thsottiaux/status/100"><span>@thsottiaux</span><time datetime="2026-08-28T00:00:00.000Z">2h</time></a>
         <div data-testid="tweetText">Wonder if I can find that thing tomorrow...</div>
-        <time datetime="2026-08-28T00:00:00.000Z">2h</time>
         <article><a href="/someone/status/99">quoted</a><div data-testid="tweetText">quoted text</div></article>
       </article>
       <article data-testid="tweet"><a href="/someone/status/99">@someone</a><div data-testid="tweetText">not Tibo</div></article>
@@ -29,29 +28,28 @@ describe("Tweet DOM parser", () => {
   it("deduplicates nested semantic cards and marks replies", () => {
     const document = setDom(`
       <article data-testid="tweet">
-        <a href="https://x.com/thsottiaux/status/101">post</a>
+        <a href="https://x.com/thsottiaux/status/101"><time datetime="2026-08-28T00:00:00Z">post</time></a>
         <span>Replying to @someone</span>
         <a href="https://x.com/someone/status/98">parent</a>
         <div data-testid="tweetText">reply text</div>
       </article>
-      <article data-testid="tweet"><a href="/thsottiaux/status/101">same</a><div data-testid="tweetText">reply text</div></article>
+      <article data-testid="tweet"><a href="/thsottiaux/status/101"><time datetime="2026-08-28T00:00:00Z">same</time></a><div data-testid="tweetText">reply text</div></article>
     `);
     const tweets = extractTweets(document, "with_replies");
     expect(tweets).toHaveLength(1);
     expect(tweets[0].is_reply).toBe(true);
-    expect(tweets[0].reply_to).toBe("98");
+    expect(tweets[0].reply_to).toBeNull(); // An arbitrary linked status is not replied_to.
   });
 
-  it("uses a structural fallback when semantic Tweet selectors are absent", () => {
+  it("does not promote generic UI text to a tweet body when selectors are absent", () => {
     const document = setDom(`
       <article>
-        <a href="/thsottiaux/status/102">@thsottiaux</a>
+        <a href="/thsottiaux/status/102"><time datetime="2026-08-28T02:00:00.000Z">1h</time></a>
         <div dir="auto">Fallback text from a changed X DOM</div>
-        <time datetime="2026-08-28T02:00:00.000Z">1h</time>
       </article>
     `);
     const tweets = extractTweets(document, "profile_dom");
-    expect(tweets[0]).toMatchObject({ tweet_id: "102", text: "Fallback text from a changed X DOM" });
+    expect(tweets[0]).toMatchObject({ tweet_id: "102", text: "" });
   });
 
   it("maps supported pages to collector sources", () => {

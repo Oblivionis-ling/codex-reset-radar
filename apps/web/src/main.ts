@@ -16,7 +16,7 @@ function statusBadge(level: RadarResponse["action_level"]): string {
 }
 
 function stateLabel(state: string): string {
-  return ({ ready: "判断已就绪", processing: "正在分析 / 判断", failed: "模型请求失败", stale: "判断已过期", blocked: "模型未配置" } as Record<string, string>)[state] ?? state;
+  return ({ ready: "判断已就绪", processing: "正在分析 / 判断", failed: "模型请求失败", stale: "判断已过期", data_stale: "数据过期 · 暂不能可靠判断", invalid: "已有结果 · 校验未通过", insufficient_input: "可用资料不足", blocked: "模型未配置" } as Record<string, string>)[state] ?? state;
 }
 
 function estimateWindow(radar: RadarResponse): string {
@@ -39,9 +39,24 @@ function postRow(post: TiboPost): string {
     : post.analysis_status === "FAILED" ? `分析失败：${post.processing_error ?? "未知错误"}` : "等待分析";
   return `<article class="post-row">
     <div><span class="mono">${escapeHtml(formatTime(post.posted_at))}</span><span class="source">${escapeHtml(post.is_reply ? "REPLY" : "POST")}</span></div>
-    <div class="post-copy"><p class="translation">${escapeHtml(translated)}</p>${showOriginal ? `<details><summary>英文原文</summary><p lang="en">${escapeHtml(original)}</p></details>` : ""}<small>${escapeHtml(analysisState)}</small></div>
+    <div class="post-copy"><p class="translation">${escapeHtml(translated)}</p>${showOriginal ? `<details><summary>原文</summary><p>${escapeHtml(original)}</p></details>` : ""}<small>${escapeHtml(analysisState)}</small>${replyContext(post)}</div>
     <a href="${escapeHtml(post.url)}" target="_blank" rel="noreferrer" aria-label="在 X 查看推文 ${escapeHtml(post.tweet_id)}">在 X 查看 ↗</a>
   </article>`;
+}
+
+function replyContext(post: TiboPost): string {
+  const context = post.reply_context;
+  if (!post.is_reply || !context) return '';
+  const labels: Record<string,string> = { READY:'父帖已取得', PARTIAL:'上下文部分可用', UNAVAILABLE:'父帖尚不可用',
+    RELATION_UNCONFIRMED:'直接回复关系待确认', BODY_UNAVAILABLE:'父帖正文待获取', CONTENT_RESTRICTED:'内容使用受限',
+    INCOMPLETE_CONTENT:'媒体或正文上下文不完整', DEPTH_LIMIT:'已到最大追溯深度',
+    LOGIN_REQUIRED:'需要重新登录 X', PAGE_LOADING:'详情页未完成加载', BROWSER_DISCONNECTED:'等待浏览器连接',
+    USER_NAVIGATED:'辅助页已被手动关闭或导航', NETWORK_OR_RATE_LIMIT:'网络错误或限流', ANCESTOR_RELATION_UNCONFIRMED:'更上层关系尚未确认' };
+  return `<details><summary>回复上下文 · ${escapeHtml(labels[context.state] ?? context.state)}</summary>
+    <p>${escapeHtml(context.missing.map(value=>labels[value]??value).join('；'))}</p>
+    <small>${escapeHtml(post.context_acquisition?.status ?? '')} · ${escapeHtml(labels[post.context_acquisition?.reason ?? ''] ?? post.context_acquisition?.reason ?? '')}</small>
+    ${context.nodes.map(node=>`<blockquote><small>${node.depth===1?'直接父帖':'上层上下文'} · @${escapeHtml(node.author)} · ${escapeHtml(formatTime(node.posted_at))}</small><p>${escapeHtml(node.text)}</p><a href="https://x.com/i/status/${encodeURIComponent(node.tweet_id)}" target="_blank" rel="noreferrer">查看父帖</a></blockquote>`).join('')}
+    <small>补全后分析时间：${escapeHtml(formatTime(post.analysis?._analysed_at ?? null))}</small></details>`;
 }
 
 function specialResets(radar: RadarResponse): string {
@@ -53,10 +68,20 @@ function specialResets(radar: RadarResponse): string {
   </article>`).join("");
 }
 
+function specialAnnouncements(radar: RadarResponse): string {
+  return radar.special_announcements.map(a=>`<article class="special-card">
+    <span>重置卡相关预告 · 待核验</span><strong>尚未确认发放</strong>
+    ${radar.current_data_health!=='HEALTHY'?'<small>采集过期 · 最后已知信息</small>':''}
+    <p>${escapeHtml(a.summary)}</p><small>范围：${escapeHtml(a.scope)} · ${a.scheduled_at?escapeHtml(formatTime(a.scheduled_at)):'日程未确认'}</small>
+    <time>发帖 ${escapeHtml(formatTime(a.posted_at))}</time>
+    <a href="https://x.com/thsottiaux/status/${encodeURIComponent(a.tweet_id)}" target="_blank" rel="noreferrer">查看预告原帖</a>
+  </article>`).join('');
+}
+
 function collectors(health: HealthResponse): string {
   const entries = Object.entries(health.collector || {});
   if (!entries.length) return `<div class="empty">Backend 重启后尚未收到 Collector 状态。</div>`;
-  return entries.map(([name, state]) => `<div class="health-row"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(state.state)}</span><time>${escapeHtml(formatTime(state.last_seen_at))}</time></div>`).join("");
+  return entries.map(([name, state]) => `<div class="health-row"><strong>${escapeHtml(name)}</strong><span>${escapeHtml(state.state)} · ${escapeHtml(state.reason??'')}<small>最后自报：${escapeHtml(state.reported_state??state.state)}</small></span><time>${escapeHtml(formatTime(state.last_seen_at))}</time></div>`).join("");
 }
 
 function refreshWarning(message: string, receivedAt: Date): string {
@@ -74,6 +99,8 @@ function renderHome(radar: RadarResponse, health: HealthResponse, posts: TiboPos
   const pending = health.intelligence?.pending_jobs ?? 0;
 
   return `<main>${warning}
+    <p role="status">判断时数据：${escapeHtml(radar.judgement_data_health)} · 当前采集：${escapeHtml(radar.current_data_health)} · 校验：${escapeHtml(radar.validation.reason)} · 最近处理：${escapeHtml(String(radar.judge_runtime.status??''))}${radar.judge_runtime.last_error?` · ${escapeHtml(String(radar.judge_runtime.last_error))}`:''}</p>
+    ${radar.display_mode==='last_known' && radar.last_known_result?`<details><summary>最后已知模型结果（不是当前行动建议）</summary><p>主等级 ${escapeHtml(String(radar.last_known_result.action_level))} · 24/48/72h：${escapeHtml(['horizon_24h','horizon_48h','horizon_72h'].map(k=>String(radar.last_known_result?.[k])).join(' / '))}</p><p>${escapeHtml(String(radar.last_known_result.reason_summary))}</p></details>`:''}
     <section class="action-grid">
       <article class="action-card level-${tone(radar.action_level)}"><span class="eyebrow">ACTION LEVEL</span>${statusBadge(radar.action_level)}
         <h1>${escapeHtml(actionCopy(radar.action_level))}</h1><p>关注的问题：下一次 Codex Reset 是否正在临近？</p>
@@ -93,7 +120,7 @@ function renderHome(radar: RadarResponse, health: HealthResponse, posts: TiboPos
         ${radar.last_full_reset ? `<p class="event-meta">${escapeHtml(radar.last_full_reset.scope ?? "unknown")} · ${escapeHtml(radar.last_full_reset.execution_stage ?? "unknown")} · ${escapeHtml(radar.last_full_reset.time_basis ?? "unknown")}</p>` : ""}
         <small>只有经过语义核验的 FULL_RESET 会开启新周期；特殊额度事件不改变这里。</small></article>
     </section>
-    <section class="panel"><header><span class="eyebrow purple-text">SPECIAL RESET · PURPLE</span><h2>特殊额度事件</h2></header><div class="special-grid">${specialResets(radar)}</div></section>
+    <section class="panel"><header><span class="eyebrow purple-text">SPECIAL RESET · PURPLE</span><h2>特殊额度事件与待核验预告</h2></header><div class="special-grid">${specialResets(radar)}${specialAnnouncements(radar)}</div></section>
     <section class="content-grid lower-grid">
       <article class="panel"><header><span class="eyebrow">RECENT TIBO POSTS</span><h2>最近公开内容与中文翻译</h2></header><div class="post-list">${posts.length ? posts.map(postRow).join("") : `<div class="empty">V2 数据库暂无内容。</div>`}</div></article>
       <article class="panel"><header><span class="eyebrow">DATA HEALTH</span><h2>本地运行状态</h2></header>
@@ -128,7 +155,10 @@ async function refresh(): Promise<void> {
     render(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (lastSuccessful) render(lastSuccessful.data, refreshWarning(message, lastSuccessful.receivedAt));
+    if (lastSuccessful) render({...lastSuccessful.data,radar:{...lastSuccessful.data.radar,
+      action_level:'UNKNOWN',horizon_24h:'UNKNOWN',horizon_48h:'UNKNOWN',horizon_72h:'UNKNOWN',
+      judgement_state:'invalid',reason_summary:'无法核验当前结果，Backend 刷新失败。',
+      estimated_start:null,estimated_end:null,estimate_basis:'刷新失败，无法核验时间窗口。'}}, refreshWarning(message, lastSuccessful.receivedAt));
     else app.innerHTML = shell(`<main><section class="panel error-panel"><span class="eyebrow">BACKEND UNAVAILABLE</span><h1>本地 V2 Backend 暂不可用</h1><p>${escapeHtml(message)}</p><button type="button" id="retry">重新连接</button></section></main>`, "unavailable");
     document.querySelector<HTMLButtonElement>("#retry")?.addEventListener("click", () => void refresh());
   } finally {

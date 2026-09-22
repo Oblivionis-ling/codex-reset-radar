@@ -6,6 +6,7 @@ import type {
   RuntimeMessageResponse
 } from "./types";
 import { buildSearchUrls } from "./search";
+import { runReplyContext } from './reply-context';
 
 const BACKEND = "http://127.0.0.1:8787";
 const SEARCH_ALARM = "search-backfill-5m";
@@ -405,6 +406,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SEARCH_ALARM) void runSearchBackfill(72);
   if (alarm.name === DEEP_SEARCH_ALARM) void runSearchBackfill(24 * 7);
   if (alarm.name === RETRY_ALARM) {
+    void runReplyContext();
     void flushTweets();
     void flushDiagnosticRing();
     void snapshotMatchingTabs();
@@ -448,3 +450,4 @@ chrome.runtime.onMessage.addListener((message: IngestMessage | HeartbeatMessage 
 
 diagnosticLog("SERVICE_WORKER_INIT", { observed_at: new Date().toISOString(), extension_instance_id: EXTENSION_INSTANCE_ID });
 void setupAlarms();
+void runReplyContext();
