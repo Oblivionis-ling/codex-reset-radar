@@ -22,6 +22,8 @@ from .intelligence import (
 )
 from .logging_runtime import RuntimeLog
 from .collector_health import collector_health
+from .laya_worker import DecisionSettings, LayaWorker
+from .hybrid_decision import hybrid_judge
 
 
 class TranslationStageError(RuntimeError):
@@ -45,6 +47,7 @@ class IntelligencePipeline:
         collector_state: dict[str, dict[str, Any]],
         repository_root: Path,
         judge_interval_seconds: int = 3600,
+        decision_settings: DecisionSettings | None = None,
     ) -> None:
         self.database = database
         self.client = client
@@ -52,6 +55,8 @@ class IntelligencePipeline:
         self.collector_state = collector_state
         self.repository_root = repository_root
         self.judge_interval_seconds = judge_interval_seconds
+        self.decision_settings = decision_settings or DecisionSettings()
+        self.laya_worker = LayaWorker(self.decision_settings) if self.decision_settings.mode == 'deepseek_laya' else None
         self._tasks: list[asyncio.Task[Any]] = []
         self._stopping = False
         self._judge_dirty = False
@@ -112,6 +117,8 @@ class IntelligencePipeline:
         for task in self._tasks:
             task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
+        if self.laya_worker is not None:
+            await self.laya_worker.close()
         close = getattr(self.client, "close", None)
         if close:
             await close()
@@ -316,7 +323,12 @@ class IntelligencePipeline:
         triggers = sorted(self._judge_triggers)
         self._judge_triggers.clear()
         self.runtime_log.write('llm','RADAR_JUDGE_ATTEMPT',metadata={'triggers':triggers,'prompt_version':JUDGE_PROMPT_VERSION})
-        result = await judge(self.client, context, data_health=data_health or self._data_health(), as_of=as_of)
+        if self.laya_worker is not None:
+            result = await hybrid_judge(self.client, context, worker=self.laya_worker,
+                settings=self.decision_settings, data_health=data_health or self._data_health(), as_of=as_of)
+        else:
+            result = await judge(self.client, context, data_health=data_health or self._data_health(), as_of=as_of)
+            result['raw'].update(decision_engine='deepseek', decision_mode='deepseek_only')
         versions = {p['tweet_id']:p.get('input_hash') for p in context['posts']}
         fresh = self.database.judgement_context(as_of=as_of)
         if (versions != {p['tweet_id']:p.get('input_hash') for p in fresh['posts']}
@@ -325,7 +337,7 @@ class IntelligencePipeline:
             self.request_judge('context_changed_during_judge')
             raise ValueError('Judge input changed while request was in flight')
         current_cycle = context.get("current_cycle")
-        result.update({"model": self.model, "prompt_version": JUDGE_PROMPT_VERSION,
+        result.update({"model": self.model, "prompt_version": result.get('prompt_version', JUDGE_PROMPT_VERSION),
                        "cycle_id": current_cycle["id"] if current_cycle else None,
                        "special_event_ids": [event["id"] for event in context["reset_events"] if event["event_type"] == "SPECIAL_RESET"],
                        "corpus_version": context.get("corpus_version"),
@@ -336,6 +348,7 @@ class IntelligencePipeline:
         result['raw']['input_post_ids'] = list(versions)
         result['raw']['triggers'] = triggers
         result['raw']['pending_inputs'] = context['pending_inputs']
+        result['raw']['decision_config_identity'] = self.decision_settings.identity()
         judgement_id = self.database.add_judgement(result)
         self.database.set_state("judge", {"status": "ready", "judgement_id": judgement_id, "completed_at": utc_now(), "model": self.model, "last_error": None})
         self.database.set_state("pipeline", {"status": "ready", "enabled": True, "model": self.model, "last_error": None, "updated_at": utc_now()})

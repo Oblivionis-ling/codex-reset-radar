@@ -1,0 +1,10 @@
+# Independent Python 3.12 environment; never install into Backend.
+# Install torch from https://download.pytorch.org/whl/cpu first on CPU hosts.
+torch==2.6.0
+laya==0.3.5
+transformers==4.51.3
+huggingface_hub==0.36.0
+safetensors==0.5.3
+numpy==2.2.6
+psutil==7.0.0
+hf-xet==1.6.0

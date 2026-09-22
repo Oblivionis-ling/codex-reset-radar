@@ -856,6 +856,13 @@ class Database:
             else:
                 rows = connection.execute("SELECT * FROM historical_cases WHERE active=1 ORDER BY posted_at DESC").fetchall()
         current_post_ids = {int(post["id"]) for post in posts if post.get("id") is not None}
+        current_tweet_ids = {str(post['tweet_id']) for post in posts}
+        # Imported cases can lack post_id. Exclude by stable content identity too,
+        # including sibling reports of the same event, not by source website.
+        for event in self.list_reset_events(200, as_of=as_of):
+            evidence_ids = {str(value) for value in event.get('evidence_post_ids') or []}
+            if evidence_ids.intersection(current_tweet_ids):
+                current_tweet_ids.update(evidence_ids)
         restricted_tweet_ids = self.restricted_tweet_ids("historical_case")
         corpus_text = " ".join(str(post.get("original_text") or post.get("text") or "").lower() for post in posts)
         keyword_tags = {
@@ -878,6 +885,8 @@ class Database:
                 continue
             item["pattern_tags"] = json.loads(item.pop("pattern_tags_json") or "[]")
             item["related_tweet_ids"] = json.loads(item.pop("related_tweet_ids_json") or "[]")
+            if current_tweet_ids.intersection(str(value) for value in item['related_tweet_ids']):
+                continue
             if item.get("post_id") is not None:
                 linked_post = self.get_post(int(item["post_id"]))
                 if linked_post and not self.content_use_allowed(linked_post, "historical_case"):
