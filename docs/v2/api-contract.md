@@ -43,6 +43,10 @@ derived `state`, `last_seen_at`, `age_seconds`, `checked_at`, `reason`, instance
 where present. Missing/old heartbeats decay after the existing 15-minute threshold; accepted
 client observation time is not replaced by receipt time. Health/Radar GETs are read-only.
 
+Judge input snapshots and per-Tweet versions are stored internally for validation; the Radar API
+does not expose model request bodies or raw snapshots. A changed or missing source version makes
+the stored result invalid with a concrete validation reason rather than silently repairing evidence.
+
 ### Explicit task endpoints (not configuration checks)
 
 | Method/path | Semantics |
@@ -60,4 +64,4 @@ includes `reply_context` and `context_acquisition` alongside analysis/translatio
 
 ### Evolution boundary
 
-Alpha 4 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.
+Alpha 5 is additive within `/api/v2`. Breaking changes require an API version transition; V1 static `public-data` is not an API fallback.
