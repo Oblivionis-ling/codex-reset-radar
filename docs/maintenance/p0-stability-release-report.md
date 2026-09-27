@@ -51,4 +51,6 @@
 
 发布分支因远端不可达暂存在本地，待网络恢复后可直接推送现有分支；不得重跑模型，也无需重做已通过的离线测试，除非代码基线发生变化。
 
+干净检出与基线检查 worktree 已移除。隔离 HTTP 冒烟目录 `runtime/worktrees/p0-stability-release-20260928/_tmp/alpha5-http-smoke/` 和迁移验证副本 `runtime/worktrees/p0-stability-release-20260928/runtime/p0-migration-copy.db` 仍是 Git 忽略的本地临时文件，未被程序依赖、未进入提交；本环境安全策略拒绝了针对这些精确路径的文件删除操作，因此留待后续清理，不影响生产数据库或运行服务。
+
 页面视觉自动化本轮未能启动：Windows 浏览器清单连续返回 `nodeRepl.fetch request failed`，API 与 Web HTTP 检查通过但不冒称已完成浏览器实看。正式切换后的采集心跳及自然 Judge 尚未发生；无新自然 Judge 不触发模型补判。
