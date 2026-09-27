@@ -309,6 +309,7 @@ class IntelligencePipeline:
         self.database.set_state("judge", {"status": "processing", "started_at": utc_now(), "model": self.model})
         context = self.database.judgement_context(as_of=as_of)
         context['pending_inputs'] = self.database.judge_pending_inputs(include_deferred=True) if not as_of else []
+        self.database.refresh_input_snapshot(context)
         if not context['posts']:
             self.database.set_state('judge', {'status':'insufficient_input', 'reason':'NO_USABLE_POSTS',
                 'recovery':'Waiting for a valid analysis or next scheduled retry', 'updated_at':utc_now()})
@@ -317,11 +318,11 @@ class IntelligencePipeline:
         self._judge_triggers.clear()
         self.runtime_log.write('llm','RADAR_JUDGE_ATTEMPT',metadata={'triggers':triggers,'prompt_version':JUDGE_PROMPT_VERSION})
         result = await judge(self.client, context, data_health=data_health or self._data_health(), as_of=as_of)
-        versions = {p['tweet_id']:p.get('input_hash') for p in context['posts']}
+        input_snapshot = self.database.input_snapshot(context)
         fresh = self.database.judgement_context(as_of=as_of)
-        if (versions != {p['tweet_id']:p.get('input_hash') for p in fresh['posts']}
-                or context.get('current_cycle') != fresh.get('current_cycle')
-                or context.get('reset_events') != fresh.get('reset_events')):
+        fresh['pending_inputs'] = self.database.judge_pending_inputs(include_deferred=True) if not as_of else []
+        self.database.refresh_input_snapshot(fresh)
+        if input_snapshot != self.database.input_snapshot(fresh):
             self.request_judge('context_changed_during_judge')
             raise ValueError('Judge input changed while request was in flight')
         current_cycle = context.get("current_cycle")
@@ -332,8 +333,11 @@ class IntelligencePipeline:
                        "historical_case_ids": [case["case_id"] for case in context.get("historical_cases") or []]})
         result["raw"]["corpus_version"] = result.get("corpus_version")
         result["raw"]["historical_case_ids"] = result.get("historical_case_ids")
+        versions = input_snapshot.get('input_versions')
         result['raw']['input_versions'] = versions
         result['raw']['input_post_ids'] = list(versions)
+        result['raw']['input_snapshot'] = input_snapshot
+        result['raw']['input_snapshot_id'] = self.database._snapshot_digest(input_snapshot)
         result['raw']['triggers'] = triggers
         result['raw']['pending_inputs'] = context['pending_inputs']
         judgement_id = self.database.add_judgement(result)

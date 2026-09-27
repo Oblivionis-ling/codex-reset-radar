@@ -144,7 +144,10 @@ def test_multi_effect_product_flow_preserves_one_cycle_and_a_future_candidate(se
         job=database.claim_post_job()
         await pipeline._process_post(job['payload']['post_id'])
         database.finish_job(job['id'])
-        await pipeline.run_judge(as_of='2026-01-01T01:00:00Z',data_health='HEALTHY')
+        # This test covers idempotent event processing, not historical replay.
+        # Judge at the current time so the just-created input versions are
+        # correctly visible under the as_of availability contract.
+        await pipeline.run_judge(data_health='HEALTHY')
         assert len(database.list_reset_events())==2
         assert len(database.cycles())==1
         assert len(database.list_candidates())==1

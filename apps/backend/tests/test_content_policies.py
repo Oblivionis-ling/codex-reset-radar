@@ -6,7 +6,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import Database
+from app.db import Database, utc_now
 from app.main import create_app
 
 
@@ -159,7 +159,10 @@ def test_content_version_policy_filters_all_downstream_uses(settings):
         "corpus_version": "synthetic",
     })
 
-    context = database.judgement_context(as_of="2026-09-14T00:00:00Z")
+    # Historical reads must not see rows collected after the as_of cutoff.
+    # This policy fixture tests downstream filtering, so evaluate it at the
+    # actual fixture creation time instead of pretending it existed earlier.
+    context = database.judgement_context(as_of=utc_now())
     assert [post["tweet_id"] for post in context["posts"]] == ["policy-allowed"]
     assert context["historical_cases"] == []
     with pytest.raises(ValueError, match="content-policy-ineligible"):
