@@ -1,12 +1,12 @@
 # P0 稳定修复发布验收
 
-截至 2026-09-28；本报告随 Alpha 5 发布 PR 更新。完整本地运行回执位于忽略目录 `runtime/p0-release-acceptance.json`，不包含凭据、模型请求体或真实语料。
+截至 2026-09-28；本报告记录 Alpha 5 发布准备在远端网络阻断时的实际结项状态。完整本地运行回执位于 `D:\work\20260828-CodexResetRadar\runtime\p0-release-acceptance.json`（Git 忽略），不包含凭据、模型请求体或真实语料。
 
 ## 结论与边界
 
 - 实验：`CLOSED_NOT_ADOPTED`。原执行终态仍为 `EXECUTION_COMPLETE_WITH_INCOMPLETE_PAIR`；A1/B1 不晋级生产，Laya 不启用为决策默认，严格日期扩展轨未运行。
-- P0 代码：`READY_FOR_MERGE`（发布 PR、CI、合并及标签待完成）。
-- 本地运行：当前仍是 Alpha 4，P0 切换须等正式合入 main 后执行；旧服务继续可用。
+- P0 代码：`READY_FOR_MERGE`（本地分支已验证、已提交；推送因 GitHub HTTPS 连接失败而阻塞，PR/CI/合并/标签均未发生）。
+- 本地运行：`NOT_DEPLOYED`，仍是 Alpha 4；未合入 main 前不切生产，旧服务继续可用。
 - 本轮新增模型 HTTP、Laya 推理、历史重跑、微信及邮件发送均为 0；剩余 21 次预算保持未用。
 
 ## 正式修改
@@ -31,7 +31,13 @@
 - Web：7 passed，类型检查与构建通过。Collector：18 passed，类型检查与构建通过；采集源码和协议未修改，Alpha 4 扩展兼容，无需重载。
 - 空数据库真实 HTTP 冒烟：Alpha 5 API 健康、数据库初始化、`/api/v2/radar` 可读，模型未配置；测试进程已退出。无模型或通知请求。
 - 生产备份：`runtime/backups/codex-reset-radar-v2.pre-p0-stability-20260927T191602Z.db`，SHA-256 `80ce8932b822507c53a6746aafc22a6ea9a17304da08a17974a8852679b983ac`。隔离副本与备份的 20 张表逐表行数/内容哈希相同，`integrity_check=ok`、外键错误 0。
-- GitHub 干净检出、PR/CI、最终标签与本地切换结果将在发布后补入本报告；模型测试不使用真实凭据。
+- 干净 Git worktree（无 `.env`、运行数据库、Laya 或实验目录）从锁定依赖全新安装后，Backend 94 passed、Web 7 passed、Collector 18 passed；Web/Collector 类型检查、构建通过。空库 Alpha 5 HTTP 冒烟通过，模型关闭，测试进程退出。
+- 本地发布提交：`029ed1b`（P0 修复与回归）、`1e686db`（Alpha 5 版本/文档）；父提交 `2f6f27bb3ccf80a84a9fa6818596b528358fe75c`。工作树与文件白名单已通过 `git diff --check`，秘密模式扫描 0 命中；未包含周回放、A1/B1、Laya、运行库或临时补录工具。
+- 已验证 Alpha 5 标签当前不存在。推送分支时收到 `Failed to connect to github.com:443`；按发布规则停止远端步骤，未重试、未建 PR、未合并、未创建标签。CI 因此未运行。
+
+## 合入前生产现场
+
+本轮发布前只读 API 检查记录：Backend Alpha 4，进程 PID 20968（父进程 18952），Web PID 4728；Web `5173` 和 API `8787` 可读。`2026-09-27T19:53:19Z` 健康快照中 Profile/Replies/Search 分别为 53.1/53.1/1.2 秒、均 `FRESH`。数据库帖子 436、正式事件 15、候选 7、任务 410、Judge 429；最近 Judge #429 为 `YELLOW / YELLOW / ORANGE / ORANGE`，验证 `VALID`，判断时与当前数据健康均为 `HEALTHY`，有效期至 `2026-09-27T21:19:50Z`。这些仅是切换前基线，不是 Alpha 5 运行证据；本轮没有生产数据库写入或服务重启。
 
 ## 实验勘误
 
@@ -43,4 +49,6 @@
 
 合入前生产维持 Alpha 4；切换使用项目正式启动/停止入口，保留 Alpha 4 代码和已验证数据库备份。若 Backend/API、采集协议或数据库检查失败，只回滚运行代码，不用旧备份覆盖新采集数据。
 
-页面视觉自动化本轮未能启动：Windows 浏览器清单连续返回 `nodeRepl.fetch request failed`，API 与 Web HTTP 检查通过但不冒称已完成浏览器实看。正式切换后的采集心跳及自然 Judge 另按运行回执记录；无新自然 Judge 不触发模型补判。
+发布分支因远端不可达暂存在本地，待网络恢复后可直接推送现有分支；不得重跑模型，也无需重做已通过的离线测试，除非代码基线发生变化。
+
+页面视觉自动化本轮未能启动：Windows 浏览器清单连续返回 `nodeRepl.fetch request failed`，API 与 Web HTTP 检查通过但不冒称已完成浏览器实看。正式切换后的采集心跳及自然 Judge 尚未发生；无新自然 Judge 不触发模型补判。
