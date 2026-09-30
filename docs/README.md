@@ -24,7 +24,8 @@
 
 ## 未结案维护
 
-- [Judge、健康与父帖预告修复](maintenance/judge-context-and-health-fix-report.md)：采集恢复见第 10 节；页面视觉验收和远端发布仍未完成。
+- [P0 稳定版发布与实际切换](maintenance/p0-stability-release-report.md)：Alpha 5 已合入并运行；页面视觉核验的限制单独记录。
+- [Judge、健康与父帖预告修复](maintenance/judge-context-and-health-fix-report.md)：早期阶段记录，现用发布状态以 P0 发布报告为准。
 - [工作区整理任务原件](archive/tasks/crr-workspace-optimization-task-20260921.md)；实际处置见[整理报告](archive/workspace/workspace-optimization-report-20260921.md)。
 
 数据存储政策查 [data/README](../data/README.md)，运行资产查 [runtime/README](../runtime/README.md)。忽略文件不等于可删除文件。
