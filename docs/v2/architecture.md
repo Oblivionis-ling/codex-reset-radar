@@ -58,6 +58,13 @@ structured context; Judge receives it with the versioned analysis. Input version
 old results and late model results are discarded before promotion. Previously reviewed events
 are preserved and conflicting context reanalysis is recorded for review.
 
+Before a Judge request, the Backend freezes the versions of every exposed post and every eligible
+Reset-event source, including older source posts outside the recent-post window. The same snapshot
+identifies the analyses, event summaries, retrieved cases, current cycle, and corpus version. The
+pipeline compares that snapshot again after the response and discards the result if any dependency
+changed in flight. Missing, future, restricted, or conflicting evidence is not backfilled from the
+current database state; historical Judge rows remain unchanged.
+
 Live browser contract verification is tracked in
 [the historical reply-context report](../archive/incidents/reply-context-fix-report.md) and
 [current repair acceptance](../maintenance/judge-context-and-health-fix-report.md); offline tests are not delivery evidence.

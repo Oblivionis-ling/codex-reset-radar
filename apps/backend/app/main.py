@@ -196,7 +196,7 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                 "log_retention_days": runtime_settings.log_retention_days,
                 "intelligence_enabled": pipeline is not None,
                 "intelligence_model": runtime_settings.deepseek_model if pipeline is not None else None,
-                "reply_context_version": "reply-context-v1",
+                "reply_context_version": "reply-context-v2",
                 "reply_context_fingerprint": loaded_fingerprint,
             },
             "intelligence": {

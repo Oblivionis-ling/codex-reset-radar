@@ -856,6 +856,13 @@ class Database:
             else:
                 rows = connection.execute("SELECT * FROM historical_cases WHERE active=1 ORDER BY posted_at DESC").fetchall()
         current_post_ids = {int(post["id"]) for post in posts if post.get("id") is not None}
+        current_tweet_ids = {str(post['tweet_id']) for post in posts}
+        # Imported cases can lack post_id. Exclude by stable content identity too,
+        # including sibling reports of the same event, not by source website.
+        for event in self.list_reset_events(200, as_of=as_of):
+            evidence_ids = {str(value) for value in event.get('evidence_post_ids') or []}
+            if evidence_ids.intersection(current_tweet_ids):
+                current_tweet_ids.update(evidence_ids)
         restricted_tweet_ids = self.restricted_tweet_ids("historical_case")
         corpus_text = " ".join(str(post.get("original_text") or post.get("text") or "").lower() for post in posts)
         keyword_tags = {
@@ -878,6 +885,8 @@ class Database:
                 continue
             item["pattern_tags"] = json.loads(item.pop("pattern_tags_json") or "[]")
             item["related_tweet_ids"] = json.loads(item.pop("related_tweet_ids_json") or "[]")
+            if current_tweet_ids.intersection(str(value) for value in item['related_tweet_ids']):
+                continue
             if item.get("post_id") is not None:
                 linked_post = self.get_post(int(item["post_id"]))
                 if linked_post and not self.content_use_allowed(linked_post, "historical_case"):
@@ -940,17 +949,21 @@ class Database:
 
     def list_posts(self, limit: int = 20, *, as_of: str | datetime | None = None) -> list[dict[str, Any]]:
         cutoff = normalise_time(as_of) if as_of else None
+        post_filter = "WHERE COALESCE(p.posted_at,p.collected_at)<=? AND p.created_at<=?" if cutoff else ""
+        analysis_filter = " AND a.created_at<=?" if cutoff else ""
         with self.connect() as connection:
-            where = "WHERE COALESCE(p.posted_at,p.collected_at)<=?" if cutoff else ""
-            params: tuple[Any, ...] = (cutoff, max(1, min(limit, 100))) if cutoff else (max(1, min(limit, 100)),)
+            params: tuple[Any, ...] = (cutoff, cutoff, cutoff, max(1, min(limit, 100))) if cutoff else (max(1, min(limit, 100)),)
             rows = connection.execute(f"""
                 SELECT p.*,
-                (SELECT a.analysis_json FROM post_analysis a WHERE a.post_id=p.id AND a.analysis_type='post_semantics' AND a.status='COMPLETED' ORDER BY a.id DESC LIMIT 1) latest_analysis_json
-                FROM tibo_posts p {where} ORDER BY COALESCE(p.posted_at,p.collected_at) DESC,p.id DESC LIMIT ?""",
+                (SELECT a.analysis_json FROM post_analysis a WHERE a.post_id=p.id AND a.analysis_type='post_semantics'
+                 AND a.status='COMPLETED'{analysis_filter} ORDER BY a.id DESC LIMIT 1) latest_analysis_json
+                FROM tibo_posts p {post_filter} ORDER BY COALESCE(p.posted_at,p.collected_at) DESC,p.id DESC LIMIT ?""",
                 params).fetchall()
         output = []
         for row in rows:
-            post = self.contexts.input(self._post(row), cutoff)
+            post = self._post_input_at(self._post(row), cutoff)
+            if post is None:
+                continue
             if post.get('is_reply'):
                 job=self.contexts.job(post['tweet_id'])
                 post['context_acquisition']={'status':job['status'],'reason':job['last_error']} if job else {'status':'PENDING','reason':'RELATION_UNCONFIRMED'}
@@ -958,10 +971,72 @@ class Database:
             if analysis and post.get('is_reply') and analysis.get('_input_hash') != post['input_hash']:
                 post['analysis'] = None
                 post['analysis_status'] = 'CONTEXT_CHANGED'
+            elif analysis and analysis.get('_input_hash') and analysis['_input_hash'] != post['input_hash']:
+                post['analysis'] = None
+                post['analysis_status'] = 'INPUT_CHANGED'
             elif analysis and analysis.get('context_sufficient') is False:
                 post['analysis_status']='INSUFFICIENT_INPUT'
             output.append(post)
         return output
+
+    def _archived_input(self, post_id: int, as_of: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("""SELECT input_hash,input_json,created_at FROM reply_context_inputs
+                WHERE post_id=? AND created_at<=? ORDER BY created_at DESC,rowid DESC LIMIT 1""",
+                (post_id,as_of)).fetchone()
+        if not row:
+            return None
+        try:
+            snapshot = json.loads(row['input_json'])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+        if not isinstance(snapshot, dict) or not isinstance(snapshot.get('reply_context'), dict):
+            return None
+        return {'input_hash':row['input_hash'],'snapshot':snapshot}
+
+    def _post_input_at(self, post: dict[str, Any], as_of: str | datetime | None = None) -> dict[str, Any] | None:
+        cutoff = normalise_time(as_of) if as_of else None
+        if not cutoff:
+            return self.contexts.input(post)
+        created_at = normalise_time(post.get('created_at'))
+        posted_at = normalise_time(post.get('posted_at'))
+        if not created_at or created_at > cutoff or (posted_at and posted_at > cutoff):
+            return None
+        updated_at = normalise_time(post.get('updated_at'))
+        if updated_at and updated_at > cutoff:
+            archived = self._archived_input(int(post['id']),cutoff)
+            if not archived:
+                return None
+            snapshot = archived['snapshot']
+            if snapshot.get('tweet_id') != post.get('tweet_id'):
+                return None
+            # Old archive rows predate relation metadata. Do not infer an earlier
+            # reply relationship from today's mutable post row.
+            if post.get('is_reply') and ('is_reply' not in snapshot or 'reply_to_tweet_id' not in snapshot):
+                return None
+            post = {**post,'original_text':snapshot['text'],'text':snapshot['text'],
+                    'text_hash':snapshot.get('text_hash') or content_hash(snapshot['text']),
+                    'posted_at':snapshot.get('posted_at') or post.get('posted_at'),
+                    'is_reply':bool(snapshot.get('is_reply')),
+                    'reply_to_tweet_id':snapshot.get('reply_to_tweet_id'),
+                    '_historical_input':archived}
+        return self.contexts.input(post,cutoff)
+
+    def _post_input_version(self, tweet_id: str, *, as_of: str | datetime | None = None) -> str | None:
+        post = self.get_post_by_tweet_id(str(tweet_id))
+        if not post or not self.content_use_allowed(post,'judge_evidence'):
+            return None
+        snapshot = self._post_input_at(post,as_of)
+        version = snapshot.get('input_hash') if snapshot else None
+        return version if isinstance(version,str) and re.fullmatch(r'[0-9a-f]{64}',version) else None
+
+    @staticmethod
+    def _snapshot_digest(value: Any) -> str:
+        payload = json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'),default=str)
+        return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+    def input_snapshot(self, context: dict[str, Any]) -> dict[str, Any]:
+        return context.get('input_snapshot') or {}
 
     def bootstrap_posts(self, candidate_ids: list[str], recent_limit: int = 12, hours: int = 72) -> list[dict[str, Any]]:
         cutoff = normalise_time(datetime.now(UTC) - timedelta(hours=hours))
@@ -1162,8 +1237,8 @@ class Database:
         with self.connect() as connection:
             if cutoff:
                 rows = connection.execute(
-                    "SELECT * FROM reset_events WHERE occurred_at<=? ORDER BY occurred_at DESC,id DESC LIMIT ?",
-                    (cutoff, max(1, min(limit, 200))),
+                    "SELECT * FROM reset_events WHERE occurred_at<=? AND created_at<=? ORDER BY occurred_at DESC,id DESC LIMIT ?",
+                    (cutoff, cutoff, max(1, min(limit, 200))),
                 ).fetchall()
             else:
                 rows = connection.execute("SELECT * FROM reset_events ORDER BY occurred_at DESC,id DESC LIMIT ?", (max(1, min(limit, 200)),)).fetchall()
@@ -1260,7 +1335,13 @@ class Database:
                 row = connection.execute("SELECT * FROM reset_cycles WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1").fetchone()
         return dict(row) if row else None
 
-    def judgement_context(self, post_limit: int = 24, *, as_of: str | datetime | None = None) -> dict[str, Any]:
+    def judgement_context(
+        self,
+        post_limit: int = 24,
+        *,
+        as_of: str | datetime | None = None,
+        include_previous: bool = True,
+    ) -> dict[str, Any]:
         candidates = self.list_posts(min(100, max(post_limit * 4, post_limit)), as_of=as_of)
         source_posts = [
             post for post in candidates
@@ -1268,20 +1349,49 @@ class Database:
         ][:post_limit]
         posts = [{"tweet_id": p["tweet_id"], "posted_at": p["posted_at"], "text": p["original_text"],
                   "is_reply": p["is_reply"], "analysis": p.get("analysis"),
-                  "reply_context": p.get('reply_context'), "input_hash": p.get('input_hash')}
+                  "reply_context": p.get('reply_context'), "input_hash": p.get('input_hash'),
+                  "author": p.get('author_handle') or 'thsottiaux'}
                  for p in source_posts]
-        restricted = self.restricted_tweet_ids("judge_evidence")
-        eligible_events: list[dict[str, Any]] = []
+        input_versions: dict[str,str] = {}
+        for post in posts:
+            tweet_id, version = str(post['tweet_id']), post.get('input_hash')
+            if not isinstance(version,str) or not re.fullmatch(r'[0-9a-f]{64}',version):
+                raise ValueError(f'INPUT_VERSION_MISSING:{tweet_id}')
+            input_versions[tweet_id] = version
+        event_candidates: list[tuple[dict[str,Any],dict[str,str]]] = []
         for event in self.list_reset_events(200, as_of=as_of):
             original_evidence = [str(item) for item in event.get("evidence_post_ids") or []]
-            eligible_evidence = [item for item in original_evidence if item not in restricted]
-            if original_evidence and not eligible_evidence:
+            source_versions: dict[str,str] = {}
+            unavailable = False
+            for tweet_id in original_evidence:
+                version = self._post_input_version(tweet_id,as_of=as_of)
+                if version is None:
+                    unavailable = True
+                    break
+                existing = input_versions.get(tweet_id)
+                if existing is not None and existing != version:
+                    raise ValueError(f'INPUT_VERSION_CONFLICT:{tweet_id}')
+                source_versions[tweet_id] = version
+            # Event summaries are derived claims. If any cited source is absent,
+            # future-dated, or disallowed, do not expose a partial summary.
+            if unavailable:
                 continue
             current = dict(event)
-            current["evidence_post_ids"] = eligible_evidence
-            eligible_events.append(current)
-        reset_events = eligible_events[:12]
-        last_full_reset = next((event for event in eligible_events if event["event_type"] == "FULL_RESET"), None)
+            current["evidence_post_ids"] = original_evidence
+            event_candidates.append((current,source_versions))
+        reset_events: list[dict[str,Any]] = []
+        for event, source_versions in event_candidates[:12]:
+            reset_events.append(event)
+            for tweet_id, version in source_versions.items():
+                existing = input_versions.get(tweet_id)
+                if existing is not None and existing != version:
+                    raise ValueError(f'INPUT_VERSION_CONFLICT:{tweet_id}')
+                input_versions[tweet_id] = version
+        event_versions = {
+            str(event['id']): self._snapshot_digest({k:v for k,v in event.items() if k not in {'created_at','updated_at'}})
+            for event in reset_events
+        }
+        last_full_reset = next((event for event in reset_events if event["event_type"] == "FULL_RESET"), None)
         current_cycle = None
         if last_full_reset is not None:
             with self.connect() as connection:
@@ -1293,15 +1403,41 @@ class Database:
                 current_cycle = dict(row)
                 current_cycle["ended_at"] = None
                 current_cycle["closed_by_reset_event_id"] = None
-        previous_judgement = self.latest_judgement(as_of=as_of)
-        if previous_judgement and not self.judgement_is_usable(previous_judgement, at=as_of):
+        previous_judgement = self.latest_judgement(as_of=as_of) if include_previous else None
+        if include_previous and previous_judgement and not self.judgement_is_usable(previous_judgement, at=as_of):
             previous_judgement = None
-        return {"posts": posts, "reset_events": reset_events,
-                "last_full_reset": last_full_reset,
-                "current_cycle": current_cycle,
-                "previous_judgement": previous_judgement,
-                "corpus_version": self.corpus_version(),
-                "historical_cases": self.retrieve_historical_cases(source_posts, as_of=as_of)}
+        historical_cases = self.retrieve_historical_cases(source_posts,as_of=as_of)
+        case_versions = {str(case['case_id']):self._snapshot_digest(case) for case in historical_cases}
+        context = {"posts": posts, "reset_events": reset_events,
+                   "last_full_reset": last_full_reset,
+                   "current_cycle": current_cycle,
+                   "previous_judgement": previous_judgement,
+                   "corpus_version": self.corpus_version(),
+                   "historical_cases": historical_cases,
+                   "input_versions": input_versions,
+                   "event_versions": event_versions,
+                   "historical_case_versions": case_versions}
+        self.refresh_input_snapshot(context)
+        return context
+
+    def refresh_input_snapshot(self, context: dict[str,Any]) -> dict[str,Any]:
+        """Freeze every content/version identity exposed by the shared Judge context."""
+        post_analysis_versions = {}
+        for post in context.get('posts') or []:
+            analysis = post.get('analysis')
+            if analysis is not None:
+                post_analysis_versions[str(post['tweet_id'])] = self._snapshot_digest(analysis)
+        cycle = context.get('current_cycle')
+        context['input_snapshot'] = {
+            'input_versions':dict(sorted((context.get('input_versions') or {}).items())),
+            'post_analysis_versions':dict(sorted(post_analysis_versions.items())),
+            'reset_event_versions':dict(sorted((context.get('event_versions') or {}).items())),
+            'historical_case_versions':dict(sorted((context.get('historical_case_versions') or {}).items())),
+            'current_cycle_version':self._snapshot_digest(cycle) if cycle else None,
+            'corpus_version':context.get('corpus_version'),
+        }
+        context['input_snapshot_id'] = self._snapshot_digest(context['input_snapshot'])
+        return context['input_snapshot']
 
     def add_judgement(self, judgement: dict[str, Any]) -> int:
         values = [str(judgement[key]).upper() for key in ("action_level", "horizon_24h", "horizon_48h", "horizon_72h")]
@@ -1409,12 +1545,16 @@ class Database:
             return verdict('INVALID_EVIDENCE')
         raw = judgement['raw']
         versions = raw.get('input_versions')
-        if versions is not None and (not isinstance(versions, dict) or
-                any(not isinstance(t, str) or not isinstance(v, str) or not re.fullmatch(r'[0-9a-f]{64}', v) for t, v in versions.items())):
+        if versions is None:
+            missing = next((tid for tid in evidence if self.get_post_by_tweet_id(tid)),None)
+            return verdict('MISSING_INPUT_VERSION',tweet_id=missing) if missing else verdict('INVALID_INPUT_VERSIONS')
+        if not isinstance(versions,dict) or any(
+                not isinstance(t, str) or not isinstance(v, str) or not re.fullmatch(r'[0-9a-f]{64}', v)
+                for t, v in versions.items()):
             return verdict('INVALID_INPUT_VERSIONS')
         expected = raw.get('input_post_ids')
         if expected is not None and (not isinstance(expected, list) or any(not isinstance(t,str) for t in expected)
-                                     or set(expected) != set(versions or {})):
+                                     or set(expected) != set(versions)):
             return verdict('INCOMPLETE_INPUT_VERSIONS')
         for tid in evidence:
             post = self.get_post_by_tweet_id(tid)
@@ -1422,16 +1562,26 @@ class Database:
                 return verdict('EVIDENCE_MISSING', tweet_id=tid)
             if not self.content_use_allowed(post, 'judge_evidence'):
                 return verdict('CONTENT_RESTRICTED', tweet_id=tid)
-            if (versions is not None or (post.get('is_reply') and self.contexts.job(tid))) and tid not in (versions or {}):
+            if tid not in versions:
                 return verdict('MISSING_INPUT_VERSION', tweet_id=tid)
-        for tid, version in (versions or {}).items():
+        for tid, version in versions.items():
             post = self.get_post_by_tweet_id(tid)
             if not post:
                 return verdict('INPUT_MISSING', tweet_id=tid)
             if not self.content_use_allowed(post, 'judge_evidence'):
                 return verdict('CONTENT_RESTRICTED', tweet_id=tid)
-            if self.contexts.input(post, normalise_time(at) if at else None)['input_hash'] != version:
+            current_version = self._post_input_version(tid,as_of=at)
+            if current_version is None:
+                return verdict('INPUT_NOT_AVAILABLE_AT_AS_OF',tweet_id=tid)
+            if current_version != version:
                 return verdict('INPUT_CHANGED', tweet_id=tid)
+        stored_snapshot = raw.get('input_snapshot')
+        if stored_snapshot is not None:
+            if not isinstance(stored_snapshot,dict):
+                return verdict('INVALID_INPUT_SNAPSHOT')
+            current_context = self.judgement_context(as_of=at,include_previous=False)
+            if stored_snapshot != current_context.get('input_snapshot'):
+                return verdict('INPUT_SNAPSHOT_CHANGED')
         return verdict('VALID')
 
     def judgement_is_usable(

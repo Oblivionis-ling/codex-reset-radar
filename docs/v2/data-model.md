@@ -50,6 +50,11 @@ Product decisions with the main Action Level, 24/48/72-hour horizons, data healt
   reason, missing evidence, optional formal event/candidate link, and per-effect split for dual claims.
 
 `radar_judgements` now also persists `corpus_version` and the exact historical case IDs supplied to that call.
+New Judge `raw_json` records include `input_versions` for every exposed eligible Tweet, including
+event-source posts outside the recent-post window, plus an `input_snapshot` and its digest ID. The
+snapshot closes over analysis versions, event summaries, retrieved cases, current cycle and corpus
+version. It is frozen before the model call and revalidated before persistence; old records are not
+rewritten or made valid by reconstructing missing historical versions.
 
 ### Standard corpus exchange
 

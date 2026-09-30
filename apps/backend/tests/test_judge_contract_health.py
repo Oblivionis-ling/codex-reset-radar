@@ -124,6 +124,14 @@ def test_search_cannot_mask_stale_profile_and_replies(client):
 def test_pending_wait_bounded_and_retries_dont_block(client,tmp_path,monkeypatch):
     from test_reply_context import pipeline,ContextModel
     db,post=seed(client)
+    # This case exercises recent due work. The shared reply fixture's fixed
+    # historical timestamp is outside the scheduler's seven-day window.
+    db.upsert_posts_detailed([{
+        'tweet_id':post['tweet_id'],'text':post['original_text'],
+        'posted_at':datetime.now(UTC).isoformat().replace('+00:00','Z'),
+        'is_reply':True,'reply_to_tweet_id':post['reply_to_tweet_id'],
+    }])
+    post=db.get_post(post['id'])
     p=pipeline(db,tmp_path,ContextModel())
     db.enqueue_post(post['id'],p.identity(post))
     tick=[100.0];monkeypatch.setattr('app.pipeline.time.monotonic',lambda:tick[0])
