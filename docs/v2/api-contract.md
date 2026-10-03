@@ -2,6 +2,8 @@
 
 Base URL: `http://127.0.0.1:8787/api/v2`
 
+Future dual-object date prediction and review design is defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Its proposed fields and export capabilities are not implemented endpoint fields; this document continues to describe the current `/api/v2` contract.
+
 ## Product reads
 
 - `GET /health` — version/commit, database counts, ephemeral collector state, pipeline/Judge state, pending jobs, corpus inventory, and disabled GitHub runtime flags.

@@ -1,0 +1,240 @@
+# CRR 日期预测与复盘规范
+
+> 规范版本：`crr-prediction-review-v1`
+> 规范日期：2026-10-03，用户时区 `Asia/Shanghai`；机器时间统一保存为带时区的 UTC。
+> 源代码核查：`main` / `af3cde32aa4c9f7f6d58973535f39445fb4d71c5`。
+> 状态：已确认产品规则与待实施技术方案；本轮交付文档，代码实施与业务测试未做。
+
+## 1 适用范围与证据边界
+
+本规范统一日期预测、长期复盘日志、脱敏导出与评价验收，供后续正式链实现及用户离线 ChatGPT 复盘使用。
+产品核心意图已收敛；本文的字段、导出器、双对象预测与评分设计均待实现，不表示现有系统已经具备或达到准确率目标。
+源码核查只能确认该提交中的实现，不能证明当前进程加载身份、配置、模型、Prompt 或机器运行状态。
+现行 Judge 日期窗口仍只针对 Full；现行表名、事件枚举与 API 契约保持其已有含义。
+2026-09-30 运行事实及固定历史审核包保持历史证据身份，不能用本规范反写其结果。
+代码方案、变更授权、隔离回归、受控业务预算和上线确认属于后续阶段。
+
+## 2 已确认产品规则
+
+近期服务个人使用，未来考虑付费消息分发；Full/Banked 日期预测与信息分发同等重要。
+预测目标是实际执行或发放开始，公告发布时间、代理观察时间与个人账号到账时间须分别记录。
+
+| 目标标识（待实现） | 产品问题 | 与正式事件的关系 |
+| --- | --- | --- |
+| `NORMAL_WEEKLY` | 按最近确认的实际 Full 推算正常周额度恢复参考 | 仅用户基线，不自行生成正式事件 |
+| `EXTRA_FULL` | 额外全局 Full 的实际执行开始何时发生 | 后续经证据核实关联 `FULL_RESET` |
+| `BANKED` | Banked 的实际发放开始何时发生 | 后续经证据核实关联 `SPECIAL_RESET` / `BANKED` |
+
+Normal 以最近确认的实际 Full 为七天锚点；期间出现新的实际 Full，就从新锚点重算七天。
+Banked 不推进、不重置 Full 周期，也不改变 Normal 七天时钟；多效果材料须分拆 Full 与 Banked 效果。
+七天是用户确认的参考基线，尚未验证为所有账号政策，不能据此承诺个人到账。
+Full 锚点只有日期、范围或公告代理时，保留原时区、精度与代理标记；平移七天仍只是同精度的参考范围。
+基线到期只记录过期并复核，不等于观测到正常恢复，不制造额外 Full，不偷偷滚动旧基线。
+没有新实际 Full 锚点时，不得以当前时间或旧基线再加七天冒充新的已确认周期。
+公开信息、上下文、来源资格或实际 Full 锚点发生实质变化时形成新预测；重复 sighting 不重算。
+实质变化以语义输入、证据内容版本和内容政策版本识别，采集时间或心跳变化本身不是新预测依据。
+缺少独立前瞻依据时，Extra Full 与 Banked 日期保持未知，与 Normal 参考基线分开展示和评价。
+官方明确计划时间与模型推断分列；计划或预告不能晋升为实际执行事件。
+新模型发布、故障、恢复或补偿等可作为未来待验证理论来源，不能写死事件、日期或自动升色。
+
+## 3 现有复用入口与待补能力
+
+下表来自上述提交的有界源码核查；“待补”均为设计要求，未实施或验收。
+
+| 真实路径与 symbol | 当前可复用事实 | 待补边界 |
+| --- | --- | --- |
+| [db.py](../../apps/backend/app/db.py)：`radar_judgements`、`add_judgement`、`normalize_judgement` | 追加 Judge 结果；日期、依据、证据、模型/Prompt、状态、周期；`raw_json` 解码为内部 `raw` | 无独立双对象版本链和完整尝试账本；本范围未见 `judge_runs` |
+| [intelligence.py](../../apps/backend/app/intelligence.py)：`judge` | 接受 `as_of`；回放的 `created_at` 使用该历史时刻 | 不能将回放 `created_at` 当真实输出完成或可用时刻 |
+| [db.py](../../apps/backend/app/db.py)：`judgement_context`、`refresh_input_snapshot` | 有界证据与版本摘要；分析、事件、案例、周期及语料版本保护 | 需保留明确输入截止、内容政策版本及可导出的当时资料引用 |
+| [pipeline.py](../../apps/backend/app/pipeline.py)：`Pipeline._run_judge` | 冻结输入，变化时拒收在途结果；保存 `input_versions`、快照 ID、触发原因 | 补独立时间、失败/迟到记录、实际加载版本身份 |
+| [db.py](../../apps/backend/app/db.py)：`reset_events`、`EVENT_COLUMNS` | `BANKED` 子型、发生范围、`time_basis`、范围/阶段、证据 ID | 补独立真值精度、审核版本与预测关联，未知不补造分钟 |
+| [db.py](../../apps/backend/app/db.py)：`_rebuild_cycles`、`next_reset_baseline` | 只有 Full 开周期；Full+7天过期标 `expired` | Normal 参考尚非长期预测版本账本 |
+| [db.py](../../apps/backend/app/db.py)：`special_announcements` | Banked/reset-card 候选预告，明确文本才有 `scheduled_at` | 不是独立 Banked 日期推断或已执行事件 |
+| [corpus_standard.py](../../apps/backend/app/corpus_standard.py)：`export_package` | JSONL、manifest、哈希及版本元数据底座 | 目前不导出完整预测/尝试时间线，复盘包需扩展 |
+| [logging_runtime.py](../../apps/backend/app/logging_runtime.py)：`RuntimeLog.write`、`_prune` | 有界 JSONL；默认五天保留，分片也会淘汰旧记录 | 不可作为唯一长期预测或失败历史 |
+| [notifications/security.py](../../apps/backend/app/notifications/security.py)：`redact` | 已知密钥及部分 URL Token 去敏 | 不是通用私人信息过滤器，须另加字段白名单与 URL 清洗 |
+
+现有 Judge 字段、内部快照及候选预告可作为底座；新增设计不得冒充当前 DB 字段或当前 API 输出。
+现行契约见 [产品模型](product-model.md)、[数据模型](data-model.md) 与 [API 契约](api-contract.md)。
+
+## 4 待实现的逻辑记录与字段
+
+以下定义逻辑记录组，不指定建表数量，也不声称已有五个新表；存储迁移另行设计。
+所有记录携带本规范版本、记录 schema 版本与稳定 ID；缺失值显式为 `null` 并记录原因。
+
+### 4.1 身份与来源
+
+| 字段组 | 必要语义 |
+| --- | --- |
+| `forecast_id`、`series_id` | 每个预测版本不可变 ID；系列表示同一目标、范围和预测问题，不以未来事件标准答案预建 |
+| `target`、`scope` | 三条线之一；公开作用范围及其确定性，不能把范围不明写成全部账号 |
+| `revision`、`previous_id` | 系列内单调版本号与前版引用；重试另有 `attempt_id`，不可覆盖前版 |
+| `record_kind` | `online` 实时预测、`replay` 隔离回放、`baseline` Normal 参考、`announcement` 信息通报；互不混算 |
+| `method` | 预测为 `official_time_extraction` 或 `model_inference`；Normal 基线为 `null`，另记 `basis=user_full_plus_7d` |
+| `origin_judgement_id`、`candidate_id`、`event_id` | 可空的既有来源引用；`event_id` 可指已知依据或 Normal 锚点，不预装未来真值 |
+
+`official_time_extraction` 仅表示可核验官方明确时间的抽取，不保证执行；依据推测归 `model_inference`。
+公告材料若形成可评价的未来预测，另建 `online` 版本并引用来源；公告记录本身不自动成为预测或正式事件。
+未来事件发生后才追加真值关联；须类型、公开范围、事件身份和证据一致，禁止按最近时间强配。
+无法唯一关联时保留候选关联及原因，评价记未判定，不能静默挑选最有利事件。
+
+### 4.2 预测内容与时间
+
+| 字段组 | 必要语义 |
+| --- | --- |
+| `predicted_start`、`predicted_end`、`prediction_form` | 明确点、有限范围或未知；明确点可内部退化为同值两端；只有单边时不得伪造另一端 |
+| `source_timezone`、`precision`、`time_basis` | 保留原时区、日期/时刻/范围精度，以及明确文本、推断或代理依据 |
+| `judgement_as_of` | 语义判断/回放的历史参考时刻，不等于真实生成或用户可用时刻 |
+| `input_cutoff_at` | 本次输入冻结边界；迟到观测即使声称早发布，也不得倒灌该版本 |
+| `attempt_started_at`、`attempt_finished_at` | 实际尝试开始与终止时间；失败、超时、取消同样记录 |
+| `output_available_at` | 结果经校验且首次可供产品读取的实际时间；用于事前性与提前量 |
+
+时间采用带时区格式；转换 UTC 时保留原表达及转换依据。日期/范围不强塞午夜实测点，不取中点，不补造分钟。
+日期可按可靠时区与声明精度表达整日范围；不能形成可信有限闭区间时保留未知或单边状态。
+回放 `created_at=as_of` 只能映射到语义参考时间；实际执行与输出可用时刻必须另记。
+正常顺序为实际开始不晚于结束、结束不晚于输出可用；缺少可信时钟或违序时不能认证事前性。
+拒收输出没有产品 `output_available_at`；可另存受控响应接收时间与拒收原因，不能进入成功预测集合。
+
+### 4.3 输入、运行身份与真值
+
+| 字段组 | 必要语义 |
+| --- | --- |
+| `trigger`、`change_reason`、`attempt_status` | 触发来源、实质变更/重试原因；成功、无依据、请求失败、解析失败、超时、取消、迟到拒收分明 |
+| `input_snapshot`、`input_versions`、`input_snapshot_hash` | 当时证据与目标/父帖/祖先语义输入身份，含公开材料引用和缺口；不拿今日文本重建旧输入 |
+| `content_policy_version`、`evidence_versions` | 当时字段使用限制、证据内容版本和可用性；不以当前允许状态追认旧输入 |
+| `program_commit`、`algorithm_version`、`config_version` | 实际加载程序、算法及非秘密配置版本与指纹；磁盘 HEAD 只可作另列核查身份 |
+| `model_version`、`prompt_version`、`runtime_fingerprint` | 实际解析的模型标识、加载 Prompt 版本/摘要及运行组合指纹；未知则显式标记 |
+| `actual_start`、`actual_start_end`、`actual_time_basis`、`actual_precision` | 独立审核的实际执行/发放开始点或范围；公告代理保留代理标记，未核实可空 |
+| `actual_event_id`、`actual_evidence_ids`、`truth_revision`、`truth_status`、`adjudication_version` | 后续真值关联、证据版本、可信/代理/未知状态、修订链及判定规则版本；修正另追加，不覆盖原判 |
+
+运行指纹仅包含允许公开的版本材料；不能把 Key/Token/Cookie 或其可反推摘要作为配置指纹导出。
+只有独立核实的执行/发放开始范围进入可信真值；公告或观察代理保留代理状态，不能充当实测开始。
+Normal 锚点变更保留旧锚点引用和旧基线版本；个人到账观测不得冒充全局 Full/Banked 开始。
+正式事件类型保持 `FULL_RESET` 和 `SPECIAL_RESET`，`BANKED` 是 `SPECIAL_RESET` 的子型；forecast target 不重命名业务枚举。
+
+## 5 长期留存与版本约束
+
+预测、尝试、真值修订及评价结果均长期 append-only；当前视图可以派生，历史记录不可覆盖。
+每次实际尝试先留输入身份和开始记录，再追加终态；崩溃未完成、请求失败、解析失败、超时和在途变化拒收也可追踪。
+失败或拒收不删除旧成功预测，不把旧成功内容贴到新版本上；界面是否可用仍遵守当前新鲜度与有效期校验。
+保存首次、最后一次事前及所有中间版本，不只保存当前最新或评价最好版本。
+重复输入不形成新的语义预测版本；确需重试时追加尝试，并明确同一输入与前次尝试的关系。
+实质新输入在途到来时标 dirty，当前在途旧结果拒收，后续形成新版本；拒收原因及版本差异须留痕。
+当时公开输入、必要上下文和版本索引要可追溯；不能以今日帖子、Prompt、配置替换历史快照。
+五天轮转诊断日志与长期账本分开；轮转或分片淘汰后仍能重建预测/尝试/真值时间线。
+原始真实资产按既有忽略政策本地保存，不上 Git；保留与清理政策另行受控，不能为工作树干净删除资产。
+
+## 6 待实现的脱敏复盘包
+
+复盘包采用 UTF-8 JSONL 与 manifest，可复用 `export_package` 的确定性序列化和哈希底座；本轮未实现导出器。
+
+| 设计中的包内容 | 最低用途 |
+| --- | --- |
+| 预测与尝试 JSONL | 完整首次/末次/中间版本、失败和拒收；稳定引用及实际时间 |
+| 真值修订与评价 JSONL | 独立真值、审核规则、固定事件集合与逐事件分类，保留历次修订 |
+| public evidence 与 input JSONL | 必要公开内容、父帖/祖先上下文、冻结输入版本、时间/质量缺口与去敏标记 |
+| 配置/Prompt/程序索引 JSONL | 当时脱敏的允许字段、版本与摘要；不可公开部分明确省略，不假称完全复现 |
+| manifest | 规范/导出/去敏版本、冻结与生成时间、覆盖截止、各文件记录数及 SHA-256、运行身份和评价集合摘要 |
+
+导出先按字段白名单构建资料，再调用现有 `redact`，并清除 secret URL 的路径、查询、userinfo 与片段中的秘密。
+禁止导出 Key、Token、Cookie、SMTP 凭据、私有账号/设备/会话标识、私人敏感内容、模型私有推理及原始秘密配置。
+公开证据 ID 与公开作者出处可保留；含私人信息的文本另做去敏并标注修改，不将去敏正文伪称原始输入。
+错误记录只导出允许的类型、状态与原因摘要，不原样输出可能含凭据或私有请求体的异常；本机绝对路径改为安全别名，manifest 同样适用白名单。
+manifest 哈希计算于最终脱敏文件字节，稳定排序、换行与编码；引用原版本与去敏版本须可区分。
+导出失败或完整性不符必须显式失败，不能递交缺文件却声称完整的复盘包。
+
+用户离线复盘步骤：
+
+1. 从后续导出器选择系列和冻结截止，导出脱敏包；本地核对 manifest、文件哈希、缺口与首末版本，不需要贴密钥。
+2. 用户自行定期在 ChatGPT 上传规范和脱敏包，请求逐证据核对真值、首次/末次评价及改进建议；缺资料注明，建议引用记录 ID。
+3. 用户审阅建议；任何配置、算法、Prompt 改动先经隔离回归，再逐次确认上线，过程另留版本与变更原因。
+
+CRR 不自动调用高级模型，不新增复盘调用预算，不自动调参或上线；本次流程确认不是未来无限变更或当前部署授权。
+
+## 7 固定集合与评价算法
+
+用户已确认 ±24h 为主、±48h 为辅助及首次/末次事前评价口径；本节为据此形成、经 Sol 审查的初版技术算法设计。本轮没有执行评分或验证线上准确率。
+评分前固定目标事件集合、范围、观测截止、去重与纳入/排除规则、真值审核版本、评分版本及集合哈希。
+Full 与 Banked 各有固定 `N`；Normal 参考基线独立报表，不能混入额外 Full 命中或失败。
+真实已识别事件即使缺精确时间也保留在集合内；不能因无预测、未知或误差大而删事件改变分母。
+预测发生时不得预装未来标准答案；评分时的后续真值只能进入审核/关联记录，不能倒灌当时输入。
+
+### 7.1 首次末次与事前性
+
+Full/Banked 的首次、末次事前分别每事件一票；按 `output_available_at` 选版本，不能按误差挑最佳。
+官方明确时间提取与模型推断分栏，各栏声明同一目标集合的 `N`；无该方法预测照样占一票，不跨栏挑优合并。
+保存所有中间预测供复盘，但中间版本不增加首次/末次面板的事件票数。
+令真值开始范围为 `J=[a,b]`，输出可用时刻为 `o`：`o<a` 确定事前；`o>=b` 确定事后；其余事前性不明。
+点真值为 `a=b`；恰在开始时刻可用不算事前。提前量记录区间 `[a-o,b-o]`，不设固定最低门槛。
+只选可证明的事前版本；缺可用时刻或不确定候选影响首/末选择时记事前性不明，不能假设顺序。
+同一可用时刻以已留存的稳定记录顺序/ID 排定，规则固定且与误差无关；无法恢复顺序则记不明。
+事后更新按通报的内容与时效评价，回放按隔离执行质量另列；均不算在线预测命中。
+
+### 7.2 点与范围误差
+
+明确预测点视为退化区间 `I=[L,U]`，其中 `L=U`；真值点同理。
+仅对可信、有效、有限闭区间计算；端点转为 UTC 小时，须有 `L<=U`、`a<=b`，保留原时区与精度。
+只有范围不自动判未知；范围不能支持确定结论时归误差不明，不以午夜、中点或补造分钟强评分。
+
+- `e_min = max(0, a-U, L-b)`。
+- `e_max = max(abs(L-b), abs(U-a))`。
+- 阈值 `t=24` 或 `48`：`e_max<=t` 为确定命中；`e_min>t` 为确定未命中；其余为误差无法确定。
+
+缺可信真值单独未判定，不把缺资料当未命中；单边预测或不合法区间不能补齐端点，应标时间未知及原因。
+范围宽度 `U-L`、真值宽度 `b-a` 和范围覆盖另报；宽区间包含真值不能直接算 ±24h 命中。
+覆盖仅对可信有限闭区间计算：`L<=a` 且 `b<=U`（`J⊆I`）为确定覆盖；`U<a` 或 `b<L`（不相交）为确定不覆盖；其它为覆盖无法确定。
+覆盖报表使用与误差面板相同的固定目标事件集合分母，并披露无预测、未知、缺真值/事前性不明等缺失状态；覆盖不替代24/48小时误差命中评价。
+合成验收例（单位小时，非历史事实）：真值 `[0,0]`，预测 `[-1,1]` 在24h命中；`[-48,48]` 在24h误差不明、48h命中。
+预测点 `[24,24]` 对 `[0,0]` 在24h命中；`[25,25]` 在24h未命中、48h命中；`[23,25]` 在24h误差不明。
+不得加任意十倍罚项、以中点代替范围、缩窄真值以刷分或覆盖原预测。
+
+### 7.3 分母与互斥分类
+
+每个目标/首次或末次/方法面板均报告固定 `N`，按以下优先级每事件只给一个主分类；缺失原因另作副标签。
+
+| 顺序 | 主分类 | 判定规则 |
+| --- | --- | --- |
+| 1 | 无预测 | 无匹配 online 预测，或只有确定事后版本；失败尝试不是有效预测，原因保留为副标签 |
+| 2 | 预测未知 | 可选版本日期为 null/单边/无效，或现有候选全为未知；不跳过未知版本挑后来较好版本 |
+| 3 | 未判定 | 缺可信真值，或首/末事前性、关联、可用时刻无法确定；副标签分别说明 |
+| 4 | 确定命中 | 可评价配对的 `e_max<=t` |
+| 5 | 确定未命中 | 可评价配对的 `e_min>t` |
+| 6 | 误差无法确定 | 有可信配对，但两个边界不足以确定是否在阈值内 |
+
+缺真值时不假选“最后一次事前”；无候选优先无预测，全未知优先未知，其余进入未判定。
+首/末可确定后逐版本分类；未知不得用中间版本替代。缺真值等副标签在所有适用事件中保留，不能被主分类吞掉。
+主报确定命中数/N、各主分类数且总和等于 N；N=0 时比例报不可计算；24h为主、48h辅助，分类分别计算并保留逐事件依据。
+仅确定结果的命中率 `命中/(命中+未命中)` 是辅助指标，须注明分母；分母为0报不可计算。
+足够观测期内预测落空、延期或取消另按冻结的预测系列集合报告，不用增删事件 N 掩盖这些结果。
+观测结束与覆盖要求须预先登记；未登记、采集 STALE、存在覆盖缺口或仅未观测时，不得认定无事件或预测落空。
+没有获批最低命中率或服务保证，不自行设置80%等门槛。
+
+## 8 回归与验收矩阵
+
+下列全部待执行；既有名称仅表示真实可复用入口，不表示本轮或后续实现已经 PASS。
+文件路径均相对项目根；新增用例沿现有测试体系实现，不依赖 ignored 真实资产或临时模块。
+
+| 验收主题 | 已核实的既有入口或待补用例 | 状态 |
+| --- | --- | --- |
+| Full+7、中途 Full、Banked 不动周期、过期 Normal 无假事件 | `apps/backend/tests/test_v2_contract.py::test_full_reset_closes_previous_cycle_and_opens_new_cycle`、`test_special_reset_is_purple_and_does_not_change_last_full_reset`、`test_expired_default_date_is_not_rolled_forward`；补 Normal 版本 | 待执行 |
+| 代理、日期/范围、未知保真 | `apps/backend/tests/test_effects_pipeline.py::test_unknown_time_cannot_be_invented_from_post_time_and_mechanism_is_not_an_event`；补精度与代理基线 | 待执行 |
+| Full/Banked 独立、多效果只一次 Full | `apps/backend/tests/test_effects_pipeline.py::test_multi_effect_product_flow_preserves_one_cycle_and_a_future_candidate`；补双对象预测 | 待执行 |
+| 重复/实质新输入、在途 dirty、旧结果拒收 | `apps/backend/tests/test_context_evidence_snapshot.py::test_input_change_while_judge_is_in_flight_discards_late_result`、`test_parent_history_is_as_of_safe_and_semantic_hash_tracks_real_edits`；补尝试链 | 待执行 |
+| 父帖/祖先 input_versions、未来信息、质量限制 | `apps/backend/tests/test_context_evidence_snapshot.py::test_parent_first_observed_after_as_of_is_not_used_early`；`apps/backend/tests/test_reply_context.py::test_parent_content_policy_applies_through_context`；补祖先导出 | 待执行 |
+| DB raw 到 API、STALE 失效、GET 只读 | `apps/backend/tests/test_judge_contract_health.py::test_storage_corruption_has_reason_and_safe_api`、`test_stale_generation_stays_last_known_after_recovery`、`test_health_decays_get_is_read_only_and_old_heartbeat_cannot_recover` | 待执行 |
+| 首次/末次、中间留存、事后与回放隔离 | 待新增：真实 output_available_at、严格事前、同刻顺序、跨方法分栏及不挑最佳 | 待执行 |
+| 同中点宽窄范围、覆盖不能刷分、24/48边界 | 待新增：第7节合成例、有限闭区间、分类总和与固定分母 | 待执行 |
+| 缺真值、无预测、迟到、失败/解析失败/超时 | `apps/backend/tests/test_effects_pipeline.py::test_judge_rejects_missing_levels_instead_of_silently_saving_unknown`；补全终态留痕和互斥分类 | 待执行 |
+| 轮转不丢长期记录 | `apps/backend/tests/test_runtime_logging.py::test_runtime_log_is_valid_jsonl_and_bounds_daily_shards`、`test_runtime_log_prunes_files_older_than_retention`；补长期账本独立性 | 待执行 |
+| secret/私人信息/私有推理排除、manifest、干净检出 | `apps/backend/tests/test_notifications.py::test_tokens_are_redacted_from_paths_queries_and_plain_text`；`apps/backend/tests/test_corpus_standard.py::test_canonical_export_keeps_original_translation_and_string_tweet_id`；补完整包与清洁检出 | 待执行 |
+| Backend/Web/Collector 既有测试、类型与构建、受控业务验收 | 后续代码阶段按现有项目声明核对并执行；本轮未核验前端具体命令，不编造通过记录 | 待执行 |
+
+## 9 后续实施顺序
+
+1. 在正式链复用现有存储/快照/事件入口，补长期日志、独立时间、运行身份与真值修订；先保住现有契约和历史。
+2. 实现三条线分离、Full/Banked 结构化日期预测、脱敏导出与固定集合评分，保留未知、全部版本和失败记录。
+3. 执行隔离回归及受控验证，交付证据后由用户逐次确认上线；业务 HTTP/模型调用预算须另行明确，不复用旧剩余授权。
+
+不另建 DeepSeek 核查器，不恢复 `CLOSED_NOT_ADOPTED` 实验，不全库重跑。
+本轮完成规范与文档索引；代码、业务回归、运行身份核验、真实导出和准确率验收均未完成。
+文档入口见 [文档导航](../README.md)。

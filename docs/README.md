@@ -1,12 +1,14 @@
 # 文档导航
 
-当前正文只维护以下 12 个入口；历史运行数字不写入当前规范。
+当前正文只维护以下 14 个入口；历史运行数字不写入当前规范。
 
 | 主题 | 当前入口 |
 | --- | --- |
+| CRR 项目阶段、功能现状与证据边界 | [项目现状报告](maintenance/project-status-report.md) |
 | 安装、启停、采集和回归 | [本地运行](v2/local-development.md) |
 | 实际链路和职责 | [架构](v2/architecture.md) |
 | 等级、窗口和 Full/Special 含义 | [产品模型](v2/product-model.md) |
+| 日期预测目标、复盘日志和评价验收方案 | [日期预测与复盘规范](v2/prediction-and-review-spec.md) |
 | 数据表、版本、政策和上下文 | [数据模型](v2/data-model.md) |
 | API、健康、结果有效性 | [API 契约](v2/api-contract.md) |
 | 统一语料字段映射 | [语料标准](v2/corpus/corpus-standard.md) |

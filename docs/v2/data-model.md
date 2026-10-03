@@ -2,6 +2,8 @@
 
 The V2 database is a new SQLite file at `runtime/data/codex-reset-radar-v2.db`. The V1 database remains a read-only migration source and is never opened as the active V2 database.
 
+Proposed forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Those logical field groups are pending implementation, not existing tables or an applied schema migration; the tables below describe the current storage contract.
+
 ## Core tables
 
 ### `tibo_posts`

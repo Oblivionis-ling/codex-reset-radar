@@ -27,12 +27,14 @@ A `SPECIAL_RESET` does not change `last_full_reset` or the current Full Reset cy
 
 ## Judge boundary
 
-The human-adjudicated policy (2026-09-18 local time) is that the main Action Level,
+The current implementation follows the human-adjudicated policy (2026-09-18 local time): the main Action Level,
 24/48/72-hour horizons and estimated window concern the next **Full Reset only**.
 Issuing a reset card is separate information: its certainty or scheduled arrival must
 not, by itself, raise the main level. A mixed Full + Banked post still contributes its
 Full effect. This is a judgement boundary, not a forced GREEN rule or a lexical score.
 Special events keep their independent record/presentation and never open Full cycles.
+
+The confirmed product target is separate date predictions for actual Extra Full execution and Banked issuance start, alongside the user Normal weekly baseline. These targets are pending implementation; the current Judge date estimate remains Full-only. The single target, logging and evaluation specification is [CRR 日期预测与复盘规范](prediction-and-review-spec.md); it does not assert that dual-object prediction or review export is live.
 
 The current pipeline implements the DeepSeek Judge using bounded, attributable evidence. The model performs semantic judgement; code validates output enums, evidence IDs, time fields, current-cycle association, and cumulative 24/48/72-hour ordering. It is not a hand-written keyword score and this project does not train an ML model.
 
