@@ -137,7 +137,7 @@ def test_multi_effect_product_flow_preserves_one_cycle_and_a_future_candidate(se
         database.initialize()
         model=MultiEffectModel()
         pipeline=IntelligencePipeline(database=database,client=model,
-             runtime_log=RuntimeLog(settings.log_dir,5,1048576),collector_state={},repository_root=tmp_path)
+             runtime_log=RuntimeLog(settings.log_dir,5,1048576),collector_state={},repository_root=tmp_path,is_synthetic=True)
         ingest=database.upsert_posts_detailed([dict(tweet_id='synthetic-dual-effect',source='test',
               posted_at='2026-01-01T00:00:00Z',text='Usage is reset. Card is granted. Another reset tomorrow. Double quota today.')])
         pipeline.enqueue_ingest(ingest)

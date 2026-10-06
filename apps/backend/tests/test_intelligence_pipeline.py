@@ -73,7 +73,7 @@ def fixture_payload(tweet_id: str, text: str = "Synthetic banked reset fixture."
 
 def test_new_post_runs_pipeline_duplicate_does_not_repeat_model_and_judge_reaches_api(settings):
     fake = FakeDeepSeek()
-    with TestClient(create_app(settings, intelligence_client=fake)) as client:
+    with TestClient(create_app(settings, intelligence_client=fake, is_synthetic=True)) as client:
         client.post("/api/v2/collector/heartbeat", json={
             "component": "profile_monitor", "instance_id": "profile-fixture", "sequence": 1,
         })
@@ -102,7 +102,7 @@ def test_new_post_runs_pipeline_duplicate_does_not_repeat_model_and_judge_reache
 
 def test_model_failure_does_not_lose_collected_post(settings):
     fake = FailingDeepSeek()
-    with TestClient(create_app(settings, intelligence_client=fake)) as client:
+    with TestClient(create_app(settings, intelligence_client=fake, is_synthetic=True)) as client:
         response = client.post("/api/v2/collector/posts", json=fixture_payload("pipeline-failure-1", "Synthetic ordinary fixture."))
         assert response.status_code == 200
         wait_until(lambda: client.get("/api/v2/posts").json()["items"][0]["analysis_status"] == "FAILED")
@@ -113,7 +113,7 @@ def test_model_failure_does_not_lose_collected_post(settings):
 
 def test_translation_failure_does_not_erase_completed_analysis(settings):
     fake = TranslationFailingDeepSeek()
-    with TestClient(create_app(settings, intelligence_client=fake)) as client:
+    with TestClient(create_app(settings, intelligence_client=fake, is_synthetic=True)) as client:
         client.post("/api/v2/collector/posts", json=fixture_payload("translation-failure-1", "Synthetic ordinary fixture."))
         wait_until(lambda: client.get("/api/v2/posts").json()["items"][0]["translation_status"] == "FAILED")
         post = client.get("/api/v2/posts").json()["items"][0]

@@ -211,7 +211,7 @@ def test_heartbeat_recovery_coalesces_and_preserves_original_health(settings):
     from fastapi.testclient import TestClient
     from app.main import create_app
     from test_reply_context import ContextModel
-    with TestClient(create_app(settings,intelligence_client=ContextModel())) as current:
+    with TestClient(create_app(settings,intelligence_client=ContextModel(),is_synthetic=True)) as current:
         for name in ('profile_monitor','replies_monitor'):
             current.post('/api/heartbeat',json={'component':name,'observed_at':'2020-01-01T00:00:00Z'})
         triggers=[];current.app.state.pipeline.request_judge=triggers.append
