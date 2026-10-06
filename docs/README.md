@@ -1,6 +1,6 @@
 # 文档导航
 
-当前正文只维护以下 14 个入口；历史运行数字不写入当前规范。
+当前正文只维护以下 15 个入口；历史运行数字不写入当前规范。
 
 | 主题 | 当前入口 |
 | --- | --- |
@@ -9,6 +9,7 @@
 | 实际链路和职责 | [架构](v2/architecture.md) |
 | 等级、窗口和 Full/Special 含义 | [产品模型](v2/product-model.md) |
 | 日期预测目标、复盘日志和评价验收方案 | [日期预测与复盘规范](v2/prediction-and-review-spec.md) |
+| 只读预测复盘导出、校验与安全上传 | [预测复盘操作指南](v2/prediction-review-operations.md) |
 | 数据表、版本、政策和上下文 | [数据模型](v2/data-model.md) |
 | API、健康、结果有效性 | [API 契约](v2/api-contract.md) |
 | 统一语料字段映射 | [语料标准](v2/corpus/corpus-standard.md) |
@@ -26,6 +27,7 @@
 
 ## 未结案维护
 
+- [Prediction Review Ledger v1 专项验收报告](maintenance/prediction-review-ledger-v1-report.md)：本事项唯一专项报告；结项状态以该报告维护更新为准。
 - [P0 稳定版发布与实际切换](maintenance/p0-stability-release-report.md)：Alpha 5 已合入并运行；页面视觉核验的限制单独记录。
 - [Judge、健康与父帖预告修复](maintenance/judge-context-and-health-fix-report.md)：早期阶段记录，现用发布状态以 P0 发布报告为准。
 - [工作区整理任务原件](archive/tasks/crr-workspace-optimization-task-20260921.md)；实际处置见[整理报告](archive/workspace/workspace-optimization-report-20260921.md)。
