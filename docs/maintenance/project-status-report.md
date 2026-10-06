@@ -2,19 +2,19 @@
 
 ## 当前专项验收状态（2026-10-07）
 
-**Prediction Review Ledger v1：`READY_FOR_ACCEPTANCE`（本地开发验收证据已齐，开发 PR 待同步/审查）。** 当前唯一验收报告为[Prediction Review Ledger v1 验收报告](prediction-review-ledger-v1-report.md)；此状态不是生产迁移、上线或发布批准。
+**Prediction Review Ledger v1：`READY_FOR_ACCEPTANCE`（本地与 CI 实现验收完成；开发 PR #10 的三项 checks 已通过）。** 当前唯一验收报告为[Prediction Review Ledger v1 验收报告](prediction-review-ledger-v1-report.md)；此状态不是生产迁移、上线或发布批准。
 
-- 开发分支/源码基线：`codex/prediction-ledger-v1-20261007` / `1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称）。本地源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50` 与纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0` 已存在；开发分支待同步，push/PR/CI 回执待执行后记录。格式映射回执：`runtime/review/ledger-v1-20261007/git-eof-format-receipt-20261007-01.json`。
+- 开发分支/源码基线：`codex/prediction-ledger-v1-20261007` / `1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称）。源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50`、纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0` 与初次七文档提交 `65ce2c71931d3c82d8f662c7953949be48bb92ce` 已在开发分支；65ce 已 push，PR [#10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 已创建。对应 [Actions run #35](https://github.com/Oblivionis-ling/codex-reset-radar/actions/runs/37545840791) 对 head 65ce completed/success，backend/web/collector-extension 三项 checks 全通过。格式映射回执：`runtime/review/ledger-v1-20261007/git-eof-format-receipt-20261007-01.json`。
 - 独立 Schema 7→8 candidate 验收已通过；Web/Collector 六条 npm 命令 exit 0；真实存量 24h 小包校验通过，legacy provenance 缺口保留。证据均位于事项 `runtime/review/ledger-v1-20261007/`。
 - 最终 clean 源码 Backend 全量 `140 passed, 1 StarletteDeprecationWarning, 177.97s, exit 0`；B 同轮 Web 7、Collector 18，六条 npm test/typecheck/build 均 exit 0。empty-API smoke retry exit 0、health/radar 200、网络与 SMTP blocked。CLI smoke 前后数据库主文件 hash 不变；源码 SHA 由 clean source manifest 单独核验。Receipt/stdout 在 `runtime/review/ledger-v1-20261007/clean-final-20261007T060513118-fefce178/steps/`。
 - C 的 formal focused `3 passed in 27.04s` 与前版 worktree Backend `138 passed in 175.38s` 均早于 no-clobber 修复，仅作为前版证据保留；最终 clean Backend 140 已覆盖修复源码。Synthetic ZIP 最新 verifier 为 valid/reference verified、SYNTHETIC 208、unknown 0；220 个 manifest 对象中含 12 个 placeholder input snapshots，故 208 是排除占位符后的 provenance 对象数。attempts 43 是合并计数：22 record_type=attempt（MockTransport 合成 request/response，不访问真实网络）+21 record_type=run_lifecycle；DTO 未单列 transport.kind，不把 43 全称为真实 HTTP。
 - 生产 `/api/v2/health` 与 Web 5173 仅只读 HTTP smoke；Backend 仍启用 intelligence。此事项未主动调用模型/通知、未写生产数据、未启停服务；自然后台活动不计入主动调用。
-- 主 checkout tracked/staged 状态未变，10 个原始 untracked 文件保留；开发分支的上述两个本地提交已完成，主 checkout 未变。专项 7-doc 白名单现可交 A 暂存；开发分支同步/PR/CI 待实际回执。禁止 main merge、tag、deploy。
+- 主 checkout 为 `main`/HEAD `1e865c37d1643f429162adeb0fab61bb7371a47b`，tracked/staged 均为 0，原 10 个 untracked 路径保留。最终只读观察 receipt `runtime/review/ledger-v1-20261007/final-readonly-observation-20261007.json` SHA256 `2EBAD6091EF682F0E29D10124A6D62604EAA5A897AC7C7FB601789FD3DA670C0`：Backend health 与 Web 首页/proxy 200、Alpha5、三个采集监视器 healthy、latest Judge 930/VALID，Schema 7 snapshot hash 不变；本轮仅 GET，无主动模型/通知/生产写入/服务启停，后台自然活动单独记录。七文档初次提交及 PR #10/CI 已同步通过；本次两文档 metadata 收口由 A 后续单独同步并复验。
 - A 最终只读 receipt `runtime/review/ledger-v1-20261007/core-size-estimate-20261007-01.json`：synthetic DB 1,085,440 B，ledger 210 rows / 179,277 payload B、artifacts 129 / 311,434 B；新对象 dbstat 794,624 B，空 Schema 8 的 dbstat 基线 49,152 B，净 745,472 B；integrity OK、FK 0、hash 不变。按 63/day 的 legacy persisted-Judge proxy、365 天并以 6 个 output_committed 线性缩放，规划估算约 1.88 GB payload 与 2.86 GB 分配页/年；不是一年实测、HTTP 频率或容量/准确率保证，未知项见专项报告。
 - A 最终 real ZIP CLI verify exit 0、9 hashes/reference valid，原 ZIP SHA256 未变；窗口和 freeze 为 2026-10-05T18:24:18.928585Z 至 2026-10-06T18:24:18.928585Z（freeze 等于 source capture）。legacy body 441、parent version 369、Normal history 1 缺口保留；provenance 是 `LEGACY_UNDECLARED`，没有伪造现代 runtime identity。
 - Schema 7→8 candidate 迁移与旧 baseline 读取 Schema 8 均通过。当前 Ledger v1 范围包含正式 pipeline 持久链、append-only truth、Normal compatibility projection、脱敏自包含包与 verify CLI；独立 Banked 预测、三线 UI、正式评分及自动通知仍未实施。操作说明在 `docs/v2/prediction-review-operations.md`；唯一验收报告在 `docs/maintenance/prediction-review-ledger-v1-report.md`。
-- 本事项未主动调用真实模型/通知、未写生产数据、未启停服务；生产 Backend 的自然后台活动单独记录（只读观察曾显示 intelligence enabled，不计为本事项主动调用）。主 checkout tracked/staged 状态未变，10 个原始 untracked 文件保留；开发分支已有上述两个本地提交。
-- 当前已达 `READY_FOR_ACCEPTANCE`；Sol 短复核已通过，专项 7-doc 白名单可暂存；开发分支 push/PR/CI 待执行及实际回执，不自动部署。禁止 main merge、tag、deploy；生产迁移或启用另需用户确认。
+- 本事项未主动调用真实模型/通知、未写生产数据、未启停服务；生产 Backend 的自然后台活动单独记录（只读观察曾显示 intelligence enabled，不计为本事项主动调用）。主 checkout tracked/staged 状态未变、10 个原始 untracked 文件保留；开发分支源码、格式与初次七文档提交均已完成并 push。
+- 当前本地与 CI 实现验收均为 `READY_FOR_ACCEPTANCE`；PR #10 的 backend/web/collector-extension checks 与 Actions run #35 已成功。A 将单独提交/推送本次两文档 metadata 收口并核验最终 CI；生产未部署。禁止 main merge、tag、deploy；生产迁移或启用另需用户确认。
 
 以下既有项目现状正文保持原样，描述的是其报告日期 `2026-10-04` 的历史快照，不应覆盖本节较新的专项状态。
 

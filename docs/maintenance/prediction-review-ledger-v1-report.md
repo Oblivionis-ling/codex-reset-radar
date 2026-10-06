@@ -1,14 +1,14 @@
 # Prediction Review Ledger v1 验收报告
 
-状态：`READY_FOR_ACCEPTANCE`（本地功能与样包验收证据已齐；开发分支本地提交及格式映射均完成，待远端同步/PR/CI；不构成 main 合并、tag 或部署许可）
+状态：`READY_FOR_ACCEPTANCE`（本地与 CI 实现验收完成；开发分支提交已同步并通过 PR checks；本轮两份文档的 metadata 收口由 A 后续单独同步；不构成 main 合并、tag 或部署许可）
 更新：2026-10-07，`Asia/Shanghai`；A 最终回执时间 `2026-10-06T22:37:18Z`
-源码基线：`1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称，不是当前 worktree HEAD）。开发分支：`codex/prediction-ledger-v1-20261007`；本地源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50`（23 个白名单文件）及纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0`；开发分支 push/PR/CI 待执行并记录实际回执。
+源码基线：`1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称，不是当前 worktree HEAD）。开发分支：`codex/prediction-ledger-v1-20261007`；源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50`（23 个白名单文件）、纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0` 与初次七文档提交 `65ce2c71931d3c82d8f662c7953949be48bb92ce` 均已在开发分支；65ce 已 push，PR #10 已创建，三项 checks 通过。
 
-本文件是本事项唯一专项验收报告。只记录已取得证据与明确缺口；独立验收通过不等于全事项通过。主 checkout 保持干净且未作为测试写入目标；开发分支的源码提交与分支同步/PR 已由任务第 14 节授权，当前尚无远端/PR/CI 回执。禁止的是合并 main、改 tag、部署或生产启用。本事项不调用真实模型或通知。
+本文件是本事项唯一专项验收报告。只记录已取得证据与明确缺口；独立验收通过不等于全事项通过。主 checkout 保持干净且未作为测试写入目标；开发分支已 push，PR #10 已创建，GitHub Actions run #35 对应 head `65ce2c71931d3c82d8f662c7953949be48bb92ce` 且 completed/success。三项 backend、web、collector-extension checks 均成功。该 CI 覆盖该源码及初次七文档提交，不覆盖本次后续两份文档的 metadata 收口；A 将单独同步两文档并核验对应 CI，不在本文预写其 commit SHA。禁止的是合并 main、改 tag、部署或生产启用。本事项不调用真实模型或通知。
 
 ## 当前结论
 
-隔离 Schema 7→8 副本验收、旧 baseline 读取 Schema 8、Backend/Web/Collector 干净环境回归、空库 API smoke、synthetic/real 两个分离样包均已有可引用证据。C 的 formal focused `3 passed in 27.04s` 与前版 worktree Backend `138 passed in 175.38s` 保留为 no-clobber 修复前结果；B clean Backend 为 `140 passed, 1 StarletteDeprecationWarning, 177.97s, exit 0`，Web 7、Collector 18，六条 test/typecheck/build 均 exit 0。no-clobber 修复已进入该 clean run。空库 smoke 的首次 mock-guard harness failure 与两次成功 retry 均保留；最终 health/radar 200，网络/SMTP blocked。CLI isolated DB main hash 前后相同；源码哈希由 manifest/audit 单独记录。A 最终只读体量估算及 real ZIP CLI verify 均通过。当前为本地 `READY_FOR_ACCEPTANCE`；格式映射回执已完成，远端/CI 尚待，不自动部署。
+隔离 Schema 7→8 副本验收、旧 baseline 读取 Schema 8、Backend/Web/Collector 干净环境回归、空库 API smoke、synthetic/real 两个分离样包均已有可引用证据。C 的 formal focused `3 passed in 27.04s` 与前版 worktree Backend `138 passed in 175.38s` 保留为 no-clobber 修复前结果；B clean Backend 为 `140 passed, 1 StarletteDeprecationWarning, 177.97s, exit 0`，Web 7、Collector 18，六条 test/typecheck/build 均 exit 0。no-clobber 修复已进入该 clean run。空库 smoke 的首次 mock-guard harness failure 与两次成功 retry 均保留；最终 health/radar 200，网络/SMTP blocked。CLI isolated DB main hash 前后相同；源码哈希由 manifest/audit 单独记录。A 最终只读体量估算及 real ZIP CLI verify 均通过。当前本地与 CI 实现验收均为 `READY_FOR_ACCEPTANCE`；PR #10 checks 已通过，生产部署不在范围内。
 
 ## 已取得证据
 
@@ -49,7 +49,9 @@ Synthetic runtime identity 明确为 `is_synthetic=true`、`disk_head=1e865c37d1
 
 更早的 focused `61749df0` provenance 失败及其 ZIP/事件审计仍原样保留于 `runtime/review/ledger-v1-20261007/ledger-v1-pipeline-focused-20261007-61749df0/`；其 `SYNTHETIC_WITH_UNDECLARED`（96 declared / 112 undeclared）是 reader 闭包修复前的历史结果，不覆盖也不替代当前成功包。stale-WAL、exacthash 等旧失败证据同样保留；有效迁移与旧 baseline 兼容证据见上表。
 
-本事项未主动调用真实模型/通知、未写生产数据、未启停生产服务。生产 Backend 的自然后台活动不计为本轮主动调用。主 checkout 保持干净且未变；开发分支已有源码提交与纯格式提交，push/PR 与 CI 尚无回执，main merge/tag/deploy 明确禁止。
+本事项未主动调用真实模型/通知、未写生产数据、未启停生产服务。生产 Backend 的自然后台活动不计为本轮主动调用。主 checkout 保持干净且未变；开发分支源码、格式与初次七文档提交均已 push，PR #10 checks 已通过；本次报告和状态页仅作 metadata 收口，由 A 后续单独同步。main merge/tag/deploy 明确禁止。
+
+最终只读观察 receipt `runtime/review/ledger-v1-20261007/final-readonly-observation-20261007.json`，SHA256 `2EBAD6091EF682F0E29D10124A6D62604EAA5A897AC7C7FB601789FD3DA670C0`：main checkout 为 `main`/HEAD `1e865c37d1643f429162adeb0fab61bb7371a47b`，tracked/staged 0、原 10 个 untracked 保留；Backend health 与 Web 首页/proxy 均 200，版本 `2.0.0-alpha.5`、三个采集监视器 healthy，最新 Judge `930`/`VALID`；原 Schema 7 snapshot hash 不变。本观察只发 GET，0 主动模型/通知/生产写入或服务启停；自然后台活动独立记录。
 
 ## §12 C 验收矩阵
 
@@ -72,9 +74,9 @@ Synthetic runtime identity 明确为 `is_synthetic=true`、`disk_head=1e865c37d1
 
 ## §15 最终交付摘要
 
-总体：`READY_FOR_ACCEPTANCE`（本地验收证据齐；开发 PR 待同步/审查；不自动部署）。
+总体：`READY_FOR_ACCEPTANCE`（本地与 CI 实现验收证据齐；PR #10 checks 已通过；生产未部署，也不自动部署）。
 
-- 规范/基线：Prediction Review Ledger v1；源码基线/`disk_head` `1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称，不是当前 HEAD）；开发分支 `codex/prediction-ledger-v1-20261007`。本地源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50` 包含 23 个白名单文件；纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0`。主 checkout 干净未变；7-doc 白名单可交 A 暂存，开发分支 push/PR/CI 待执行及实际回执。Task §14 授权开发分支同步与 PR；禁止 main merge、tag 和 deploy。
+- 规范/基线：Prediction Review Ledger v1；源码基线/`disk_head` `1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称，不是当前 HEAD）；开发分支 `codex/prediction-ledger-v1-20261007`。源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50`（23 个白名单文件）、纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0`、初次七文档提交 `65ce2c71931d3c82d8f662c7953949be48bb92ce`。65ce 已 push 并创建 [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10)；对应 [GitHub Actions run #35](https://github.com/Oblivionis-ling/codex-reset-radar/actions/runs/37545840791) completed/success，head 为 65ce，backend/web/collector-extension 三项 checks 成功。此 CI 对应源码与初次七文档提交，不含本次后续两文档 metadata 更新；A 将单独同步两文档并核验 CI，不在此预写其 SHA。Task §14 授权开发分支同步与 PR；禁止 main merge、tag 和 deploy。
 - 输入与责任角色：C 负责 synthetic 正式 pipeline 时间线、focused 验收、synthetic 包及本报告；A 负责隔离迁移/旧代码兼容、只读 real ZIP 最终验证和 SQL 体量估算；B 负责 reader/export/no-clobber、clean 环境及操作说明；Sol 做只读代码/文档审查。Real input 是 `runtime/review/ledger-v1-20261007/production-snapshot.sqlite`（Schema 7，capture `2026-10-06T18:24:18.928585Z`，只读 hash 前后不变）；synthetic input 为隔离正式 pipeline 生成的 `synthetic-pipeline.sqlite`，不含生产行。
 - 实际实现：正式 pipeline 接入 append-only 预测/attempt/event、input snapshot 与运行身份、output observation、truth revision；Normal compatibility projection、脱敏自包含 export、hash/reference verifier、CLI 与操作说明；5 天普通诊断日志不替代长期账本。
 - 明确未实施：独立 Banked 预测、三线 UI、正式评分/准确率保证、自动通知。real legacy package 的 Normal history 未回填；旧 ledger 不存在的历史不能追造。
@@ -88,7 +90,7 @@ Synthetic runtime identity 明确为 `is_synthetic=true`、`disk_head=1e865c37d1
 - 体量：synthetic main DB 1,085,440 B，SHA 前后不变；dbstat 增量 745,472 B（794,624 B 新对象分配减 49,152 B 空 Schema 8 tables/indexes 基线）。规划估算按 63/day × 365、以 synthetic 6 个 committed outputs 线性缩放，约 1.88 GB payload 与 2.86 GB allocated pages/year；不是一年实测、HTTP 负担或准确率承诺，未知负载项见体量表。
 - 本任务主动模型 HTTP：0；本地 Laya 推理：0；微信/邮件真实发送：0；生产 DB 写、服务启停：0。生产 Backend 的自然后台活动单独记录，不混入主动调用。本地只读源快照与 package verify 不改变源 main hash；对 `runtime/review/ledger-v1-20261007/clean-final-20261007T060513118-fefce178/smoke/empty-api.sqlite` 的 SQLite RO inspection 留下 0 B WAL / 32 KiB SHM，安全策略拒绝删除，原样保留；baseline 主 DB hash/size/rows/schema 不变。
 - 临时目录清理：B 已归档证据；PowerShell 删除被安全策略拦截，未绕过，3 个精确 `_tmp` 目录仍保留（196,278,950 B / 6,742 files）。回执 `runtime/review/ledger-v1-20261007/clean-final-20261007T060513118-fefce178/cleanup-archive-receipt.json`，SHA256 `2E9053AEC4E81162F9777E7E99531B56099E4D9CE162B6FF8C3E210069D265FB`。
-- Git/报告/下一停点：本地 commit 为 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50` 与 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0`；不 rewrite。Sol 短复核已完成；7-doc 白名单现可交 A 暂存。开发分支 push/PR/CI 待执行及实际回执。main merge/tag/deploy 禁止。报告与操作说明分别为 `docs/maintenance/prediction-review-ledger-v1-report.md`、`docs/v2/prediction-review-operations.md`。生产迁移/启用仍需用户确认。
+- Git/报告/下一停点：本地源码及格式 commits 保留；七文档提交 `65ce2c71931d3c82d8f662c7953949be48bb92ce` 已 push，PR #10 与 Actions run #35（对应 65ce）均通过。Code Review check connector 曾返回 “Can't connect GitHub”；随后 GitHub Actions API 对目标 run 查询成功，故这是 connector 读取失败备注，不是 CI 失败。A 将只同步本次更新的两份文档并核验其 CI；不把后续 commit SHA 回填到本文。main merge/tag/deploy 禁止。报告与操作说明分别为 `docs/maintenance/prediction-review-ledger-v1-report.md`、`docs/v2/prediction-review-operations.md`。生产迁移/启用仍需用户确认。
 
 ## 历史失败与修订证据（保留，非当前 blocker）
 
@@ -106,6 +108,6 @@ Synthetic runtime identity 明确为 `is_synthetic=true`、`disk_head=1e865c37d1
 
 ## 下一停点
 
-本地功能与格式验收保持 `READY_FOR_ACCEPTANCE`；开发分支源码/格式提交与 AST/body 映射回执均已完成。剩余记录项为开发分支远端同步、PR 与 CI 的实际回执；不得将此本地状态解释为已完成远端同步。main merge、tag、deploy 均禁止。生产迁移、服务启用或模型/通知实测仍须用户另行确认。
+本地与 CI 实现验收保持 `READY_FOR_ACCEPTANCE`；源码、格式及初次七文档提交已同步，PR #10 的三项 checks 及 Actions run #35 均成功。当前仅由 A 单独同步本次两文档 metadata 收口并复验对应 CI；不得把该后续文档提交写成当前自引用 SHA。开发验收不代表生产部署；main merge、tag、deploy 均禁止。生产迁移、服务启用或模型/通知实测仍须用户另行确认。
 
 本报告更新时间之后取得的新证据必须注明实际时间、命令/路径与失败，不得回填为既有 PASS。生产环境自然后台活动不等于本事项主动调用，也不纳入测试零调用声明。
