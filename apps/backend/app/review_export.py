@@ -464,4 +464,3 @@ def verify_review(package_path: Path) -> dict[str, Any]:
 
 def file_sha256_from_bytes(value: bytes) -> str:
     return _sha256_bytes(value)
-

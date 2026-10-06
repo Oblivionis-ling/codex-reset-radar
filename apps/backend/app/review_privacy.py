@@ -758,4 +758,3 @@ def sanitize_dto(source: Mapping[str, object], allowed_fields: Iterable[str], co
 def allowed_text_fields(source: Mapping[str, object], fields: Iterable[str], context: PrivacyContext) -> dict[str, object]:
     """Return just named text fields and a shared redaction annotation."""
     return sanitize_dto(source, fields, context)
-

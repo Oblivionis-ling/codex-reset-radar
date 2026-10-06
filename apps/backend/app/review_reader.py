@@ -2338,4 +2338,3 @@ def read_review(
     except BaseException:
         connection.rollback()
         raise
-
