@@ -4,6 +4,23 @@ Base URL: `http://127.0.0.1:8787/api/v2`
 
 Future dual-object date prediction and review design is defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Its proposed fields and export capabilities are not implemented endpoint fields; this document continues to describe the current `/api/v2` contract.
 
+## Prediction review export boundary
+
+The isolated development worktree contains a local `prepare` / `preview` / `export` / `verify`
+CLI. It does not add or change an HTTP route or `/api/v2` response field. Schema 8 and the review
+reader/exporter have not been applied to the resident `main` checkout or enabled in production.
+
+The CLI requires an existing SQLite database and opens it read-only; it does not initialize or
+migrate the source. Review selection, freeze cutoff, ledger high-water, dependency closure, legacy
+gaps, and export capabilities are reported in the local preview/package, not exposed through this
+API. The [operations guide](prediction-review-operations.md) documents the isolated CLI and its
+limits.
+
+The isolated engineering regression for this snapshot passed (clean Backend 140 tests; Web and
+Collector tests, typechecks, and builds passed). The API contract and response fields remain
+unchanged. Production runtime-identity verification, Schema 8 migration/enablement/deployment, and
+model-accuracy evaluation have not been performed; see the operations guide for the evidence scope.
+
 ## Product reads
 
 - `GET /health` — version/commit, database counts, ephemeral collector state, pipeline/Judge state, pending jobs, corpus inventory, and disabled GitHub runtime flags.

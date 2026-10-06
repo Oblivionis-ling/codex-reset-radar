@@ -44,6 +44,17 @@ def _sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def canonical_json_bytes(value: Any, *, trailing_newline: bool = False, default=None) -> bytes:
+    """Serialize stable UTF-8 JSON, optionally as one complete JSONL record."""
+    options = {"ensure_ascii": False, "sort_keys": True, "separators": (",", ":")}
+    if default is not None:
+        options["default"] = default
+    encoded = json.dumps(value, **options)
+    if trailing_newline:
+        encoded += "\n"
+    return encoded.encode("utf-8")
+
+
 def file_sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -53,9 +64,7 @@ def file_sha256(path: Path) -> str:
 
 
 def stable_record_hash(record: dict[str, Any]) -> str:
-    return _sha256_bytes(
-        json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
-    )
+    return _sha256_bytes(canonical_json_bytes(record, default=str))
 
 
 def _author_from_url(url: str | None) -> str | None:
@@ -324,7 +333,7 @@ def write_jsonl(path: Path, records: Iterable[dict[str, Any]]) -> int:
     count = 0
     with path.open("w", encoding="utf-8", newline="\n") as target:
         for record in records:
-            target.write(json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
+            target.write(canonical_json_bytes(record, trailing_newline=True).decode("utf-8"))
             count += 1
     return count
 

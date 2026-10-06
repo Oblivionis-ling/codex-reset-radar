@@ -73,6 +73,7 @@ def _pipeline(db, model, tmp_path):
         runtime_log=RuntimeLog(tmp_path / "logs", 5, 1_048_576),
         collector_state={},
         repository_root=ROOT,
+        is_synthetic=True,
     )
 
 

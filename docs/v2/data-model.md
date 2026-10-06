@@ -2,7 +2,7 @@
 
 The V2 database is a new SQLite file at `runtime/data/codex-reset-radar-v2.db`. The V1 database remains a read-only migration source and is never opened as the active V2 database.
 
-Proposed forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Those logical field groups are pending implementation, not existing tables or an applied schema migration; the tables below describe the current storage contract.
+Forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). They are not part of the resident `main`/production storage contract; the isolated development-only schema 8 addition is described below. The remaining tables describe the current storage contract.
 
 ## Core tables
 
@@ -94,6 +94,40 @@ current-result validation. An old Judge is never rewritten to match a new contex
 The current posts API includes `reply_context` and `context_acquisition`. Reconstructed
 parents observed after a replay cutoff are conservatively excluded, even if their claimed
 posting time is earlier. Body-only canonical cache hits do not manufacture ancestor relations.
+
+### Prediction review ledger (schema 8; isolated development only)
+
+The isolated review implementation adds two append-only storage structures and a nullable link on
+`radar_judgements`. This schema is present in the development worktree only; it has not been applied
+to the resident `main` checkout or enabled in production.
+
+The isolated engineering regression is complete for this implementation snapshot: the final clean
+Backend suite passed 140 tests, including the no-clobber publish regressions; focused review-export
+tests passed 24. This does not establish production runtime identity, migration/rollout, or model
+accuracy. Detailed commands and evidence are in the [operations guide](prediction-review-operations.md).
+
+- `prediction_artifacts` stores immutable JSON payloads by `id`, `kind`, `content_hash`,
+  `payload_json`, and `recorded_at`, with a uniqueness constraint on `(kind, content_hash)`.
+- `prediction_ledger` stores ordered records by autoincrement `seq` and unique `record_id`; each
+  record has a constrained `kind`, optional series/forecast/run/attempt/revision/Judge/event links,
+  optional occurrence time, required record time, optional idempotency key, and `payload_json`.
+  Supported kinds are `runtime_identity`, `forecast_version`, `run_started`, `attempt_started`,
+  `attempt_event`, `output_committed`, `output_observed`, `truth_revision`, `normal_baseline`, and
+  `recovery_observed`.
+- `radar_judgements.ledger_attempt_id` is a nullable link used to avoid treating a ledger-backed
+  Judge row as a second legacy-only record.
+
+The review reader opens an existing SQLite file in read-only mode, enables `query_only`, and reads
+the ledger, artifact closure, legacy compatibility rows, and high-water mark from one transaction
+snapshot. It does not call `Database.initialize`, create a missing database, migrate, backfill, or
+write attempts. Older files without the new tables/column use a bounded legacy adapter; unknown
+historical start, completion, output-availability, translation, configuration, or run-identity data
+remain null or explicit gaps rather than being reconstructed from current rows. Legacy Judge
+`created_at` is only an `as_of` proxy, not proof of when a result completed or became available.
+
+This is a local export/read boundary, not a new production storage guarantee or API contract. See
+the [prediction review operations guide](prediction-review-operations.md) for current isolation and
+invocation details.
 
 ### Content policy and Judge storage boundary
 

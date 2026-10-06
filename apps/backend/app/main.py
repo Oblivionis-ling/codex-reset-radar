@@ -9,18 +9,27 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
-from .config import Settings, load_settings
+from .config import REPOSITORY_ROOT, Settings, load_settings
 from .collector_health import collector_health, FUTURE_SKEW_SECONDS
 from .db import Database, next_reset_baseline
 from .deepseek import DeepSeekClient
 from .intelligence import JsonModel
 from .logging_runtime import RuntimeLog
 from .pipeline import IntelligencePipeline
+from .prediction_ledger import PredictionLedger
+from .runtime_identity import capture_runtime_identity
 from .schemas import CollectorBatch, CollectorHeartbeat, DiagnosticBatch, DiagnosticPayload, ResetEventCreate
 from .version import APP_VERSION, runtime_commit
 
 
-def create_app(settings: Settings | None = None, intelligence_client: JsonModel | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    intelligence_client: JsonModel | None = None,
+    *,
+    is_synthetic: bool = False,
+) -> FastAPI:
+    if not isinstance(is_synthetic, bool):
+        raise TypeError("is_synthetic must be an explicit boolean")
     runtime_settings = settings or load_settings()
     loaded_fingerprint = sha256(b''.join((Path(__file__).parent/name).read_bytes()
         for name in ('main.py','db.py','pipeline.py','intelligence.py','reply_context.py','collector_health.py'))).hexdigest()[:16]
@@ -50,13 +59,17 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
                 runtime_log=runtime_log,
             )
         if model_client is not None:
+            runtime_identity = capture_runtime_identity(runtime_settings, model_client)
             pipeline = IntelligencePipeline(
                 database=database,
                 client=model_client,
                 runtime_log=runtime_log,
                 collector_state=collector_state,
-                repository_root=runtime_settings.database_path.resolve().parents[2],
+                repository_root=REPOSITORY_ROOT,
                 judge_interval_seconds=runtime_settings.judge_interval_seconds,
+                prediction_ledger=PredictionLedger(database),
+                runtime_identity=runtime_identity,
+                is_synthetic=is_synthetic,
             )
             await pipeline.start()
         else:

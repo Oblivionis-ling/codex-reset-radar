@@ -107,7 +107,7 @@ class ContextModel(FakeDeepSeek):
 
 
 def pipeline(db,tmp_path,model):
-    return IntelligencePipeline(database=db,client=model,runtime_log=RuntimeLog(tmp_path/'logs',5,1048576),collector_state={},repository_root=tmp_path)
+    return IntelligencePipeline(database=db,client=model,runtime_log=RuntimeLog(tmp_path/'logs',5,1048576),collector_state={},repository_root=tmp_path,is_synthetic=True)
 
 
 def test_same_pipeline_reanalysis_translation_judge_context_and_idempotency(db,tmp_path):
@@ -162,7 +162,7 @@ def test_durable_context_job_to_actual_pipeline_and_api(settings):
     from app.main import create_app
     from test_intelligence_pipeline import wait_until
     fake=ContextModel()
-    with TestClient(create_app(settings,intelligence_client=fake)) as client:
+    with TestClient(create_app(settings,intelligence_client=fake,is_synthetic=True)) as client:
         for name in ('profile_monitor','replies_monitor'):
             client.post('/api/heartbeat',json={'component':name})
         posted=datetime.now(UTC).isoformat().replace('+00:00','Z')

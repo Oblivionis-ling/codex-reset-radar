@@ -15,6 +15,14 @@ EVENT_TYPES = {"FULL_RESET", "SPECIAL_RESET"}
 SPECIAL_TYPES = {"PARTIAL", "BANKED", "RESET_CARD", "STAGED", "EXTRA_CREDIT", "OTHER"}
 
 
+class JudgementReferenceError(ValueError):
+    """A Judge output referenced evidence that cannot be published."""
+
+    def __init__(self, message: str, *, reason_code: str) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+
+
 def utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
@@ -95,6 +103,24 @@ CREATE TABLE IF NOT EXISTS post_content_policies(
 CREATE INDEX IF NOT EXISTS ix_processing_jobs_status ON processing_jobs(status,next_attempt_at,id);
 CREATE INDEX IF NOT EXISTS ix_reset_candidates_status ON reset_event_candidates(status,updated_at DESC);
 CREATE INDEX IF NOT EXISTS ix_post_content_policies_post ON post_content_policies(post_id,content_hash);
+"""
+
+PREDICTION_LEDGER_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS prediction_artifacts(
+ id TEXT PRIMARY KEY,kind TEXT NOT NULL,content_hash TEXT NOT NULL,payload_json TEXT NOT NULL,
+ recorded_at TEXT NOT NULL,UNIQUE(kind,content_hash));
+CREATE TABLE IF NOT EXISTS prediction_ledger(
+ seq INTEGER PRIMARY KEY AUTOINCREMENT,record_id TEXT NOT NULL UNIQUE,kind TEXT NOT NULL
+ CHECK(kind IN ('runtime_identity','forecast_version','run_started','attempt_started','attempt_event',
+ 'output_committed','output_observed','truth_revision','normal_baseline','recovery_observed')),
+ series_id TEXT,forecast_id TEXT,run_id TEXT,attempt_id TEXT,revision INTEGER,judgement_id INTEGER,event_id INTEGER,
+ occurred_at TEXT,recorded_at TEXT NOT NULL,idempotency_key TEXT UNIQUE,payload_json TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_series ON prediction_ledger(series_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_forecast ON prediction_ledger(forecast_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_run ON prediction_ledger(run_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_attempt ON prediction_ledger(attempt_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_recorded ON prediction_ledger(recorded_at,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_event ON prediction_ledger(event_id,seq);
 """
 
 CORPUS_TABLES_SQL = """
@@ -260,6 +286,23 @@ class Database:
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(5,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(6,?)", (now,))
             connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(7,?)", (now,))
+        self.initialize_prediction_ledger()
+
+    def initialize_prediction_ledger(self) -> None:
+        """Apply only the additive ledger schema; safe for isolated compatibility checks."""
+        with self.connect() as connection:
+            connection.executescript(PREDICTION_LEDGER_SCHEMA_SQL)
+            existing = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='radar_judgements'"
+            ).fetchone()
+            if existing is None:
+                raise sqlite3.OperationalError("radar_judgements must exist before ledger schema initialization")
+            self._add_columns(connection, "radar_judgements", {"ledger_attempt_id": "TEXT"})
+            versions = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_versions'"
+            ).fetchone()
+            if versions:
+                connection.execute("INSERT OR IGNORE INTO schema_versions VALUES(8,?)", (utc_now(),))
 
     def counts(self) -> dict[str, int]:
         with self.connect() as connection:
@@ -1136,7 +1179,9 @@ class Database:
             row = connection.execute("SELECT id FROM reset_event_candidates WHERE candidate_key=?", (candidate["candidate_key"],)).fetchone()
         return int(row["id"])
 
-    def upsert_reset_event(self, event: dict[str, Any]) -> dict[str, Any]:
+    def upsert_reset_event(self, event: dict[str, Any], *, is_synthetic: bool = False) -> dict[str, Any]:
+        from .prediction_ledger import PredictionLedger
+
         event_type = str(event["event_type"]).upper()
         special_type = str(event.get("special_type") or "").upper() or None
         if event_type not in EVENT_TYPES or (event_type == "FULL_RESET" and special_type) or (event_type == "SPECIAL_RESET" and special_type not in SPECIAL_TYPES):
@@ -1145,6 +1190,7 @@ class Database:
         evidence = sorted({str(item) for item in event.get("evidence_post_ids") or []})
         event_key = str(event.get("event_key") or self.canonical_event_key(event_type, special_type, occurred_at, evidence))
         now = utc_now()
+        ledger = PredictionLedger(self)
         with self.connect() as connection:
             existing = connection.execute("SELECT * FROM reset_events WHERE event_key=?", (event_key,)).fetchone()
             if existing is None and not event.get("event_key"):
@@ -1178,12 +1224,46 @@ class Database:
                 evidence = sorted(set(json.loads(existing["evidence_post_ids"] or "[]")) | set(evidence))
                 range_start = min(existing["occurred_at"], occurred_at)
                 range_end = max(existing["occurred_at_end"] or existing["occurred_at"], normalise_time(event.get("occurred_at_end")) or occurred_at)
+                old_state = self._event(existing)
+                new_state = {
+                    **old_state,
+                    "occurred_at": range_start,
+                    "occurred_at_end": range_end,
+                    "source_post_id": old_state.get("source_post_id") or event.get("source_post_id"),
+                    "title": event["title"],
+                    "summary": event["summary"],
+                    "provenance": event.get("provenance") or {},
+                    "time_basis": event.get("time_basis", "reported_event_time"),
+                    "scope": event.get("scope", "unknown"),
+                    "execution_stage": event.get("execution_stage", "unknown"),
+                    "evidence_post_ids": evidence,
+                    "updated_at": now,
+                }
+                fact_fields = (
+                    "event_key", "event_type", "special_type", "occurred_at", "occurred_at_end",
+                    "time_basis", "scope", "execution_stage", "source_post_id", "title", "summary",
+                    "provenance", "evidence_post_ids",
+                )
+                changed = any(old_state.get(field) != new_state.get(field) for field in fact_fields)
+                if changed:
+                    ledger.append_reset_event_snapshot(
+                        connection, int(existing["id"]), old_state,
+                        reason="Preserved the prior reset_events source state before an upsert changed it.",
+                        is_synthetic=is_synthetic,
+                    )
                 connection.execute("""UPDATE reset_events SET occurred_at=?,occurred_at_end=?,source_post_id=COALESCE(source_post_id,?),
                     title=?,summary=?,provenance=?,time_basis=?,scope=?,execution_stage=?,evidence_post_ids=?,updated_at=? WHERE id=?""",
                     (range_start, range_end, event.get("source_post_id"), event["title"], event["summary"],
                      json.dumps(event.get("provenance") or {}, ensure_ascii=False), event.get("time_basis", "reported_event_time"),
                      event.get("scope", "unknown"), event.get("execution_stage", "unknown"), json.dumps(evidence), now, existing["id"]))
                 event_id = int(existing["id"])
+                if changed:
+                    saved = connection.execute("SELECT * FROM reset_events WHERE id=?", (event_id,)).fetchone()
+                    ledger.append_reset_event_snapshot(
+                        connection, event_id, self._event(saved),
+                        reason="Appended the changed reset_events source state after upsert.",
+                        is_synthetic=is_synthetic,
+                    )
             else:
                 cursor = connection.execute("""INSERT INTO reset_events(event_type,special_type,occurred_at,source_post_id,title,summary,
                     provenance,created_at,event_key,occurred_at_end,time_basis,scope,execution_stage,evidence_post_ids,updated_at)
@@ -1193,12 +1273,18 @@ class Database:
                      normalise_time(event.get("occurred_at_end")), event.get("time_basis", "reported_event_time"),
                      event.get("scope", "unknown"), event.get("execution_stage", "unknown"), json.dumps(evidence), now))
                 event_id = int(cursor.lastrowid)
+                saved = connection.execute("SELECT * FROM reset_events WHERE id=?", (event_id,)).fetchone()
+                ledger.append_reset_event_snapshot(
+                    connection, event_id, self._event(saved),
+                    reason="Appended the new reset_events source state created by upsert.",
+                    is_synthetic=is_synthetic,
+                )
             self._rebuild_cycles(connection)
             row = connection.execute("SELECT * FROM reset_events WHERE id=?", (event_id,)).fetchone()
         return self._event(row)
 
-    def record_reset_event(self, event: dict[str, Any]) -> dict[str, Any]:
-        return self.upsert_reset_event(event)
+    def record_reset_event(self, event: dict[str, Any], *, is_synthetic: bool = False) -> dict[str, Any]:
+        return self.upsert_reset_event(event, is_synthetic=is_synthetic)
 
     @staticmethod
     def _rebuild_cycles(connection: sqlite3.Connection) -> None:
@@ -1428,6 +1514,8 @@ class Database:
             if analysis is not None:
                 post_analysis_versions[str(post['tweet_id'])] = self._snapshot_digest(analysis)
         cycle = context.get('current_cycle')
+        policy_versions = self._policy_versions_for_context(context)
+        context['policy_versions'] = policy_versions
         context['input_snapshot'] = {
             'input_versions':dict(sorted((context.get('input_versions') or {}).items())),
             'post_analysis_versions':dict(sorted(post_analysis_versions.items())),
@@ -1435,11 +1523,63 @@ class Database:
             'historical_case_versions':dict(sorted((context.get('historical_case_versions') or {}).items())),
             'current_cycle_version':self._snapshot_digest(cycle) if cycle else None,
             'corpus_version':context.get('corpus_version'),
+            'policy_versions':policy_versions,
         }
         context['input_snapshot_id'] = self._snapshot_digest(context['input_snapshot'])
         return context['input_snapshot']
 
-    def add_judgement(self, judgement: dict[str, Any]) -> int:
+    def _policy_versions_for_context(self, context: dict[str,Any]) -> dict[str,dict[str,Any]]:
+        tweet_ids = {str(post['tweet_id']) for post in context.get('posts') or [] if post.get('tweet_id') is not None}
+        for event in context.get('reset_events') or []:
+            tweet_ids.update(str(value) for value in event.get('evidence_post_ids') or [])
+        for case in context.get('historical_cases') or []:
+            tweet_ids.update(str(value) for value in case.get('related_tweet_ids') or [])
+        if not tweet_ids:
+            return {}
+        placeholders = ','.join('?' for _ in tweet_ids)
+        with self.connect() as connection:
+            posts = connection.execute(
+                f"SELECT id,tweet_id,text_hash FROM tibo_posts WHERE tweet_id IN ({placeholders})",
+                tuple(sorted(tweet_ids)),
+            ).fetchall()
+            output: dict[str,dict[str,Any]] = {}
+            for post in posts:
+                exact = connection.execute(
+                    """SELECT policy_status,judge_evidence_allowed,policy_version,content_hash
+                    FROM post_content_policies WHERE post_id=? AND content_hash=?""",
+                    (post['id'], post['text_hash']),
+                ).fetchone()
+                has_history = connection.execute(
+                    "SELECT 1 FROM post_content_policies WHERE post_id=? LIMIT 1", (post['id'],),
+                ).fetchone() is not None
+                if exact:
+                    version = str(exact['policy_version'])
+                    status = str(exact['policy_status'])
+                    allowed = bool(exact['judge_evidence_allowed'])
+                elif has_history:
+                    version = 'content-policy-v1'
+                    status = 'CONTENT_VERSION_CHANGED_REVIEW_REQUIRED'
+                    allowed = False
+                else:
+                    version = 'unreviewed-default'
+                    status = 'UNREVIEWED'
+                    allowed = True
+                output[str(post['tweet_id'])] = {
+                    'post_id': int(post['id']),
+                    'content_hash': str(post['text_hash'] or ''),
+                    'policy_version': version,
+                    'policy_status': status,
+                    'judge_evidence_allowed': allowed,
+                }
+        return dict(sorted(output.items()))
+
+    def _insert_judgement(
+        self,
+        connection: sqlite3.Connection,
+        judgement: dict[str, Any],
+        *,
+        ledger_attempt_id: str | None = None,
+    ) -> int:
         values = [str(judgement[key]).upper() for key in ("action_level", "horizon_24h", "horizon_48h", "horizon_72h")]
         if any(value not in ACTION_LEVELS for value in values):
             raise ValueError("invalid action or horizon level")
@@ -1448,43 +1588,81 @@ class Database:
             raise ValueError("horizon levels must be cumulative: 24h <= 48h <= 72h")
         evidence = [str(item) for item in judgement.get("evidence_post_ids") or []]
         if evidence:
-            with self.connect() as connection:
-                placeholders = ",".join("?" for _ in evidence)
-                found = {str(row[0]) for row in connection.execute(f"SELECT tweet_id FROM tibo_posts WHERE tweet_id IN ({placeholders})", evidence)}
+            placeholders = ",".join("?" for _ in evidence)
+            found = {str(row[0]) for row in connection.execute(
+                f"SELECT tweet_id FROM tibo_posts WHERE tweet_id IN ({placeholders})", evidence
+            )}
             missing = sorted(set(evidence) - found)
             if missing:
-                raise ValueError(f"unknown evidence tweet IDs: {', '.join(missing)}")
-            restricted = sorted(set(evidence).intersection(self.restricted_tweet_ids("judge_evidence")))
+                raise JudgementReferenceError(
+                    f"unknown evidence tweet IDs: {', '.join(missing)}",
+                    reason_code="UNKNOWN_EVIDENCE_REFERENCE",
+                )
+            restricted = sorted(str(row[0]) for row in connection.execute(
+                f"""SELECT p.tweet_id FROM tibo_posts p
+                WHERE p.tweet_id IN ({placeholders}) AND (
+                    EXISTS(SELECT 1 FROM post_content_policies exact_policy
+                        WHERE exact_policy.post_id=p.id AND exact_policy.content_hash=p.text_hash
+                        AND exact_policy.judge_evidence_allowed=0)
+                    OR (EXISTS(SELECT 1 FROM post_content_policies any_policy WHERE any_policy.post_id=p.id)
+                        AND NOT EXISTS(SELECT 1 FROM post_content_policies current_policy
+                            WHERE current_policy.post_id=p.id AND current_policy.content_hash=p.text_hash
+                            AND current_policy.judge_evidence_allowed=1))
+                )""",
+                evidence,
+            ))
             if restricted:
-                raise ValueError(f"content-policy-ineligible evidence tweet IDs: {', '.join(restricted)}")
+                raise JudgementReferenceError(
+                    f"content-policy-ineligible evidence tweet IDs: {', '.join(restricted)}",
+                    reason_code="CONTENT_POLICY_INELIGIBLE_REFERENCE",
+                )
+        cursor = connection.execute("""INSERT INTO radar_judgements(created_at,action_level,horizon_24h,horizon_48h,horizon_72h,
+            data_health,reason_summary,evidence_post_ids,special_event_ids,model,prompt_version,estimated_start,estimated_end,
+            estimate_basis,valid_until,cycle_id,status,failure_reason,context_hash,raw_json,corpus_version,historical_case_ids,
+            ledger_attempt_id)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (normalise_time(judgement.get("created_at")) or utc_now(), *values, str(judgement.get("data_health") or "UNKNOWN"),
+             str(judgement["reason_summary"]), json.dumps(evidence), json.dumps(judgement.get("special_event_ids") or []),
+             judgement.get("model"), str(judgement.get("prompt_version") or "v2-intelligence-1"),
+             normalise_time(judgement.get("estimated_start")), normalise_time(judgement.get("estimated_end")),
+             judgement.get("estimate_basis"), normalise_time(judgement.get("valid_until")), judgement.get("cycle_id"),
+             judgement.get("status", "COMPLETED"), judgement.get("failure_reason"), judgement.get("context_hash"),
+             json.dumps(judgement.get("raw") or {}, ensure_ascii=False), judgement.get("corpus_version"),
+             json.dumps(judgement.get("historical_case_ids") or []), ledger_attempt_id))
+        return int(cursor.lastrowid)
+
+    def add_judgement(self, judgement: dict[str, Any]) -> int:
         with self.connect() as connection:
-            cursor = connection.execute("""INSERT INTO radar_judgements(created_at,action_level,horizon_24h,horizon_48h,horizon_72h,
-                data_health,reason_summary,evidence_post_ids,special_event_ids,model,prompt_version,estimated_start,estimated_end,
-                estimate_basis,valid_until,cycle_id,status,failure_reason,context_hash,raw_json,corpus_version,historical_case_ids)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (normalise_time(judgement.get("created_at")) or utc_now(), *values, str(judgement.get("data_health") or "UNKNOWN"),
-                 str(judgement["reason_summary"]), json.dumps(evidence), json.dumps(judgement.get("special_event_ids") or []),
-                 judgement.get("model"), str(judgement.get("prompt_version") or "v2-intelligence-1"),
-                 normalise_time(judgement.get("estimated_start")), normalise_time(judgement.get("estimated_end")),
-                 judgement.get("estimate_basis"), normalise_time(judgement.get("valid_until")), judgement.get("cycle_id"),
-                 judgement.get("status", "COMPLETED"), judgement.get("failure_reason"), judgement.get("context_hash"),
-                 json.dumps(judgement.get("raw") or {}, ensure_ascii=False), judgement.get("corpus_version"),
-                 json.dumps(judgement.get("historical_case_ids") or [])))
-            return int(cursor.lastrowid)
+            return self._insert_judgement(connection, judgement)
 
     def latest_judgement(self, *, as_of: str | datetime | None = None) -> dict[str, Any] | None:
         cutoff = normalise_time(as_of) if as_of else None
         with self.connect() as connection:
+            publication_guard = """AND (j.ledger_attempt_id IS NULL OR EXISTS(
+                SELECT 1 FROM prediction_ledger published
+                WHERE published.kind='output_committed' AND published.judgement_id=j.id
+                  AND published.attempt_id=j.ledger_attempt_id))"""
             if cutoff:
                 row = connection.execute(
-                    "SELECT * FROM radar_judgements WHERE created_at<=? ORDER BY created_at DESC,id DESC LIMIT 1",
+                    f"SELECT j.* FROM radar_judgements j WHERE j.created_at<=? {publication_guard} ORDER BY j.created_at DESC,j.id DESC LIMIT 1",
                     (cutoff,),
                 ).fetchone()
             else:
-                row = connection.execute("SELECT * FROM radar_judgements ORDER BY created_at DESC,id DESC LIMIT 1").fetchone()
+                row = connection.execute(
+                    f"SELECT j.* FROM radar_judgements j WHERE 1=1 {publication_guard} ORDER BY j.created_at DESC,j.id DESC LIMIT 1"
+                ).fetchone()
         if not row:
             return None
         return self.normalize_judgement(dict(row))
+
+    def get_judgement(self, judgement_id: int) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("""SELECT j.* FROM radar_judgements j WHERE j.id=?
+                AND (j.ledger_attempt_id IS NULL OR EXISTS(
+                    SELECT 1 FROM prediction_ledger published
+                    WHERE published.kind='output_committed' AND published.judgement_id=j.id
+                      AND published.attempt_id=j.ledger_attempt_id))""", (int(judgement_id),)).fetchone()
+        return self.normalize_judgement(dict(row)) if row else None
 
     @staticmethod
     def normalize_judgement(value: dict[str, Any]) -> dict[str, Any]:
