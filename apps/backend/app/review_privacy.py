@@ -5,11 +5,25 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from ipaddress import ip_address
 from urllib.parse import urlsplit
+from typing import Any
 
 from .notifications.security import redact
 
 
 REDACTION_VERSION = "crr-review-redaction-v1"
+# Immutable scoring DTOs are accepted only in their final public schema. Never
+# silently redact a hashed sidecar: reject it, then let the scorer regenerate it
+# from the already-redacted core DTOs instead.
+EVALUATION_SET_FIELDS = frozenset({
+    "schema_version", "id", "algorithm_version", "source_binding", "package_binding",
+    "core_collection_binding", "observation_cutoff_at", "coverage", "rules", "tie_order",
+    "events", "normal_refs", "prediction_series_set", "set_hash", "record_sha256",
+})
+ASSESSMENT_FIELDS = frozenset({
+    "schema_version", "id", "algorithm_version", "source_binding", "package_binding",
+    "core_collection_binding", "evaluation_set_ref", "set_hash", "truth_refs", "prediction_refs",
+    "output_refs", "panels", "normal", "series_outcomes", "limitations", "assessment_hash", "record_sha256",
+})
 _SECRET_KEY = re.compile(r"(?:secret|token|api[_-]?key|cookie|password|credential|authorization|smtp[_-]?(?:user|pass))", re.I)
 _RUNTIME_KEY = re.compile(r"(?:runtime|instance|device|session|account)[_-]?(?:id|key|name)?", re.I)
 _PATH_KEY = re.compile(r"(?:^|_)(?:path|file|directory|cwd|workdir)(?:$|_)", re.I)
@@ -321,10 +335,23 @@ def _safe_input_frame(value: object, context: PrivacyContext, categories: set[st
             categories.add("input_frame_list_limit_applied")
     if value.get("public_prompt_artifact_ref") is not None or value.get("judge_schema_artifact_ref") is not None:
         categories.add("prompt_and_schema_content_omitted")
+    anchor = value.get("normal_anchor")
+    if isinstance(anchor, Mapping):
+        source = dict(anchor)
+        source.setdefault("event_id", source.get("id"))
+        result["normal_anchor"] = _safe_source_snapshot(source, context, categories)
+        provenance = anchor.get("provenance")
+        if isinstance(provenance, Mapping):
+            result["normal_anchor"]["time_metadata"] = {
+                key: sanitize_value(key, provenance[key], context, categories)
+                for key in ("time_precision", "precision", "prediction_form", "time_form", "source_timezone")
+                if key in provenance and (provenance[key] is None or isinstance(provenance[key], str))
+            }
     # Do not expose frame strings, raw request context or model prompt material.
     omitted = set(map(str, value)) - {
         "forecast", "input_snapshot", "context", "policy_versions", "evidence_sources",
         "public_prompt_artifact_ref", "judge_schema_artifact_ref",
+        "normal_anchor", "is_synthetic",
     }
     if omitted:
         categories.add("input_frame_private_fields_omitted")
@@ -379,7 +406,8 @@ _SAFE_REFERENCE_FIELDS = {
     "target", "id", "status", "reason", "placeholder", "omission_reason", "role", "relation",
     "relation_source", "relation_to_target", "tweet_id", "author", "author_role", "parent_tweet_id",
     "parent_author", "parent_author_role", "depth", "source_version", "policy_version", "redacted",
-    "redaction_categories", "record_id", "observed_at", "source", "clock_anomaly", "time_limitation",
+    "redaction_categories", "record_id", "ledger_seq", "observed_at", "source", "clock_anomaly", "time_limitation",
+    "posted_at", "target_tweet_id", "target_input_version", "evidence_quote",
 }
 
 _INPUT_VERSION_DELTA_CLASSES = {
@@ -584,6 +612,65 @@ def _safe_processing_output(value: object, context: PrivacyContext, categories: 
     return {"operation": operation, "output": projected}
 
 
+_PREDICTION_TARGETS = {"NORMAL_WEEKLY", "EXTRA_FULL", "BANKED"}
+_TARGET_OUTPUT_FIELDS = {
+    "target", "status", "method", "scope", "predicted_start", "predicted_end", "prediction_form",
+    "source_timezone", "precision", "time_basis", "expression", "relative_anchor_at", "relative_offset_seconds",
+    "reason", "unresolved_reason", "evidence_post_ids", "evidence_refs", "lifecycle", "date_boundaries",
+    "timezone_status", "validation", "target_output_id", "output_revision", "rejected_output",
+    "estimated_at", "basis", "anchor_event_id", "anchor_time_basis", "anchor_limitation",
+}
+
+
+def _safe_target_outputs(value: object, context: PrivacyContext, categories: set[str]) -> object:
+    if not isinstance(value, Mapping):
+        categories.add("invalid_target_outputs_omitted")
+        return None
+
+    def project(source: Mapping[str, Any], *, rejected: bool = False) -> dict[str, object]:
+        result = {}
+        for key in sorted(_TARGET_OUTPUT_FIELDS.intersection(source)):
+            child = source[key]
+            if key == "rejected_output":
+                if not rejected and isinstance(child, Mapping):
+                    result[key] = project(child, rejected=True)
+                elif child is None:
+                    result[key] = None
+            elif key == "validation":
+                if isinstance(child, Mapping):
+                    result[key] = {name: sanitize_value(name, child[name], context, categories)
+                                   for name in ("valid", "reason", "date_status") if name in child
+                                   and (child[name] is None or isinstance(child[name], (bool, str)))}
+                    if set(child) - {"valid", "reason", "date_status"}:
+                        categories.add("target_validation_fields_omitted")
+            else:
+                result[key] = sanitize_value(key, child, context, categories)
+        if set(source) - _TARGET_OUTPUT_FIELDS:
+            categories.add("target_output_fields_omitted")
+        return result
+    if set(value) - _PREDICTION_TARGETS:
+        categories.add("unapproved_prediction_target_omitted")
+    return {target: project(child) for target, child in value.items()
+            if target in _PREDICTION_TARGETS and isinstance(child, Mapping)}
+
+
+def _safe_target_refs(value: object, context: PrivacyContext, categories: set[str]) -> object:
+    if not isinstance(value, Mapping):
+        categories.add("invalid_target_refs_omitted")
+        return None
+    result = {}
+    for target, child in value.items():
+        if target not in _PREDICTION_TARGETS or not isinstance(child, Mapping):
+            categories.add("unapproved_target_reference_omitted")
+            continue
+        result[target] = {key: sanitize_value(key, child[key], context, categories)
+                          for key in ("forecast_id", "series_id", "revision", "previous_id")
+                          if key in child and (child[key] is None or isinstance(child[key], (str, int)))}
+        if set(child) - {"forecast_id", "series_id", "revision", "previous_id"}:
+            categories.add("target_reference_fields_omitted")
+    return result
+
+
 def sanitize_value(field_name: str, value: object, context: PrivacyContext, categories: set[str]) -> object:
     if value is None or isinstance(value, (bool, int, float)):
         return value
@@ -599,6 +686,24 @@ def sanitize_value(field_name: str, value: object, context: PrivacyContext, cate
         return _safe_processing_output(value, context, categories)
     if field_name == "input_version_delta":
         return _safe_input_version_delta(value, context, categories)
+    if field_name in {"target_outputs", "predictions"}:
+        return _safe_target_outputs(value, context, categories)
+    if field_name == "target_refs":
+        return _safe_target_refs(value, context, categories)
+    if field_name == "target_forecast_refs":
+        if isinstance(value, Mapping):
+            return {target: _safe_reference_tree(child, context, categories) for target, child in value.items()
+                    if target in _PREDICTION_TARGETS}
+        return None
+    if field_name == "prediction_validation":
+        if isinstance(value, Mapping):
+            result = {"status": sanitize_value("status", value.get("status"), context, categories),
+                      "accepted_targets": [target for target in value.get("accepted_targets", []) if target in _PREDICTION_TARGETS]
+                      if isinstance(value.get("accepted_targets"), list) else []}
+            if set(value) - {"status", "accepted_targets"}:
+                categories.add("prediction_validation_fields_omitted")
+            return result
+        return None
     if field_name in {"estimated_start_time_metadata", "estimated_end_time_metadata"}:
         if not isinstance(value, Mapping):
             categories.add("invalid_time_metadata_omitted")
@@ -683,6 +788,7 @@ def sanitize_value(field_name: str, value: object, context: PrivacyContext, cate
             "estimated_start_expression", "estimated_end_expression",
             "estimated_start_time_metadata", "estimated_end_time_metadata", "reason_summary", "model",
             "prompt_version", "created_at",
+            "predictions", "prediction_validation", "prediction_contract_version",
         }
         safe_output: dict[str, object] = {}
         for key in sorted(allowed.intersection(str(item) for item in value)):
@@ -692,6 +798,8 @@ def sanitize_value(field_name: str, value: object, context: PrivacyContext, cate
             elif key == "evidence_post_ids" and isinstance(child, (list, tuple)):
                 safe_output[key] = [str(item)[:100] for item in child if isinstance(item, (str, int))]
             elif key in {"estimated_start_time_metadata", "estimated_end_time_metadata"}:
+                safe_output[key] = sanitize_value(key, child, context, categories)
+            elif key in {"predictions", "prediction_validation"}:
                 safe_output[key] = sanitize_value(key, child, context, categories)
             elif isinstance(child, str):
                 cleaned, found = clean_text(child, context, limit=1000 if key == "reason_summary" else 300)

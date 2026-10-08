@@ -18,8 +18,10 @@ from app.review_export import (  # noqa: E402
     export_review,
     preview_review,
     review_local_zone,
+    verify_coverage,
+    attach_evaluations,
 )
-from app.review_reader import DEFAULT_MAX_RECORDS, ReviewRangeTooLarge, ReviewReadError  # noqa: E402
+from app.review_reader import DEFAULT_MAX_RECORDS, ReviewRangeTooLarge, ReviewReadError, freeze_review  # noqa: E402
 
 
 def parse_user_time(value: str) -> datetime:
@@ -48,6 +50,10 @@ def _add_selection_arguments(parser: argparse.ArgumentParser, *, include_publish
     parser.add_argument("--series", "--series-id", dest="series_id", help="选择完整预测系列及其依赖")
     parser.add_argument("--high-water", type=int, help="固定 ledger 序号上限")
     parser.add_argument("--max-records", type=int, default=DEFAULT_MAX_RECORDS)
+    parser.add_argument("--multipart", action="store_true", help="有界活动根分包；统一冻结来源，生成同目录 coverage 索引")
+    parser.add_argument("--snapshot-sha256", help="仅已取得的一致性无非空 WAL 快照可提供预期 SHA；普通事务来源不声称 main 文件 SHA")
+    parser.add_argument("--evaluation-set", type=Path, action="append", default=[], help="离线冻结集合 JSON；严格绑定同来源/核心集合，不能覆盖源 DB")
+    parser.add_argument("--assessment", type=Path, action="append", default=[], help="离线评分 JSON；正式 scorer 重算验证后附加，不代表准确率验收")
     if include_publish:
         parser.add_argument("--out", type=Path, required=True, help="目标 ZIP；父目录须已存在，不能覆盖已有文件")
         parser.add_argument("--staging-dir", type=Path, required=True, help="调用方明确指定的独立 staging 目录（事项 _tmp 内）")
@@ -95,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             from app.review_export import verify_review
 
-            result = verify_review(args.package)
+            result = verify_coverage(args.package) if args.package.name.endswith(".coverage.json") else verify_review(args.package)
             print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
             return 0
         except FileNotFoundError:
@@ -106,8 +112,8 @@ def main(argv: list[str] | None = None) -> int:
             return 2
 
     selection, freeze_at = _selection(args, parser)
-    if args.max_records <= 0:
-        parser.error("--max-records must be positive")
+    if not 0 < args.max_records <= DEFAULT_MAX_RECORDS:
+        parser.error("--max-records must be between 1 and 20000")
     connection = None
     try:
         connection = _open_readonly(args.database)
@@ -121,16 +127,20 @@ def main(argv: list[str] | None = None) -> int:
 
             if os.stat(staging).st_dev != os.stat(output.parent.resolve(strict=True)).st_dev:
                 raise ReviewExportError("staging_and_output_must_share_volume")
-        result = preview_review(connection, selection, freeze_at, args.high_water, max_records=args.max_records)
+        review = freeze_review(connection, selection, freeze_at, args.high_water,
+                               multipart=args.multipart, max_records=args.max_records,
+                               snapshot_file=args.database if args.snapshot_sha256 else None,
+                               source_sha256=args.snapshot_sha256)
+        if args.evaluation_set or args.assessment:
+            review = attach_evaluations(review, evaluation_sets=args.evaluation_set, assessments=args.assessment)
+        result = preview_review(review, max_records=args.max_records, multipart=args.multipart)
         if args.command == "export":
             result = export_review(
-                connection,
-                selection,
-                freeze_at,
-                args.out,
-                args.staging_dir,
-                args.high_water,
+                review,
+                output_path=args.out,
+                staging_dir=args.staging_dir,
                 max_records=args.max_records,
+                multipart=args.multipart,
             )
         elif args.command == "prepare":
             result["publish_preflight"] = "ready_same_volume_no_output_created"
