@@ -1,6 +1,34 @@
 import "./style.css";
-import { loadV2Dashboard, type HealthResponse, type PostsResponse, type RadarResponse, type TiboPost } from "./api";
-import { actionCopy, compactBasis, escapeHtml, formatTime, tone } from "./radar-ui";
+import {
+  loadPredictionHistory,
+  loadV2Dashboard,
+  PREDICTION_TARGETS,
+  type HealthResponse,
+  type PredictionHistoryResponse,
+  type PredictionLine,
+  type PredictionTarget,
+  type PostsResponse,
+  type RadarResponse,
+  type TiboPost
+} from "./api";
+import {
+  actionCopy,
+  anchorLimitationLabel,
+  compactBasis,
+  downgradePredictionOnRefreshFailure,
+  escapeHtml,
+  formatTime,
+  historyMilestones,
+  historyRevisionLabel,
+  outputAvailabilityLabel,
+  predictionHealthLabel,
+  predictionIsNotCurrent,
+  predictionMethodLabel,
+  predictionReasonLabel,
+  predictionStateLabel,
+  predictionTimeSummary,
+  tone
+} from "./radar-ui";
 
 declare const __APP_VERSION__: string;
 type DashboardData = { radar: RadarResponse; health: HealthResponse; posts: PostsResponse };
@@ -10,6 +38,8 @@ if (!root) throw new Error("#app is required");
 const app: HTMLElement = root;
 let lastSuccessful: { data: DashboardData; receivedAt: Date } | null = null;
 let refreshing = false;
+let routeRevision = 0;
+let lastRefreshFailure: string | null = null;
 
 function statusBadge(level: RadarResponse["action_level"]): string {
   return `<span class="level level-${tone(level)}"><i aria-hidden="true"></i>${escapeHtml(level)}</span>`;
@@ -78,6 +108,266 @@ function specialAnnouncements(radar: RadarResponse): string {
   </article>`).join('');
 }
 
+const predictionTitles: Record<PredictionTarget, string> = {
+  NORMAL_WEEKLY: "正常周额度参考（Normal）",
+  EXTRA_FULL: "额外完整重置预测（Extra Full）",
+  BANKED: "重置卡发放预测（Banked）"
+};
+
+function predictionFormLabel(form: string): string {
+  const labels: Record<string, string> = {
+    point: "点值",
+    range: "范围",
+    date: "日期粒度",
+    proxy: "旧记录发帖时间代理",
+    start_only: "仅起点",
+    end_only: "仅终点",
+    lower_bound: "仅起点",
+    upper_bound: "仅终点",
+    relative: "相对表达式",
+    unknown: "未知形式"
+  };
+  return labels[form.toLowerCase()] ?? form;
+}
+
+function updatedAtSourceLabel(source: string | null): string {
+  if (source === "judgement_time") return "（判定时间）";
+  if (source === "ledger_recorded_at") return "（账本记录时间）";
+  if (source === "output_available_at_observation") return "（输出可用观察时间）";
+  return "";
+}
+
+function anchorTimeBasisLabel(value: string): string {
+  if (value === "post_time_proxy") return "发帖时间代理（不是实际执行开始）";
+  if (value === "legacy_anchor_precision_unknown") return "旧锚点精度未核实";
+  return value;
+}
+
+function predictionHistoryHref(target: PredictionTarget, seriesId: string): string {
+  const query = new URLSearchParams({ target, series_id: seriesId });
+  return `#/predictions/history?${query.toString()}`;
+}
+
+function predictionLineCard(
+  line: PredictionLine,
+  historyAvailable: boolean,
+  globalHealth: NonNullable<RadarResponse["prediction"]>["health"]
+): string {
+  const notCurrent = predictionIsNotCurrent(line)
+    || globalHealth.current_data_health !== "HEALTHY"
+    || globalHealth.refresh_failed
+    || (line.target !== "NORMAL_WEEKLY" && (
+      !globalHealth.validation_valid
+      || globalHealth.generation_data_health !== "HEALTHY"
+      || !globalHealth.judgement_usable
+    ));
+  const state = notCurrent && ["ready", "current", "available"].includes(line.state.toLowerCase())
+    ? "stale" : line.state;
+  const validity = line.valid_until
+    ? `${predictionStateLabel(line.validity_state)} · 有效至 ${formatTime(line.valid_until)}`
+    : predictionStateLabel(line.validity_state);
+  const health = line.health_reason
+    ? `${predictionHealthLabel(line.health_state)} · ${line.health_reason}`
+    : predictionHealthLabel(line.health_state);
+  const outputAvailability = outputAvailabilityLabel(line.output_available_at);
+  const basis = line.basis && line.basis !== "user_full_plus_7d"
+    ? `<div><dt>依据</dt><dd>${escapeHtml(line.basis)}</dd></div>`
+    : "";
+  const historyLink = historyAvailable && line.series_id
+    ? `<a class="prediction-history-link" href="${escapeHtml(predictionHistoryHref(line.target, line.series_id))}">查看此系列历史</a>`
+    : `<span class="empty-inline">此系列暂无历史入口</span>`;
+  const relativeDetails = line.relative_expression || line.expression || line.relative_anchor || line.unresolved_reason || line.anchor_limitation || line.anchor_time_basis
+    ? `<details class="prediction-relative-details"><summary>时间表达、锚点与解析限制</summary>
+      ${line.relative_expression || line.expression ? `<p>原始表达：${escapeHtml(line.relative_expression ?? line.expression)}</p>` : ""}
+      ${line.relative_anchor ? `<p>发帖时间锚点：${escapeHtml(line.relative_anchor)}</p>` : ""}
+      ${line.anchor_time_basis ? `<p>锚点时间依据：${escapeHtml(anchorTimeBasisLabel(line.anchor_time_basis))}</p>` : ""}
+      ${line.anchor_limitation ? `<p>锚点限制：${escapeHtml(anchorLimitationLabel(line.anchor_limitation))}</p>` : ""}
+      ${line.unresolved_reason ? `<p>未解析原因：${escapeHtml(line.unresolved_reason)}</p>` : ""}</details>`
+    : "";
+  const anchorCaveat = line.anchor_limitation
+    ? `<p class="prediction-note">锚点限制：${escapeHtml(anchorLimitationLabel(line.anchor_limitation))}</p>`
+    : line.form.toLowerCase() === "proxy"
+      ? `<p class="prediction-note">旧记录仅为发帖时间代理，实际执行开始未核实。</p>`
+      : "";
+  const eligibilityWarning = notCurrent
+    ? `<p class="prediction-stale-warning" role="status">${escapeHtml(globalHealth.refresh_failed
+      ? "刷新失败；下方仅为最后成功数据，不作为当前建议。"
+      : predictionReasonLabel(line.eligibility_reason ?? "此记录未通过当前全局校验/健康门控，不作为当前建议。"))}</p>`
+    : "";
+  return `<article class="prediction-line${line.target === "BANKED" ? " prediction-line-banked" : ""}${notCurrent ? " prediction-line-stale" : ""}">
+    <header><span class="eyebrow${line.target === "BANKED" ? " purple-text" : ""}">${line.target === "BANKED" ? "BANKED · PURPLE" : escapeHtml(line.target)}</span>
+      <h3>${escapeHtml(predictionTitles[line.target])}</h3><span class="prediction-state">${escapeHtml(predictionStateLabel(state))}</span></header>
+    ${line.target === "NORMAL_WEEKLY" ? `<p class="prediction-note">参考规则，非官方恢复承诺。</p>${anchorCaveat}` : anchorCaveat}
+    <strong class="prediction-time">${escapeHtml(predictionTimeSummary(line))}</strong>
+    <dl>
+      <div><dt>时间形式</dt><dd>${escapeHtml(predictionFormLabel(line.form))}</dd></div>
+      <div><dt>来源 / 方法</dt><dd>${escapeHtml(predictionMethodLabel(line.method, line.basis))}</dd></div>
+      <div><dt>时区 / 精度</dt><dd>${escapeHtml(line.source_timezone ?? "未确认时区")} · ${escapeHtml(line.precision ?? "未提供精度")}</dd></div>
+      <div><dt>目标范围</dt><dd>${escapeHtml(line.scope ?? "范围未记录")}</dd></div>
+      <div><dt>时间依据</dt><dd>${escapeHtml(line.time_basis ?? "未说明")}${line.date_boundaries ? ` · ${escapeHtml(line.date_boundaries)}` : ""}</dd></div>
+      <div><dt>更新时间</dt><dd>${escapeHtml(line.updated_at ? formatTime(line.updated_at) : "未记录")}${escapeHtml(updatedAtSourceLabel(line.updated_at_source))}</dd></div>
+      <div><dt>输出可用时间</dt><dd>${escapeHtml(outputAvailability)}${line.output_availability_kind ? ` · 来源 ${escapeHtml(line.output_availability_kind)}` : ""}</dd></div>
+      <div><dt>有效性</dt><dd>${escapeHtml(validity)}</dd></div>
+      <div><dt>数据健康</dt><dd>${escapeHtml(health)}</dd></div>${basis}
+    </dl>
+    <p class="prediction-reason">${escapeHtml(line.reason ? predictionReasonLabel(line.reason) : line.health_reason ?? "暂无可审查依据")}</p>
+    ${relativeDetails}${eligibilityWarning}
+    ${historyLink}
+  </article>`;
+}
+
+function predictionLines(radar: RadarResponse): string {
+  const prediction = radar.prediction;
+  if (!prediction) {
+    return `<section class="panel prediction-panel" aria-labelledby="prediction-heading">
+      <header><span class="eyebrow">PREDICTION LINES</span><h2 id="prediction-heading">三条时间线</h2></header>
+      <p class="empty">当前 Backend 未提供三线预测扩展；上方旧参考和 Full 时间字段仍保持原语义。</p>
+    </section>`;
+  }
+  const cards = PREDICTION_TARGETS.map((target) => predictionLineCard(
+    prediction.lines[target],
+    prediction.capabilities.history,
+    prediction.health
+  )).join("");
+  const collectorHealth = Object.entries(prediction.health.current_collector_health)
+    .map(([name, value]) => {
+      const item = value && typeof value === "object" ? value as Record<string, unknown> : {};
+      return `${name}：${predictionHealthLabel(typeof item.state === "string" ? item.state : null)}${typeof item.reason === "string" ? `（${predictionReasonLabel(item.reason)}）` : ""}`;
+    }).join("；");
+  const globalStatus = prediction.health.refresh_failed
+    ? `刷新失败：${prediction.health.refresh_failure_reason ?? "仅显示最后成功数据"}`
+    : `预测投影：${predictionStateLabel(prediction.state)}`;
+  return `<section class="panel prediction-panel" aria-labelledby="prediction-heading">
+    <header><span class="eyebrow">PREDICTION LINES · ${escapeHtml(prediction.version)}</span><h2 id="prediction-heading">三条时间线</h2></header>
+    <p class="prediction-global-health" role="status">${escapeHtml(globalStatus)} · 全局校验：${escapeHtml(predictionReasonLabel(prediction.health.validation_reason))} · 本轮生成健康：${escapeHtml(predictionHealthLabel(prediction.health.generation_data_health))}${prediction.health.generation_health_reason ? `（${escapeHtml(predictionReasonLabel(prediction.health.generation_health_reason))}）` : ""} · 当前采集健康：${escapeHtml(predictionHealthLabel(prediction.health.current_data_health))}${collectorHealth ? ` · ${escapeHtml(collectorHealth)}` : ""}</p>
+    <div class="prediction-grid">${cards}</div>
+  </section>`;
+}
+
+type PageRoute =
+  | { page: "home" }
+  | { page: "ops" }
+  | { page: "history"; target: PredictionTarget; seriesId: string; limit: number }
+  | { page: "invalid-history" };
+
+function pageRoute(): PageRoute {
+  if (location.hash === "#/ops") return { page: "ops" };
+  const prefix = "#/predictions/history";
+  if (location.hash.startsWith(prefix)) {
+    const rawQuery = location.hash.slice(prefix.length).replace(/^\?/, "");
+    const params = new URLSearchParams(rawQuery);
+    const target = params.get("target");
+    const seriesId = params.get("series_id");
+    if (PREDICTION_TARGETS.includes(target as PredictionTarget) && seriesId) {
+      const requestedLimit = Number(params.get("limit") ?? 100);
+      const limit = Number.isFinite(requestedLimit)
+        ? Math.max(1, Math.min(200, Math.trunc(requestedLimit)))
+        : 100;
+      return { page: "history", target: target as PredictionTarget, seriesId, limit };
+    }
+    return { page: "invalid-history" };
+  }
+  return { page: "home" };
+}
+
+function historyVersion(line: PredictionLine, label: string): string {
+  const revisions = historyRevisionLabel(line);
+  const available = outputAvailabilityLabel(line.output_available_at);
+  const provenance = line.is_synthetic === true ? "合成账本版本"
+    : line.is_synthetic === false ? "非合成来源（不代表时间事实已核实）" : "来源属性未记录";
+  const relativeDetails = line.relative_expression || line.expression || line.relative_anchor || line.unresolved_reason || line.anchor_limitation || line.anchor_time_basis
+    ? `<details><summary>时间表达与锚点限制</summary>
+      ${line.relative_expression || line.expression ? `<p>原始表达：${escapeHtml(line.relative_expression ?? line.expression)}</p>` : ""}
+      ${line.relative_anchor ? `<p>发帖时间锚点：${escapeHtml(line.relative_anchor)}</p>` : ""}
+      ${line.anchor_time_basis ? `<p>锚点时间依据：${escapeHtml(anchorTimeBasisLabel(line.anchor_time_basis))}</p>` : ""}
+      ${line.anchor_limitation ? `<p>锚点限制：${escapeHtml(anchorLimitationLabel(line.anchor_limitation))}</p>` : ""}
+      ${line.unresolved_reason ? `<p>未解析原因：${escapeHtml(line.unresolved_reason)}</p>` : ""}</details>`
+    : "";
+  return `<article class="history-version">
+    <span class="eyebrow">${escapeHtml(label)}</span><h3>${escapeHtml(revisions)} · ${escapeHtml(predictionStateLabel(line.state))}</h3>
+    <strong>${escapeHtml(predictionTimeSummary(line))}</strong>
+    <dl><div><dt>输出可用时间</dt><dd>${escapeHtml(available)}${line.output_availability_kind ? ` · 来源 ${escapeHtml(line.output_availability_kind)}` : ""}</dd></div>
+      <div><dt>形式 / 方法</dt><dd>${escapeHtml(predictionFormLabel(line.form))} · ${escapeHtml(predictionMethodLabel(line.method, line.basis))}</dd></div>
+      <div><dt>范围 / 时区 / 精度 / 时间依据</dt><dd>${escapeHtml(line.scope ?? "范围未记录")} · ${escapeHtml(line.source_timezone ?? "未确认时区")} · ${escapeHtml(line.precision ?? "未提供精度")} · ${escapeHtml(line.time_basis ?? "未说明")}${line.date_boundaries ? ` · ${escapeHtml(line.date_boundaries)}` : ""}</dd></div>
+      <div><dt>更新时间</dt><dd>${escapeHtml(line.updated_at ? formatTime(line.updated_at) : "未记录")}${escapeHtml(updatedAtSourceLabel(line.updated_at_source))}</dd></div>
+      <div><dt>有效性 / 健康</dt><dd>${escapeHtml(predictionStateLabel(line.validity_state))} · ${escapeHtml(predictionHealthLabel(line.health_state))}</dd></div>
+      <div><dt>问题版本 / 目标输出 ID</dt><dd>${escapeHtml(line.question_version ?? line.forecast_version ?? "未记录")} · ${escapeHtml(line.target_output_id ?? "未记录")}</dd></div>
+      <div><dt>账本记录 / 来源</dt><dd>${escapeHtml(line.record_id ?? "记录 ID 未提供")} · ${escapeHtml(line.ledger_seq === null ? "追加序列未提供" : `追加序列 ${line.ledger_seq}`)} · ${escapeHtml(provenance)}</dd></div>
+      <div><dt>依据</dt><dd>${escapeHtml(line.reason ? predictionReasonLabel(line.reason) : "暂无可审查依据")}</dd></div>
+      <div><dt>前一版本</dt><dd>${escapeHtml(line.previous_id ?? "无")}</dd></div></dl>${relativeDetails}
+  </article>`;
+}
+
+function historyAttemptsSection(history: PredictionHistoryResponse): string {
+  if (!history.attempts.length) return "";
+  const rows = history.attempts.map((attempt) => {
+    const time = attempt.attempted_at ?? attempt.started_at ?? attempt.finished_at;
+    const reason = attempt.reason ?? (attempt.reason_code ? predictionReasonLabel(attempt.reason_code) : "未提供原因");
+    const timing = time ? ` · ${formatTime(time)}` : " · 时间未记录";
+    return `<li><strong>${escapeHtml(predictionStateLabel(attempt.state))}</strong>${escapeHtml(timing)}<span> · ${escapeHtml(reason)}</span>${attempt.output_status ? `<span> · 输出：${escapeHtml(attempt.output_status)}</span>` : ""}</li>`;
+  }).join("");
+  return `<details class="history-more"><summary>目标尝试与失败原因（${history.attempts.length}${history.attempts_truncated ? "+，已截断" : ""}）</summary><ul>${rows}</ul></details>`;
+}
+
+function renderHistoryPage(history: PredictionHistoryResponse, target: PredictionTarget, seriesId: string, warning = ""): string {
+  const attemptsSection = historyAttemptsSection(history);
+  if (history.state.toLowerCase() === "not_implemented") {
+    return `<main><section class="panel prediction-history-page" aria-labelledby="history-heading">
+      ${warning}<a class="back-link" href="#/">返回 Radar</a><span class="eyebrow">PREDICTION HISTORY</span>
+      <h1 id="history-heading">${escapeHtml(predictionTitles[target])}</h1><p class="empty" role="status">历史版本暂不可展示。${escapeHtml(history.reason ? predictionReasonLabel(history.reason) : "")}</p>${attemptsSection}
+    </section></main>`;
+  }
+  const milestones = historyMilestones(history.items);
+  const labels = history.items.length <= 1 ? ["本次返回首条 / 末条"]
+    : history.items.length === 2 ? ["本次返回首条", "本次返回末条"]
+      : ["本次返回首条", "本次返回中间条", "本次返回末条"];
+  const cards = milestones.map((line, index) => historyVersion(line, labels[index] ?? "版本")).join("");
+  const middleIndex = Math.floor((history.items.length - 1) / 2);
+  const otherMiddle = history.items.length > 3
+    ? history.items.slice(1, -1).filter((_, index) => index + 1 !== middleIndex)
+    : [];
+  const otherMiddleDetails = otherMiddle.length
+    ? `<details class="history-more"><summary>查看其余 ${otherMiddle.length} 个中间版本</summary><div class="history-grid">${otherMiddle.map((line) => historyVersion(line, "本次返回的中间版本")).join("")}</div></details>`
+    : "";
+  const truncated = history.truncated || history.total_count > history.items.length;
+  const totalDescription = history.total_count_known ? `共 ${history.total_count} 条` : "账本未报告系列总数";
+  const truncationNote = truncated
+    ? `<p class="history-truncation" role="status">本次结果已截断：这里只标记“本次返回”的首条与末条，不能据此称为该系列绝对首次版本。${escapeHtml(totalDescription)}，当前返回 ${history.items.length} 条。</p>`
+    : "";
+  const seriesBoundaries = truncated
+    ? history.first_items.length && history.last_items.length
+      ? `<section class="history-boundaries" aria-labelledby="history-boundaries-heading">
+          <h2 id="history-boundaries-heading">全系列账本边界版本</h2>
+          <p>${escapeHtml(history.order_basis === "append_sequence_not_proven_temporal_or_pre_event_order"
+            ? "以下首条／末条由 Ledger 边界 DTO 提供，按追加顺序标识；不证明真实时间先后或预测的事前评分顺序。"
+            : "以下首条／末条由 Ledger 边界 DTO 提供；仅按账本返回顺序标识，不代表预测的事前评分顺序。")}</p>
+          <div class="history-grid">${history.first_items.map((line) => historyVersion(line, "账本全系列首条")).join("")}${history.last_items.map((line) => historyVersion(line, "账本全系列末条")).join("")}</div>
+        </section>`
+      : `<p class="history-truncation" role="status">账本确认结果已截断，但没有提供可安全展示的全系列首末 DTO；本次窗口首条不能替代真实首条。</p>`
+    : "";
+  const stateNotice = ["ready", "current"].includes(history.state.toLowerCase())
+    ? ""
+    : `<p class="history-state-note" role="status">历史状态：${escapeHtml(predictionStateLabel(history.state))}${history.reason ? ` · ${escapeHtml(predictionReasonLabel(history.reason))}` : ""}</p>`;
+  const content = history.items.length
+    ? `<p class="history-count">按 Ledger 返回顺序展示本次读取的首条、中间条和末条；本次读取 ${history.items.length} 条。</p>${truncationNote}${seriesBoundaries}<div class="history-grid">${cards}</div>${otherMiddleDetails}${attemptsSection}`
+    : `<p class="empty" role="status">此系列本次没有可显示的预测版本。${escapeHtml(history.reason ? predictionReasonLabel(history.reason) : "")}</p>${truncationNote}${seriesBoundaries}${attemptsSection}`;
+  return `<main><section class="panel prediction-history-page" aria-labelledby="history-heading">
+    ${warning}
+    <a class="back-link" href="#/">返回 Radar</a><span class="eyebrow">PREDICTION HISTORY · ${escapeHtml(target)}</span>
+    <h1 id="history-heading">${escapeHtml(predictionTitles[target])}</h1>
+    <p class="history-series">系列 ${escapeHtml(seriesId)} · ${escapeHtml(totalDescription)}，已返回 ${history.items.length} 条</p>${stateNotice}${content}
+  </section></main>`;
+}
+
+function renderHistoryError(target: PredictionTarget, seriesId: string, message: string): string {
+  return `<main><section class="panel prediction-history-page" aria-labelledby="history-heading">
+    <a class="back-link" href="#/">返回 Radar</a><span class="eyebrow">PREDICTION HISTORY</span>
+    <h1 id="history-heading">${escapeHtml(predictionTitles[target])}</h1>
+    <p class="refresh-warning" role="status">历史读取失败：${escapeHtml(message)}</p>
+    <p class="history-series">系列 ${escapeHtml(seriesId)}</p><button type="button" id="retry">重新读取</button>
+  </section></main>`;
+}
+
 function collectors(health: HealthResponse): string {
   const entries = Object.entries(health.collector || {});
   if (!entries.length) return `<div class="empty">Backend 重启后尚未收到 Collector 状态。</div>`;
@@ -110,6 +400,7 @@ function renderHome(radar: RadarResponse, health: HealthResponse, posts: TiboPos
         <hr><span class="eyebrow">CURRENT SIGNAL WINDOW</span><strong>${escapeHtml(estimateWindow(radar))}</strong><p>${escapeHtml(compactBasis(radar.estimate_basis))}</p>
         <details class="estimate-details"><summary>查看完整时间依据</summary><p>${escapeHtml(radar.estimate_basis)}</p></details></article>
     </section>
+    ${predictionLines(radar)}
     <section class="horizon-grid" aria-label="Reset horizons">${horizons.map(([label, level]) => `<article class="horizon level-${tone(level)}"><span>${label}</span>${statusBadge(level)}<p>${escapeHtml(actionCopy(level))}</p></article>`).join("")}</section>
     <section class="content-grid">
       <article class="panel why-panel"><header><span class="eyebrow">WHY</span><h2>DeepSeek 判断依据</h2></header><p class="reason">${escapeHtml(radar.reason_summary)}</p>
@@ -139,10 +430,35 @@ function shell(content: string, backendVersion: string): string {
   return `<div class="shell"><header class="topbar"><a class="brand" href="#/">CRR <span>${escapeHtml(__APP_VERSION__)}</span></a><nav aria-label="主导航"><a href="#/">Radar</a><a href="#/ops">Ops</a></nav></header>${content}<footer><span>Codex Reset Radar ${escapeHtml(__APP_VERSION__)}</span><span>Backend ${escapeHtml(backendVersion)}</span><span>Local intelligence runtime</span></footer></div>`;
 }
 
-function render(data: DashboardData, warning = ""): void {
-  const content = location.hash === "#/ops" ? renderOps(data.health, warning) : renderHome(data.radar, data.health, data.posts.items, warning);
-  app.innerHTML = shell(content, data.health.version);
+function bindRetry(): void {
   document.querySelector<HTMLButtonElement>("#retry")?.addEventListener("click", () => void refresh());
+}
+
+async function render(data: DashboardData, warning = ""): Promise<void> {
+  const currentRevision = ++routeRevision;
+  const route = pageRoute();
+  let content: string;
+  if (route.page === "ops") {
+    content = renderOps(data.health, warning);
+  } else if (route.page === "invalid-history") {
+    content = `<main><section class="panel prediction-history-page"><a class="back-link" href="#/">返回 Radar</a><h1>预测历史链接无效</h1><p role="status">请从某条预测线的“查看此系列历史”入口打开。</p></section></main>`;
+  } else if (route.page === "history") {
+    content = `<main><section class="panel"><p role="status">正在读取 ${escapeHtml(predictionTitles[route.target])} 的同系列版本…</p></section></main>`;
+    app.innerHTML = shell(`${warning}${content}`, data.health.version);
+    try {
+      const history = await loadPredictionHistory(route.target, route.seriesId, route.limit);
+      if (currentRevision !== routeRevision) return;
+      content = renderHistoryPage(history, route.target, route.seriesId, warning);
+    } catch (error) {
+      if (currentRevision !== routeRevision) return;
+      const message = error instanceof Error ? error.message : String(error);
+      content = `${warning}${renderHistoryError(route.target, route.seriesId, message)}`;
+    }
+  } else {
+    content = renderHome(data.radar, data.health, data.posts.items, warning);
+  }
+  app.innerHTML = shell(content, data.health.version);
+  bindRetry();
 }
 
 async function refresh(): Promise<void> {
@@ -152,20 +468,35 @@ async function refresh(): Promise<void> {
   try {
     const data = await loadV2Dashboard();
     lastSuccessful = { data, receivedAt: new Date() };
-    render(data);
+    lastRefreshFailure = null;
+    await render(data);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (lastSuccessful) render({...lastSuccessful.data,radar:{...lastSuccessful.data.radar,
-      action_level:'UNKNOWN',horizon_24h:'UNKNOWN',horizon_48h:'UNKNOWN',horizon_72h:'UNKNOWN',
-      judgement_state:'invalid',reason_summary:'无法核验当前结果，Backend 刷新失败。',
-      estimated_start:null,estimated_end:null,estimate_basis:'刷新失败，无法核验时间窗口。'}}, refreshWarning(message, lastSuccessful.receivedAt));
+    lastRefreshFailure = message;
+    if (lastSuccessful) {
+      const receivedAt = lastSuccessful.receivedAt;
+      const staleData: DashboardData = {
+        ...lastSuccessful.data,
+        radar: {
+          ...lastSuccessful.data.radar,
+          action_level: 'UNKNOWN', horizon_24h: 'UNKNOWN', horizon_48h: 'UNKNOWN', horizon_72h: 'UNKNOWN',
+          judgement_state: 'invalid', reason_summary: '无法核验当前结果，Backend 刷新失败。',
+          estimated_start: null, estimated_end: null, estimate_basis: '刷新失败，无法核验时间窗口。',
+          prediction: downgradePredictionOnRefreshFailure(lastSuccessful.data.radar.prediction)
+        }
+      };
+      lastSuccessful = { data: staleData, receivedAt };
+      await render(staleData, refreshWarning(message, receivedAt));
+    }
     else app.innerHTML = shell(`<main><section class="panel error-panel"><span class="eyebrow">BACKEND UNAVAILABLE</span><h1>本地 V2 Backend 暂不可用</h1><p>${escapeHtml(message)}</p><button type="button" id="retry">重新连接</button></section></main>`, "unavailable");
-    document.querySelector<HTMLButtonElement>("#retry")?.addEventListener("click", () => void refresh());
+    bindRetry();
   } finally {
     refreshing = false;
   }
 }
 
-window.addEventListener("hashchange", () => lastSuccessful ? render(lastSuccessful.data) : void refresh());
+window.addEventListener("hashchange", () => lastSuccessful
+  ? void render(lastSuccessful.data, lastRefreshFailure ? refreshWarning(lastRefreshFailure, lastSuccessful.receivedAt) : "")
+  : void refresh());
 void refresh();
 window.setInterval(() => void refresh(), 60_000);
