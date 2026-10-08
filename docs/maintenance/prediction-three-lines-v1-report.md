@@ -134,7 +134,7 @@ A/C/D再次ready及主逻辑审查后，用新目录重冻结所有最新正式�
 
 最终冻结 code/test manifest、完整 Backend、Web/Collector、smoke、样包、隔离 UI 和源码比较均已完成并有 runtime 回执。临时 helper 与运行证据留在事项目录；测试进程已退出。事项 `_tmp` 清理曾被环境策略拒绝，原路径保留，不绕过策略删除。
 
-发布另等主明确指令。E届时按互不重叠显式shiplist分组（核心/评分/API-Web/导出/六文档，共用文件只归一次，不git add .），普通push、base Ledger分支的依赖PR、实际head CI；不注册凭据、不强推、不main/tag/deploy。现在不提前执行。
+Git收口已完成：按显式互不重叠shiplist提交核心、评分、API-Web、导出、六文档五组；feature分支 `codex/prediction-three-lines-v1-20261009` 已普通push，草稿依赖PR [#11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 的base为 `codex/prediction-ledger-v1-20261007`，依赖仍开放的PR #10。代码与六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 的GitHub Actions run `37841210618` 中 backend、web、collector-extension jobs 均为 SUCCESS。随后仅对本报告与操作指南Git元数据作一次文档提交；最终提交头与其三项CI结论见 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json`。未改main、未打tag、未部署或触碰生产；未强推、未重跑本地测试、未调用模型。
 
 ## 四场景受控模型申请（预算已冻结，尚未授权）
 

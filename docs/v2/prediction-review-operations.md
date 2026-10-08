@@ -132,4 +132,4 @@ Sol 主代理已通过隔离 API/Web formal06 clone 实看三线与 history：Ba
 
 Backend 实际命令为 clean 根 python -m pytest -q -ra --basetemp <唯一目录>；Web/Collector 在 app 内各 npm run test、npm run typecheck、npm run build。当前 Python 3.12.14 / Node 24.18.0 / npm 11.16.0；tzdata>=2025.2,<2027 在 fresh venv 实装 2026.5，不改生产 venv。npm 安装 warning 和本轮 Starlette/httpx 弃用 warning 保留。
 
-命令/哈希/退出码/JSON/截图证据归 runtime，不在报告塞秘密。正式测试进程已退出；事项 `_tmp` 清理曾被环境策略拒绝，原路径保留且未绕过策略。Git 发布按主后续给出的具体命令执行；不得改 main/tag/生产。
+命令/哈希/退出码/JSON/截图证据归 runtime，不在报告塞秘密。正式测试进程已退出；事项 `_tmp` 清理曾被环境策略拒绝，原路径保留且未绕过策略。Git收口已完成：feature `codex/prediction-three-lines-v1-20261009` 已普通push；草稿依赖PR [#11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 以 `codex/prediction-ledger-v1-20261007` 为base并依赖PR #10。代码与六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 对应run `37841210618` 的backend、web、collector-extension均SUCCESS。随后只对报告和操作指南的Git元数据作一次文档提交；最终doc-only提交头及其CI job状态记录于 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json`。本轮不改main、不打tag、不部署、不触碰生产，也未重跑本地测试或调用模型。
