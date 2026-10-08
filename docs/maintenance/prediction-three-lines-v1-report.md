@@ -13,9 +13,9 @@
 
 ## 基线、依赖与保护
 
-source：D:\work\20260828-CodexResetRadar\runtime\review\prediction-three-lines-v1-20261009\source；分支 codex/prediction-three-lines-v1-20261009，HEAD ef226ebe14cf45ad7af80af1b14d87e17638e355 + 未提交正式实现。文件 manifest 才是本次测试身份，不能说 HEAD 已包含实现。
+source：D:\work\20260828-CodexResetRadar\runtime\review\prediction-three-lines-v1-20261009\source；feature 分支 `codex/prediction-three-lines-v1-20261009` 的依赖基线为 `ef226ebe14cf45ad7af80af1b14d87e17638e355`（Ledger PR #10 的 head）。正式实现及六份文档已按显式白名单分5组提交；实现+六文档提交头为 `1893db2d05e1ac72682f45d870c6bcb547c1fae9`，对应冻结代码 manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`。最终doc-only提交头与该head的CI以 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json` 为准。
 
-主方重新 read-only 核实 [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 仍 OPEN/未合并，head ef226、base main 1e865c37d1643f429162adeb0fab61bb7371a47b。本轮未来 PR base 为 codex/prediction-ledger-v1-20261007，明确依赖 #10。[CI run 37546895176](https://github.com/Oblivionis-ling/codex-reset-radar/actions/runs/37546895176) 三 success 和[Ledger 报告](prediction-review-ledger-v1-report.md) Backend140/Web7/Collector18 仅属旧基线，不计本轮成绩。目前无本轮发布 commit/PR/CI；没有 commit/push/PR 写操作。
+主方已只读核实 [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 仍 OPEN/未合并，head `ef226ebe14cf45ad7af80af1b14d87e17638e355`、base main `1e865c37d1643f429162adeb0fab61bb7371a47b`。本轮草稿开发 [PR #11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 以 `codex/prediction-ledger-v1-20261007` 为 base 并依赖 #10。实现+六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 的 [CI run 37841210618](https://github.com/Oblivionis-ling/codex-reset-radar/actions/runs/37841210618) 中 backend、web、collector-extension 均 SUCCESS；最终doc-only提交头及其CI见机器回执。[CI run 37546895176](https://github.com/Oblivionis-ling/codex-reset-radar/actions/runs/37546895176) 三 success 和[Ledger 报告](prediction-review-ledger-v1-report.md) Backend140/Web7/Collector18 仅属旧基线，不计本轮成绩。
 
 生产 Alpha5/main 的原 Backend/Web 进程及 11 个用户 untracked 保留。startup-protection.json 是启动时点健康/三路 healthy 证据，不是新代码部署或持续健康证明。E 后验收检查 14 项保护资产（含11个用户文件）及本轮快照 SHA 均 matches=true。检查器已修为保留精度的 UTC ticks 比较，Backend/Web 同 PID/启动时刻，same_start 均 true；新证据为 e-clean-candidate-01/post-docs-02-protection-recheck.json。旧 false 为机器转换假阴性，原回执保留，不解释为服务变动。
 
@@ -134,7 +134,7 @@ A/C/D再次ready及主逻辑审查后，用新目录重冻结所有最新正式�
 
 最终冻结 code/test manifest、完整 Backend、Web/Collector、smoke、样包、隔离 UI 和源码比较均已完成并有 runtime 回执。临时 helper 与运行证据留在事项目录；测试进程已退出。事项 `_tmp` 清理曾被环境策略拒绝，原路径保留，不绕过策略删除。
 
-Git收口已完成：按显式互不重叠shiplist提交核心、评分、API-Web、导出、六文档五组；feature分支 `codex/prediction-three-lines-v1-20261009` 已普通push，草稿依赖PR [#11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 的base为 `codex/prediction-ledger-v1-20261007`，依赖仍开放的PR #10。代码与六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 的GitHub Actions run `37841210618` 中 backend、web、collector-extension jobs 均为 SUCCESS。随后仅对本报告与操作指南Git元数据作一次文档提交；最终提交头与其三项CI结论见 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json`。未改main、未打tag、未部署或触碰生产；未强推、未重跑本地测试、未调用模型。
+Git收口已完成：按显式互不重叠shiplist提交核心、评分、API-Web、导出、六文档五组；feature分支 `codex/prediction-three-lines-v1-20261009` 已普通push，草稿依赖PR [#11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 的base为 `codex/prediction-ledger-v1-20261007`，依赖仍开放的PR #10。代码与六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 的GitHub Actions run `37841210618` 中 backend、web、collector-extension jobs 均为 SUCCESS。后续仅文档元数据提交；最终提交头与其三项CI结论见 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json`。未改main、未打tag、未部署或触碰生产；未强推、未重跑本地测试、未调用模型。
 
 ## 四场景受控模型申请（预算已冻结，尚未授权）
 
@@ -147,4 +147,4 @@ Git收口已完成：按显式互不重叠shiplist提交核心、评分、API-We
 | 延期或已完成且另有下一轮 | 5 | analysis 2、translation 2、共享双目标 Judge 1。 |
 | 普通内容/无时间依据 | 2 | exact analysis cache 1 项，analysis HTTP 0；translation 1、共享双目标 Judge 1。 |
 
-届时列确切缓存、必要分析/翻译/Judge和失败计入后的最高请求数，完整终点预留后串行，不新增全年回放/抽结果重试；真实缺口保持、虚构控制单列。实际获批实测后才更新模型语义，小集合仍不保证准确率或授权生产启用。
+申请已冻结并核实 exact analysis cache 1项；四场景最高 HTTP 请求数13（3+3+5+2，失败计入），完整终点预留后串行，不新增全年回放/抽结果重试。申请仍为 `NOT_AUTHORIZED`，没有发送请求；真实缺口保持、虚构控制单列。仅获批实测后更新模型语义，小集合仍不保证准确率或授权生产启用。
