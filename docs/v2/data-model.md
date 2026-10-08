@@ -2,7 +2,7 @@
 
 The V2 database is a new SQLite file at `runtime/data/codex-reset-radar-v2.db`. The V1 database remains a read-only migration source and is never opened as the active V2 database.
 
-Forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). They are not part of the resident `main`/production storage contract; the isolated development-only schema 8 addition is described below. The remaining tables describe the current storage contract.
+Forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b` with schema 7. Schema 8 is isolated development only. Final empty-DB smoke observed schema versions 1–8, 22 tables, integrity `ok`, zero FK errors and an unchanged DB hash across CLI use. No production migration was run. See the [current report](../maintenance/prediction-three-lines-v1-report.md).
 
 ## Core tables
 
@@ -101,10 +101,11 @@ The isolated review implementation adds two append-only storage structures and a
 `radar_judgements`. This schema is present in the development worktree only; it has not been applied
 to the resident `main` checkout or enabled in production.
 
-The isolated engineering regression is complete for this implementation snapshot: the final clean
-Backend suite passed 140 tests, including the no-clobber publish regressions; focused review-export
-tests passed 24. This does not establish production runtime identity, migration/rollout, or model
-accuracy. Detailed commands and evidence are in the [operations guide](prediction-review-operations.md).
+The Ledger baseline at `ef226ebe14cf45ad7af80af1b14d87e17638e355` has historical regression
+evidence, including Backend 140, Web 7 and Collector 18. Those numbers belong only to the old
+implementation described in the [Ledger report](../maintenance/prediction-review-ledger-v1-report.md).
+The final frozen three-line manifest passed Backend 318/0/0, Web 17 and Collector 18, with type
+checks, builds and empty-DB API/CLI verified. The branch depends on OPEN [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10); no production migration was run.
 
 - `prediction_artifacts` stores immutable JSON payloads by `id`, `kind`, `content_hash`,
   `payload_json`, and `recorded_at`, with a uniqueness constraint on `(kind, content_hash)`.
@@ -128,6 +129,38 @@ remain null or explicit gaps rather than being reconstructed from current rows. 
 This is a local export/read boundary, not a new production storage guarantee or API contract. See
 the [prediction review operations guide](prediction-review-operations.md) for current isolation and
 invocation details.
+
+### Three-line storage and scoring extension (development contract)
+
+Current development code reuses `prediction_artifacts`, `prediction_ledger` and the Judge link.
+Final empty-DB initialization verified schema 8; no production migration or schema change is
+claimed. This section documents the isolated integration boundary; the confirmed business rules
+stay in the prediction specification.
+
+| Existing boundary | Current mapping and required distinction |
+| --- | --- |
+| `forecast_version` | Target-specific `target_refs` carry series/forecast/revision/previous links for Extra Full and Banked. Both targets share the run, immutable input artifacts, runtime identity and actual attempt. |
+| `output_committed` | `target_outputs`, `prediction_validation` and contract version preserve accepted, unknown and rejected target results. A shared-input rejection prevents both targets from becoming current; a target-level rejection is retained alongside explicit partial success. |
+| `normal_baseline` | Stores new Normal versions and their anchor references through the existing +7-day function. Legacy history remains `NOT_BACKFILLED`; compatible current views are not invented historical versions. |
+| Judge `raw_json` / internal `raw` | The structured `predictions` extension is decoded at the existing storage boundary. Legacy Full fields retain their original meaning; absent Banked output is a compatibility gap, not model UNKNOWN. |
+| `truth_revision` | Independent revisions and association evidence remain append-only. Proxy, unknown and trusted start ranges remain distinguishable. |
+| Evaluation-set / assessment DTOs | Offline files bind fixed membership/hash, source identity and core-record digests, forecast/truth versions and algorithm version. Default scoring does not mutate the source ZIP or database. |
+
+Stable assessment binding uses source identity and `crr-review-core-collections-v1` digests;
+evaluation-set and assessment attachment changes package bytes without changing unchanged core
+scoring-input identity or creating a hash cycle. The final synthetic package and scored real
+seven-day package both reproduced their assessments; final clean empty-DB CLI also produced a
+byte-identical final-only re-score. The older base-v2 package still has zero assessments. Scored
+Schema7 input retains `LEGACY_UNDECLARED`, missing Banked forecasts/history and unavailable clocks;
+an attached assessment does not make it a modern producer or prove real accuracy.
+
+Official-time extraction retains independently checkable source qualification and the stated time
+expression. Relative time retains the source-post anchor and conversion evidence. Final full
+acceptance is bound to code manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`;
+Backend passed 318 tests with no failures or skips. Old candidate failures remain historical evidence.
+`tzdata>=2025.2,<2027` is
+declared for Python `ZoneInfo` on Windows; the dependency
+does not supply a missing source timezone or justify extra time precision.
 
 ### Content policy and Judge storage boundary
 
