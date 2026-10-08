@@ -115,7 +115,18 @@ def _result(level: str = "UNKNOWN", *, evidence: list[str] | None = None) -> dic
         "estimate_basis": "No synthetic time estimate.",
         "valid_until": utc_now(),
         "raw": {"offline_fixture": True},
+        "predictions": _unknown_targets(),
     }
+
+
+def _unknown_targets():
+    return {target: {
+        "target": target, "status": "UNKNOWN", "method": "model_inference", "scope": "unknown",
+        "predicted_start": None, "predicted_end": None, "prediction_form": "unknown",
+        "source_timezone": None, "precision": "unknown", "time_basis": "unknown", "expression": None,
+        "relative_anchor_at": None, "reason": "Explicit offline fixture has no future time evidence.",
+        "unresolved_reason": "NO_INDEPENDENT_TIME_EVIDENCE", "evidence_post_ids": [], "evidence_refs": [], "lifecycle": "unknown",
+    } for target in ("EXTRA_FULL", "BANKED")}
 
 
 def _records(database: Database, kind: str) -> list[dict]:
@@ -801,7 +812,44 @@ def test_canonical_serialization_and_worktree_root_are_stable():
     assert canonical_bytes({"b": 2, "a": "é"}) == '{"a":"é","b":2}\n'.encode("utf-8")
     assert sha256_json({"a": 1}) == sha256_json({"a": 1})
     assert REPOSITORY_ROOT == Path(__file__).resolve().parents[3]
-    assert (REPOSITORY_ROOT / ".git").exists()
+    from app import config as config_module, prediction_ledger as ledger_module
+    assert (REPOSITORY_ROOT / 'apps/backend/app/config.py').resolve() == Path(config_module.__file__).resolve()
+    assert (REPOSITORY_ROOT / 'apps/backend/app/prediction_ledger.py').resolve() == Path(ledger_module.__file__).resolve()
+    for marker in ('README.md', 'apps/backend/requirements.txt', 'apps/web/package.json', 'scripts/export_prediction_review.py'):
+        assert (REPOSITORY_ROOT / marker).is_file(), marker
+
+
+def test_normal_legacy_scalar_reference_expires_without_upgrading_execution_precision():
+    from app.db import next_reset_baseline
+    anchor = {'occurred_at': '2026-01-01T00:00:00Z'}
+    original = deepcopy(anchor)
+    for as_of in ('2026-01-09T00:00:00Z', '2027-01-01T00:00:00Z'):
+        value = next_reset_baseline(anchor, as_of=as_of)
+        assert value['status'] == 'expired'
+        assert value['estimated_at'] == value['predicted_start'] == '2026-01-08T00:00:00Z'
+        assert value['predicted_end'] is None
+        assert value['prediction_form'] == 'start_only' and value['precision'] == 'unknown'
+        assert value['expiry_basis'] == 'legacy_scalar_reference_only'
+        assert value['anchor_limitation'] == 'LEGACY_SCALAR_REFERENCE_NOT_ACTUAL_START_BOUND'
+    assert anchor == original
+    explicit_lower_bound = {**anchor, 'provenance': {'time_form': 'start_only', 'time_precision': 'minute'}}
+    value = next_reset_baseline(explicit_lower_bound, as_of='2027-01-01T00:00:00Z')
+    assert value['status'] == 'baseline'  # no execution upper bound is invented
+    assert value['predicted_end'] is None and value['expiry_basis'] == 'upper_bound_unknown'
+
+
+def test_normal_explicit_single_bound_is_not_unlimited_current_advice(tmp_path):
+    database, post = _database(tmp_path)
+    ledger = PredictionLedger(database)
+    anchor = database.upsert_reset_event({'event_key': 'explicit-single-bound-full', 'event_type': 'FULL_RESET',
+        'occurred_at': '2026-01-01T00:00:00Z', 'time_basis': 'explicit_text', 'scope': 'all_paid',
+        'execution_stage': 'completed', 'source_post_id': post['post_id'], 'evidence_post_ids': [post['tweet_id']],
+        'title': 'Offline lower bound', 'summary': 'No upper bound is proved.',
+        'provenance': {'time_form': 'start_only', 'time_precision': 'minute'}}, is_synthetic=True)
+    ledger.record_normal_baseline(anchor, is_synthetic=True)
+    line = ledger.prediction_lines(None)['lines']['NORMAL_WEEKLY']
+    assert line['baseline_status'] == 'baseline' and line['predicted_end'] is None
+    assert line['valid'] is False and line['validation_reason'] == 'ANCHOR_UPPER_BOUND_UNKNOWN'
 
 
 class _FakeJudge:
@@ -892,6 +940,7 @@ class _RecordingJudge:
             "estimate_basis": "日期粒度的离线回归样本。",
             "reason_summary": "仅用于验证模型输入与原始时间表达。",
             "evidence_post_ids": [],
+            "predictions": _unknown_targets(),
         }
 
 
@@ -1026,7 +1075,10 @@ def test_unknown_judge_evidence_is_a_durable_exportable_reference_failure(tmp_pa
     assert failure["failure_terminal"] is True
     assert failure["output_available_at"] is None
     assert failure["publication_status"] == "rejected"
-    assert "990000000000000999" not in json.dumps(failure)
+    # The rejected, allowlisted return keeps the invalid reference for audit;
+    # no raw response or exception text is retained outside that structure.
+    assert failure['structured_output']['evidence_post_ids'] == ['990000000000000999']
+    assert "990000000000000999" not in json.dumps({key: value for key, value in failure.items() if key != 'structured_output'})
 
     run = _records(database, "run_started")[0]
     with database.connect() as connection:

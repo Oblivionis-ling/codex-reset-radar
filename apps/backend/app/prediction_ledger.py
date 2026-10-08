@@ -6,11 +6,16 @@ import sqlite3
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Iterator
 
 from .db import JudgementReferenceError
 from .review_common import canonical_bytes, sha256_json, utc_text
+from .prediction_contract import (
+    ALL_PREDICTION_TARGETS, PREDICTION_API_VERSION, PREDICTION_CONTRACT_VERSION, PREDICTION_TARGETS, PredictionTargetsError,
+    next_reset_baseline, safe_target_output, validate_predictions,
+)
 
 
 OUTPUT_AVAILABLE_SOURCE = "formal_read_post_commit_upper_bound"
@@ -56,6 +61,7 @@ RECORD_PAYLOAD_FIELDS = {
         "target", "scope", "record_kind", "method", "basis", "previous_id",
         "input_artifact_refs", "forecast", "semantic_hash", "forecast_id",
         "is_synthetic",
+        "version_role", "target_refs",
     }),
     "run_started": frozenset({
         "is_synthetic", "stage", "trigger", "forecast", "runtime",
@@ -64,6 +70,7 @@ RECORD_PAYLOAD_FIELDS = {
         "forecast_id", "revision", "prompt_artifact_ref", "schema_artifact_ref",
         "input_frame_artifact_ref", "selection_mode", "record_kind",
         "processing_operation", "processing_input_hash", "processing_identity",
+        "target_refs", "prediction_contract_version",
     }),
     "attempt_started": frozenset({
         "request_artifact_ref", "request_hash", "stage", "retry_of",
@@ -85,6 +92,7 @@ RECORD_PAYLOAD_FIELDS = {
         "output_id", "structured_output", "schema", "judge_reference",
         "accepted_attempt_id", "validation", "forecast_id", "series_id",
         "revision", "output_available_at", "is_synthetic",
+        "target_refs", "target_outputs", "prediction_validation", "prediction_contract_version",
     }),
     "output_observed": frozenset({
         "output_id", "observed_at", "source", "clock_anomaly", "time_limitation",
@@ -99,6 +107,8 @@ RECORD_PAYLOAD_FIELDS = {
     "normal_baseline": frozenset({
         "target", "scope", "record_kind", "method", "basis", "previous_id",
         "input_artifact_refs", "forecast", "semantic_hash",
+        "forecast_id", "series_id", "revision", "target_outputs", "target_refs",
+        "is_synthetic", "output_id", "output_available_at", "anchor_event_id",
     }),
     "recovery_observed": frozenset({
         "observed_at", "owner_status", "terminal_status", "actual_finished_at",
@@ -130,6 +140,7 @@ class RunRef:
     revision: int
     semantic_hash: str
     is_synthetic: bool | None = None
+    target_refs: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -259,6 +270,354 @@ class PredictionLedger:
     def __init__(self, database, *, owner: dict[str, Any] | None = None):
         self.database = database
         self.owner = dict(owner or {})
+
+    @contextmanager
+    def _read_connection(self):
+        connection = sqlite3.connect(Path(self.database.path).resolve().as_uri() + "?mode=ro", uri=True)
+        connection.row_factory = sqlite3.Row
+        try:
+            connection.execute("PRAGMA query_only=ON")
+            connection.execute("BEGIN")
+            with self.database.using_connection(connection):
+                yield connection
+        finally:
+            connection.rollback()
+            connection.close()
+
+    def _restore_texts(self, value: Any) -> Any:
+        if isinstance(value, list):
+            return [self._restore_texts(child) for child in value]
+        if not isinstance(value, dict):
+            return value
+        if "artifact_ref" in value and "source_ref" in value:
+            return self._load_artifact(value["artifact_ref"]["artifact_id"])["text"]
+        return {key: self._restore_texts(child) for key, child in value.items()}
+
+    def _fresh_judge_context(self, connection, as_of, selection_mode):
+        with self.database.using_connection(connection):
+            fresh = self.database.judgement_context(as_of=as_of)
+            fresh["pending_inputs"] = self.database.judge_pending_inputs(include_deferred=True) if selection_mode == "online" else []
+            self.database.refresh_input_snapshot(fresh)
+            return fresh
+
+    def record_normal_baseline(self, last_full_reset, *, as_of=None, is_synthetic=False, record_kind="baseline"):
+        """Pipeline-only producer. Dedup by immutable anchor facts, never by heartbeat."""
+        baseline = next_reset_baseline(last_full_reset, as_of=as_of)
+        if not last_full_reset or not (baseline["predicted_start"] or baseline["predicted_end"]):
+            return None
+        anchor = self._semantic_facts(copy.deepcopy(last_full_reset))
+        semantic_hash = sha256_json({"anchor": anchor, "basis": "user_full_plus_7d", "record_kind": record_kind})
+        series_id = "series-" + sha256_json({"target": "NORMAL_WEEKLY", "scope": anchor.get("scope", "unknown"), "record_kind": record_kind})[:32]
+        with self.database.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute("SELECT payload_json FROM prediction_ledger WHERE kind='normal_baseline' AND idempotency_key=?", ("normal_baseline:" + series_id + ":" + semantic_hash,)).fetchone()
+            if existing:
+                return json.loads(existing[0])
+            previous = connection.execute("SELECT forecast_id,revision FROM prediction_ledger WHERE kind='normal_baseline' AND series_id=? ORDER BY seq DESC LIMIT 1", (series_id,)).fetchone()
+            forecast_id = str(uuid.uuid4())
+            ref = {"forecast_id": forecast_id, "series_id": series_id, "revision": int(previous["revision"]) + 1 if previous else 1,
+                   "previous_id": previous["forecast_id"] if previous else None}
+            anchor_ref = self._put_artifact(connection, "input_frame", {"normal_anchor": anchor, "is_synthetic": is_synthetic})
+            payload = {**ref, "target": "NORMAL_WEEKLY", "scope": anchor.get("scope", "unknown"), "record_kind": record_kind,
+                       "method": None, "basis": "user_full_plus_7d", "forecast": baseline, "semantic_hash": semantic_hash,
+                       "input_artifact_refs": [anchor_ref], "is_synthetic": is_synthetic, "output_id": "normal-" + forecast_id,
+                       "anchor_event_id": anchor.get("id"), "output_available_at": None,
+                       "target_refs": {"NORMAL_WEEKLY": ref}, "target_outputs": {"NORMAL_WEEKLY": baseline}}
+            self._append_record(connection, "normal_baseline", payload, series_id=series_id, forecast_id=forecast_id,
+                                revision=ref["revision"], event_id=anchor.get("id"), idempotency_key="normal_baseline:" + series_id + ":" + semantic_hash)
+        # A real post-commit read proves only an availability upper bound.
+        try:
+            with self._read_connection() as connection:
+                row = connection.execute("SELECT recorded_at FROM prediction_ledger WHERE kind='normal_baseline' AND forecast_id=?", (forecast_id,)).fetchone()
+                if row is None:
+                    raise RuntimeError("Normal baseline publication missing")
+            observed = utc_text()
+            with self.database.connect() as connection:
+                self._append_record(connection, "output_observed", {"output_id": payload["output_id"], "observed_at": observed,
+                                    "source": OUTPUT_AVAILABLE_SOURCE, "is_synthetic": is_synthetic,
+                                    **_wall_clock_order_fields(row["recorded_at"], observed)},
+                                    series_id=series_id, forecast_id=forecast_id, revision=ref["revision"], occurred_at=observed)
+        except Exception as error:
+            # No recovery/GET backfill and no retry of a model to obtain an observation.
+            try:
+                with self.database.connect() as connection:
+                    self._append_record(connection, "attempt_event", {"event_type": "output_observation_failed",
+                        "output_id": payload["output_id"], "output_available_at": None, "publication_status": "committed_unobserved",
+                        "reason_code": "NORMAL_OBSERVATION_FAILED", "error_type": type(error).__name__,
+                        "is_synthetic": is_synthetic}, series_id=series_id, forecast_id=forecast_id, revision=ref["revision"])
+            except Exception:
+                # The null availability remains an explicit limitation when even
+                # the independent fault marker cannot be persisted.
+                pass
+        return payload
+
+    @staticmethod
+    def _history_lines(record, *, target=None, series_id=None, run=None, observation=None):
+        """Output-only safe DTOs. Question identity never supplies method or dates."""
+        payload, run = record['payload'], run or {}
+        modern = payload.get('prediction_contract_version') == PREDICTION_CONTRACT_VERSION
+        normal = record['kind'] == 'normal_baseline'
+        targets = ('NORMAL_WEEKLY',) if normal else PREDICTION_TARGETS if modern else ('EXTRA_FULL',)
+        lines = []
+        for name in targets:
+            ref = (payload.get('target_refs') or {}).get(name) or {
+                'forecast_id': record.get('forecast_id'), 'series_id': record.get('series_id'),
+                'revision': record.get('revision'), 'previous_id': None,
+            }
+            if target is not None and name != target or series_id is not None and ref.get('series_id') != series_id:
+                continue
+            child = payload.get('forecast') or {} if normal else (payload.get('target_outputs') or {}).get(name) or {}
+            accepted = normal or bool(child.get('validation', {}).get('valid'))
+            reason = 'LEGACY_TARGET_NOT_IMPLEMENTED' if not (normal or modern) else 'VALID' if accepted else child.get('validation', {}).get('reason') or 'MISSING_TARGET'
+            available = observation if accepted else None
+            fields = safe_target_output(child if accepted else child.get('rejected_output') or {})
+            for key in ('anchor_limitation', 'anchor_time_basis', 'basis', 'baseline_status', 'expiry_basis', 'time_form'):
+                if isinstance(child.get(key), str):
+                    fields[key] = child[key][:500]
+            valid = bool(accepted and available and not available.get('clock_anomaly'))
+            state = 'not_implemented' if not (normal or modern) else 'rejected' if not accepted else 'pending' if not available else 'invalid' if not valid else 'baseline' if normal else 'unknown' if child.get('status') == 'UNKNOWN' else 'known'
+            structured = payload.get('structured_output') or {}
+            lines.append({**fields, **ref, 'target': name, 'status': 'KNOWN' if normal else child.get('status'),
+                'state': state, 'valid': valid, 'validation_reason': reason if not accepted else 'OUTPUT_AVAILABILITY_PENDING' if not available else 'CLOCK_ANOMALY' if not valid else 'VALID',
+                'prediction_form': child.get('prediction_form') or fields.get('prediction_form') or 'unknown',
+                'question_revision': ref.get('revision'), 'question_version': ref.get('forecast_id'),
+                'output_revision': ref.get('revision') if normal else child.get('output_revision'),
+                'target_output_id': payload.get('output_id') if normal else child.get('target_output_id'),
+                'record_id': record['record_id'], 'ledger_seq': record['seq'], 'run_id': record.get('run_id'),
+                'origin_judgement_id': record.get('judgement_id'), 'record_kind': payload.get('record_kind') or run.get('record_kind'),
+                'is_synthetic': payload.get('is_synthetic'), 'current_or_last_known': 'historical',
+                'output_available_at': available.get('observed_at') if available else None,
+                'output_available_at_source': available.get('source') if available else None,
+                'clock_anomaly': available.get('clock_anomaly') if available else None,
+                'updated_at': record['recorded_at'], 'updated_at_source': 'ledger_recorded_at',
+                'judged_at': structured.get('created_at'), 'valid_until': structured.get('valid_until'),
+                'health_state': 'not_applicable' if normal else str(structured.get('data_health') or 'unknown').lower(),
+                'reason': fields.get('reason') or reason})
+        return lines
+
+    def prediction_history(self, target=None, series_id=None, limit=100):
+        if target is not None and target not in ALL_PREDICTION_TARGETS:
+            raise ValueError("unsupported prediction target")
+        limit = max(1, min(int(limit), 1000))
+        def decode(rows):
+            return [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
+        with self._read_connection() as connection:
+            exists = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='prediction_ledger'").fetchone()
+            if not exists:
+                return {"version": PREDICTION_API_VERSION, "items": [], "forecasts": [], "attempts": [], "count": 0, "truncated": False, "limitation": "LEGACY_LEDGER_NOT_PRESENT"}
+            params, clauses = [], []
+            if target:
+                clauses.append("(json_extract(payload_json,'$.target')=? OR json_type(payload_json,?) IS NOT NULL OR (?='EXTRA_FULL' AND kind IN ('output_committed','run_started') AND json_type(payload_json,'$.target_refs') IS NULL))")
+                params.extend([target, '$.target_refs.' + target, target])
+            if series_id:
+                clauses.append("(series_id=? OR json_extract(payload_json,'$.target_refs.BANKED.series_id')=?)")
+                params.extend([series_id, series_id])
+            suffix = " AND " + " AND ".join(clauses) if clauses else ""
+            output_where = "kind IN ('output_committed','normal_baseline')" + suffix
+            count = connection.execute("SELECT COUNT(*) FROM prediction_ledger WHERE " + output_where, params).fetchone()[0]
+            outputs = decode(reversed(connection.execute("SELECT * FROM prediction_ledger WHERE " + output_where + " ORDER BY seq DESC LIMIT ?", [*params, limit]).fetchall()))
+            first = connection.execute("SELECT * FROM prediction_ledger WHERE " + output_where + " ORDER BY seq LIMIT 1", params).fetchone()
+            last = connection.execute("SELECT * FROM prediction_ledger WHERE " + output_where + " ORDER BY seq DESC LIMIT 1", params).fetchone()
+            boundary_outputs = decode([row for row in (first, last) if row is not None])
+            forecasts = decode(reversed(connection.execute("SELECT * FROM prediction_ledger WHERE kind IN ('forecast_version','normal_baseline')" + suffix + " ORDER BY seq DESC LIMIT ?", [*params, limit]).fetchall()))
+            run_rows = connection.execute("SELECT * FROM prediction_ledger WHERE kind='run_started' AND json_extract(payload_json,'$.stage')='radar_judge'" + suffix + " ORDER BY seq DESC LIMIT ?", [*params, limit]).fetchall()
+            run_ids = sorted({row['run_id'] for row in run_rows} | {item['run_id'] for item in [*outputs, *boundary_outputs] if item['run_id']})
+            attempts, attempt_count = [], 0
+            if run_ids:
+                placeholders = ','.join('?' for _ in run_ids)
+                where = "run_id IN (" + placeholders + ") AND kind IN ('run_started','attempt_started','attempt_event','recovery_observed')"
+                attempt_count = connection.execute("SELECT COUNT(*) FROM prediction_ledger WHERE " + where, run_ids).fetchone()[0]
+                attempts = decode(reversed(connection.execute("SELECT * FROM prediction_ledger WHERE " + where + " ORDER BY seq DESC LIMIT ?", [*run_ids, min(4000, limit * 32)]).fetchall()))
+            observations = []
+            for output_id in sorted({item['payload']['output_id'] for item in [*outputs, *boundary_outputs]}):
+                observed = connection.execute("SELECT * FROM prediction_ledger WHERE kind='output_observed' AND json_extract(payload_json,'$.output_id')=? ORDER BY seq LIMIT 1", (output_id,)).fetchone()
+                if observed is not None:
+                    observations.extend(decode([observed]))
+            total_count = 0
+            for name in (target,) if target else ALL_PREDICTION_TARGETS:
+                if name == 'NORMAL_WEEKLY':
+                    where, args = "kind='normal_baseline'", []
+                    if series_id is not None:
+                        where += ' AND series_id=?'
+                        args.append(series_id)
+                else:
+                    path = '$.target_refs.' + name
+                    where = "kind='output_committed' AND (json_type(payload_json,?) IS NOT NULL"
+                    args = [path]
+                    if name == 'EXTRA_FULL':
+                        where += " OR json_type(payload_json,'$.target_refs') IS NULL"
+                    where += ')'
+                    if series_id is not None:
+                        where += ' AND ' + ('series_id=?' if name == 'EXTRA_FULL' else 'json_extract(payload_json,?)=?')
+                        args.extend([series_id] if name == 'EXTRA_FULL' else [path + '.series_id', series_id])
+                total_count += connection.execute('SELECT count(*) FROM prediction_ledger WHERE ' + where, args).fetchone()[0]
+        observation_by_output = {row['payload']['output_id']: row['payload'] for row in observations}
+        runs = {row['run_id']: row['payload'] for row in [*decode(run_rows), *attempts] if row['kind'] == 'run_started'}
+        def flat(record):
+            return self._history_lines(record, target=target, series_id=series_id, run=runs.get(record['run_id']),
+                                       observation=observation_by_output.get(record['payload']['output_id']))
+        items = [item for record in outputs for item in flat(record)][-limit:]
+        first_items = flat(boundary_outputs[0]) if boundary_outputs else []
+        last_items = flat(boundary_outputs[-1]) if boundary_outputs else []
+        outputs_by_run = {row['run_id']: row for row in outputs}
+        attempt_groups = {}
+        for row in attempts:
+            if row['kind'] != 'run_started':
+                attempt_groups.setdefault((row['run_id'], row['attempt_id'] or row['record_id']), []).append(row)
+        safe_attempts = []
+        for (run_id, attempt_id), events in attempt_groups.items():
+            run = runs.get(run_id) or {}
+            start = next((row['payload'] for row in events if row['kind'] == 'attempt_started'), {})
+            terminal = next((row['payload'] for row in reversed(events) if row['kind'] == 'recovery_observed'
+                             or row['payload'].get('event_type') in ATTEMPT_TERMINAL_EVENTS), {})
+            refs = run.get('target_refs') or {'EXTRA_FULL': {'series_id': events[0]['series_id']}}
+            for name, ref in refs.items():
+                if target and name != target or series_id and ref.get('series_id') != series_id:
+                    continue
+                output = (outputs_by_run.get(run_id) or {}).get('payload') or {}
+                child = (output.get('target_outputs') or {}).get(name) or {}
+                safe_attempts.append({'target': name, 'series_id': ref.get('series_id'), 'run_id': run_id,
+                    'attempt_id': attempt_id, 'attempt_number': None,
+                    'started_at': start.get('attempt_started_at'), 'attempted_at': start.get('attempt_started_at'),
+                    'finished_at': terminal.get('attempt_finished_at'),
+                    'state': terminal.get('event_type') or 'recovery_observed' if terminal else 'pending',
+                    'reason_code': terminal.get('reason_code'), 'reason': terminal.get('reason_summary'),
+                    'output_status': child.get('status') if child.get('validation', {}).get('valid') else 'rejected' if child else None})
+        safe_forecasts = [{key: row['payload'].get(key) for key in ('target', 'scope', 'method', 'version_role', 'facts_digest', 'semantic_hash')}
+                          | {key: row.get(key) for key in ('forecast_id', 'series_id', 'revision')} for row in forecasts]
+        return {"version": PREDICTION_API_VERSION, "item_schema": "prediction-history-line-v1",
+                "attempts_schema": "prediction-attempt-v1", "capabilities": {"history_lines": True},
+                "items": items, "forecasts": safe_forecasts, "attempts": safe_attempts,
+                "count": total_count, "total_count": total_count, "source_output_count": count,
+                "truncated": total_count > len(items), "attempt_count": len(safe_attempts),
+                "attempts_truncated": attempt_count > len(attempts), "first_record_id": first['record_id'] if first else None,
+                "last_record_id": last['record_id'] if last else None,
+                "first_item": first_items[0] if first_items else None, "last_item": last_items[-1] if last_items else None,
+                "first_items": first_items, "last_items": last_items,
+                "order_basis": "append_sequence_not_proven_temporal_or_pre_event_order"}
+
+    def prediction_lines(self, judgement, *, as_of=None):
+        """Pure RO projection, including legacy/null and post-commit pending windows."""
+        now = utc_text(as_of)
+        with self._read_connection() as connection:
+            has_ledger = connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='prediction_ledger'").fetchone() is not None
+            rows = []
+            if has_ledger:
+                current_row = connection.execute("SELECT * FROM prediction_ledger WHERE kind='output_committed' AND judgement_id=? ORDER BY seq DESC LIMIT 1", (judgement.get('id') if judgement else None,)).fetchone()
+                if current_row:
+                    rows.append(current_row)
+                    current_refs = json.loads(current_row['payload_json']).get('target_refs') or {}
+                    for target in PREDICTION_TARGETS:
+                        ref = current_refs.get(target)
+                        if not ref:
+                            continue
+                        series_predicate = "json_extract(payload_json,'$.target_refs.BANKED.series_id')" if target == 'BANKED' else 'series_id'
+                        fallback = connection.execute("SELECT * FROM prediction_ledger WHERE kind='output_committed' AND " + series_predicate + "=? AND seq<? AND json_extract(payload_json,?)=1 ORDER BY seq DESC LIMIT 1", (ref['series_id'], current_row['seq'], '$.target_outputs.' + target + '.validation.valid')).fetchone()
+                        if fallback:
+                            rows.append(fallback)
+                normal_row = connection.execute("SELECT * FROM prediction_ledger WHERE kind='normal_baseline' AND json_extract(payload_json,'$.record_kind')='baseline' ORDER BY seq DESC LIMIT 1").fetchone()
+                if normal_row:
+                    rows.append(normal_row)
+                run_ids = sorted({row['run_id'] for row in rows if row['run_id']})
+                output_ids = sorted({json.loads(row['payload_json'])['output_id'] for row in rows})
+                if run_ids:
+                    rows.extend(connection.execute("SELECT * FROM prediction_ledger WHERE kind='run_started' AND run_id IN (" + ','.join('?' for _ in run_ids) + ") ORDER BY seq LIMIT ?", [*run_ids, len(run_ids)]).fetchall())
+                for output_id in output_ids:
+                    observation = connection.execute("SELECT * FROM prediction_ledger WHERE kind='output_observed' AND json_extract(payload_json,'$.output_id')=? ORDER BY seq LIMIT 1", (output_id,)).fetchone()
+                    if observation:
+                        rows.append(observation)
+            rows.sort(key=lambda row: row['seq'])
+            records = [{**dict(row), "payload": json.loads(row["payload_json"])} for row in rows]
+            observations = {item["payload"]["output_id"]: item["payload"] for item in records if item["kind"] == "output_observed" and item["payload"].get("observed_at") and item["payload"]["observed_at"] <= now}
+            runs = {item["run_id"]: item["payload"] for item in records if item["kind"] == "run_started"}
+            outputs = [item for item in records if item["kind"] == "output_committed"]
+            lines = {}
+            for target in PREDICTION_TARGETS:
+                current = next((item for item in reversed(outputs) if judgement and item["judgement_id"] == judgement.get("id")), None)
+                child = (current["payload"].get("target_outputs") or {}).get(target) if current else None
+                last_failure = None
+                if not child or not child.get("validation", {}).get("valid"):
+                    last_failure = child.get("validation", {}).get("reason") if child else "LEGACY_TARGET_NOT_IMPLEMENTED"
+                    # Only earlier publications can be a last-known fallback.
+                    prior = [item for item in outputs if current and item["seq"] < current["seq"]]
+                    current = next((item for item in reversed(prior) if (item["payload"].get("target_outputs") or {}).get(target, {}).get("validation", {}).get("valid")), None)
+                    child = (current["payload"].get("target_outputs") or {}).get(target) if current else child
+                ref = (current["payload"].get("target_refs") or {}).get(target, {}) if current else {}
+                observation = observations.get(current["payload"]["output_id"]) if current and child and child.get("validation", {}).get("valid") else None
+                origin = self.database.get_judgement(current["judgement_id"]) if current else None
+                common = self.database.validate_judgement(origin, at=as_of) if origin else {"valid": False, "reason": last_failure or "PREDICTION_NOT_RECORDED"}
+                run = runs.get(current["run_id"], {}) if current else {}
+                validation_reason = last_failure or (child or {}).get("validation", {}).get("reason") or common["reason"]
+                valid = bool(child and child.get("validation", {}).get("valid") and common["valid"] and observation and not last_failure and not observation.get("clock_anomaly"))
+                if child and child.get("lifecycle") in {"cancelled", "completed"}:
+                    valid, validation_reason = False, "PLAN_" + child["lifecycle"].upper()
+                elif not common["valid"]:
+                    validation_reason = common["reason"]
+                elif not observation:
+                    validation_reason = "OUTPUT_AVAILABILITY_PENDING"
+                elif observation.get('clock_anomaly'):
+                    validation_reason = 'CLOCK_ANOMALY'
+                upper = None
+                if child:
+                    form = child.get('resolved_prediction_form') or child.get('prediction_form')
+                    upper = child.get('predicted_start') if form == 'point' else child.get('predicted_end') if form in {'range', 'date', 'end_only'} else None
+                if valid and child.get("status") == "KNOWN" and upper and upper < now:
+                    valid, validation_reason = False, "PREDICTION_WINDOW_PASSED_NOT_CONFIRMED"
+                defaults = {key: None for key in ('forecast_id','series_id','revision','previous_id','method','scope','predicted_start','predicted_end','prediction_form','source_timezone','precision','time_basis','expression','relative_anchor_at','unresolved_reason')}
+                lines[target] = {**defaults, **(child or {}), **ref, "target": target, "status": (child or {}).get("status"),
+                    "origin_judgement_id": current["judgement_id"] if current else None,
+                    "input_snapshot": run.get("input_snapshot_artifact_ref"), "runtime": run.get("runtime"),
+                    "prompt_artifact_ref": run.get("prompt_artifact_ref"), "schema_artifact_ref": run.get("schema_artifact_ref"),
+                    "record_kind": run.get("record_kind"), "is_synthetic": run.get("is_synthetic"),
+                    "output_available_at": observation.get("observed_at") if observation else None,
+                    "output_available_at_source": observation.get("source") if observation else None,
+                    "clock_anomaly": observation.get("clock_anomaly") if observation else None,
+                    "time_limitation": observation.get("time_limitation") if observation else None,
+                    "state": "not_implemented" if last_failure == 'LEGACY_TARGET_NOT_IMPLEMENTED' else None,
+                    "updated_at": current['recorded_at'] if current else None, "updated_at_source": 'ledger_recorded_at' if current else None,
+                    "judged_at": origin.get('created_at') if origin else None, "valid_until": origin.get('valid_until') if origin else None,
+                    "question_revision": ref.get('revision'), "question_version": ref.get('forecast_id'),
+                    "valid": valid, "validation_reason": validation_reason,
+                    "current_or_last_known": "current" if valid else "last_known" if child and child.get('validation', {}).get('valid') else "unavailable"}
+            normal = next((item for item in reversed(records) if item["kind"] == "normal_baseline" and item["payload"].get("record_kind") == "baseline"), None)
+            if normal:
+                payload = normal["payload"]
+                baseline = dict(payload["forecast"])
+                observation = observations.get(payload["output_id"])
+                current_anchor = self.database.judgement_context(as_of=as_of, include_previous=False).get('last_full_reset')
+                anchor_row = connection.execute("SELECT payload_json FROM prediction_artifacts WHERE id=?", (payload['input_artifact_refs'][0]['artifact_id'],)).fetchone()
+                recorded_anchor = json.loads(anchor_row[0]).get('normal_anchor') if anchor_row else None
+                # Expiry is a derivative of the same immutable anchor, not a
+                # second +7 implementation or a new heartbeat version.
+                expired = next_reset_baseline(recorded_anchor, as_of=as_of)["status"] == "expired"
+                anchor_changed = not current_anchor or self._semantic_facts(current_anchor) != recorded_anchor
+                unknown_upper = baseline.get('expiry_basis') == 'upper_bound_unknown'
+                valid = not expired and not anchor_changed and not unknown_upper and bool(observation) and not observation.get('clock_anomaly')
+                reason = 'ANCHOR_CHANGED' if anchor_changed else 'EXPIRED' if expired else 'ANCHOR_UPPER_BOUND_UNKNOWN' if unknown_upper else 'OUTPUT_AVAILABILITY_PENDING' if not observation else 'CLOCK_ANOMALY' if observation.get('clock_anomaly') else 'VALID'
+                lines["NORMAL_WEEKLY"] = {**baseline, **payload["target_refs"]["NORMAL_WEEKLY"],
+                    "target": "NORMAL_WEEKLY", "status": "KNOWN", "baseline_status": "expired" if expired else "baseline",
+                    "scope": payload.get("scope"), "input_snapshot": payload.get("input_artifact_refs"),
+                    "origin_judgement_id": None, "runtime": None, "prompt_artifact_ref": None,
+                    "output_available_at": observation.get("observed_at") if observation else None,
+                    "output_available_at_source": observation.get("source") if observation else None,
+                    "updated_at": normal['recorded_at'], "updated_at_source": 'ledger_recorded_at',
+                    "valid_until": baseline.get('predicted_end') or baseline.get('predicted_start') if baseline.get('expiry_basis') != 'upper_bound_unknown' else None,
+                    "question_revision": payload['revision'], "question_version": payload['forecast_id'],
+                    "is_synthetic": payload.get("is_synthetic"), "valid": valid,
+                    "validation_reason": reason, "current_or_last_known": "current" if valid else "last_known"}
+            else:
+                baseline = next_reset_baseline(self.database.last_full_reset(as_of=as_of), as_of=as_of)
+                lines["NORMAL_WEEKLY"] = {**baseline, "forecast_id": None, "series_id": None, "revision": None,
+                    "previous_id": None, "origin_judgement_id": None, "output_available_at": None,
+                    "updated_at": None, "updated_at_source": None, "valid_until": None,
+                    "output_available_at_source": None, "valid": False, "validation_reason": "NORMAL_VERSION_NOT_RECORDED",
+                    "current_or_last_known": "unavailable"}
+        modern_output = any(item['judgement_id'] == (judgement.get('id') if judgement else None)
+                            and item['payload'].get('prediction_contract_version') == PREDICTION_CONTRACT_VERSION for item in outputs)
+        return {"version": PREDICTION_API_VERSION, "capabilities": {"model_targets": list(PREDICTION_TARGETS) if modern_output else [],
+                "history_lines": has_ledger,
+                "normal_history": normal is not None, "output_availability": "observed_upper_bound_or_null", "writes_on_read": False},
+                "lines": {target: lines[target] for target in ALL_PREDICTION_TARGETS}}
 
     @staticmethod
     def _payload_json(value: Any) -> str:
@@ -503,6 +862,11 @@ class PredictionLedger:
         forecast.setdefault("scope", {"value": "unknown", "certainty": "not_established_by_ledger"})
         forecast.setdefault("question", "next_full_reset_start")
         forecast.setdefault("method", "model_inference")
+        contract_version = frozen_input.get("prediction_contract_version")
+        modern = contract_version == PREDICTION_CONTRACT_VERSION
+        if modern:
+            forecast["version_role"] = "question_version"
+            forecast["method"] = None
         forecast["record_kind"] = record_kind
         forecast["is_synthetic"] = is_synthetic if isinstance(is_synthetic, bool) else None
         input_cutoff_at = utc_text(frozen_input.get("input_cutoff_at"))
@@ -580,6 +944,21 @@ class PredictionLedger:
                 policy_versions=policy_versions,
                 input_artifact_refs=forecast_refs,
             )
+            target_refs = {"EXTRA_FULL": {
+                "forecast_id": forecast_id, "series_id": series_id, "revision": forecast_revision,
+                "previous_id": forecast_version_payload.get("previous_id"),
+            }}
+            if modern:
+                banked = {**forecast, "target": "BANKED", "question": "next_banked_grant_start"}
+                banked_series = "series-" + sha256_json({
+                    "target": "BANKED", "scope": banked["scope"], "question": banked["question"], "record_kind": record_kind,
+                })[:32]
+                banked_payload, banked_id, banked_revision = self._forecast_version(
+                    connection, banked, series_id=banked_series, semantic_facts=semantic_facts,
+                    policy_versions=policy_versions, input_artifact_refs=forecast_refs,
+                )
+                target_refs["BANKED"] = {"forecast_id": banked_id, "series_id": banked_series,
+                                         "revision": banked_revision, "previous_id": banked_payload.get("previous_id")}
             run_id = str(uuid.uuid4())
             run_payload = {
                 "is_synthetic": is_synthetic if isinstance(is_synthetic, bool) else None,
@@ -588,6 +967,7 @@ class PredictionLedger:
                 "forecast": forecast,
                 "forecast_id": forecast_id,
                 "revision": forecast_revision,
+                "target_refs": target_refs, "prediction_contract_version": contract_version,
                 "runtime": {"runtime_id": runtime_id},
                 "input_cutoff_at": input_cutoff_at,
                 "judgement_as_of": judgement_as_of,
@@ -621,6 +1001,7 @@ class PredictionLedger:
             revision=forecast_revision,
             semantic_hash=str(forecast_version_payload["semantic_hash"]),
             is_synthetic=is_synthetic if isinstance(is_synthetic, bool) else None,
+            target_refs=target_refs,
         )
 
     def begin_processing_run(
@@ -954,18 +1335,27 @@ class PredictionLedger:
         )
         as_of = run_payload.get("judgement_as_of") if selection_mode == "replay" else None
         attempt_start = self._attempt_start_payload(run_id, accepted_attempt_id)
+        if run_payload.get("prediction_contract_version") == PREDICTION_CONTRACT_VERSION:
+            frame = self._restore_texts(self._load_artifact(run_payload["input_frame_artifact_ref"]["artifact_id"]))
+            target_outputs, target_validation = validate_predictions(result.get("predictions"), frame.get("context") or {})
+            result = copy.deepcopy(result)
+            result.update({"predictions": target_outputs, "prediction_validation": target_validation,
+                           "prediction_contract_version": PREDICTION_CONTRACT_VERSION})
+            result.setdefault("raw", {}).update({"predictions": target_outputs, "prediction_validation": target_validation,
+                                                "prediction_contract_version": PREDICTION_CONTRACT_VERSION})
+            if target_validation["status"] == "rejected":
+                structured = self._structured_output(result)
+                self.append_attempt_event(run_id, accepted_attempt_id, "schema_failure", failure_terminal=True,
+                    reason_code="ALL_PREDICTION_TARGETS_REJECTED", structured_output=structured,
+                    attempt_finished_at=utc_text(), output_available_at=None, publication_status="rejected")
+                raise PredictionTargetsError(structured)
         structured_output = self._structured_output(result)
 
         rejected_at: str | None = None
         reference_error: JudgementReferenceError | None = None
-        with self.database.connect() as connection:
+        with self.database.connect() as connection, self.database.using_connection(connection):
             connection.execute("BEGIN IMMEDIATE")
-            fresh = self.database.judgement_context(as_of=as_of)
-            fresh["pending_inputs"] = (
-                self.database.judge_pending_inputs(include_deferred=True)
-                if selection_mode == "online" else []
-            )
-            self.database.refresh_input_snapshot(fresh)
+            fresh = self._fresh_judge_context(connection, as_of, selection_mode)
             fresh_snapshot = self.database.input_snapshot(fresh)
             input_version_delta = self._input_version_delta(
                 input_snapshot, fresh_snapshot,
@@ -1009,6 +1399,7 @@ class PredictionLedger:
                         "attempt_finished_at": failed_at,
                         "output_available_at": None,
                         "publication_status": "rejected",
+                        "structured_output": structured_output,
                         "is_synthetic": attempt_start.get("is_synthetic"),
                         **_wall_clock_order_fields(attempt_start.get("attempt_started_at"), failed_at),
                     }
@@ -1048,6 +1439,18 @@ class PredictionLedger:
                         "output_available_at": None,
                         "is_synthetic": run_payload.get("is_synthetic"),
                     }
+                    if run_payload.get("prediction_contract_version") == PREDICTION_CONTRACT_VERSION:
+                        target_outputs = copy.deepcopy(result["predictions"])
+                        for target, value in target_outputs.items():
+                            prior_count = connection.execute(
+                                "SELECT COUNT(*) FROM prediction_ledger WHERE kind='output_committed' AND json_extract(payload_json,?)=?",
+                                ('$.target_refs.' + target + '.series_id', run_payload["target_refs"][target]["series_id"]),
+                            ).fetchone()[0]
+                            value.update({"target_output_id": str(judgement_id) + ":" + target, "output_revision": prior_count + 1})
+                        output_payload.update({"target_refs": run_payload["target_refs"], "target_outputs": target_outputs,
+                                               "prediction_contract_version": PREDICTION_CONTRACT_VERSION,
+                                               "prediction_validation": result["prediction_validation"]})
+                        output_payload["validation"]["status"] = result["prediction_validation"]["status"]
                     self._append_record(
                         connection, "output_committed", output_payload,
                         series_id=run["series_id"], forecast_id=forecast_id, run_id=run_id,
@@ -1392,6 +1795,7 @@ class PredictionLedger:
             "estimated_start_expression", "estimated_end_expression",
             "estimated_start_time_metadata", "estimated_end_time_metadata",
             "evidence_post_ids", "data_health", "model", "prompt_version", "created_at",
+            "predictions", "prediction_validation", "prediction_contract_version", "valid_until",
         )
         return {key: copy.deepcopy(result.get(key)) for key in fields}
 
@@ -1466,7 +1870,7 @@ class PredictionLedger:
             for key, child in value.items()
         }
         snapshot = normalized.get("input_snapshot")
-        posts = normalized.get("posts")
+        posts = [*(normalized.get("posts") or []), *(normalized.get("event_source_posts") or [])]
         if isinstance(snapshot, dict) and isinstance(posts, list) and "post_analysis_versions" in snapshot:
             analysis_versions: dict[str, str] = {}
             for post in posts:
@@ -1488,10 +1892,11 @@ class PredictionLedger:
     def _semantic_facts(value: Any) -> Any:
         excluded = {
             "judged_at", "data_health", "pending_inputs", "previous_judgement",
-            "default_reference_last_full_plus_7d", "corpus_version", "collected_at",
+            "default_reference_last_full_plus_7d", "normal_reference", "corpus_version", "collected_at",
             "last_seen_at", "updated_at", "created_at", "observed_at", "scanned_at",
             "heartbeat_at", "as_of", "judgement_as_of", "input_cutoff_at",
             "_analysed_at", "_analyzed_at",
+            "prediction_contract_version",
         }
         if isinstance(value, dict):
             return {str(key): PredictionLedger._semantic_facts(child)
@@ -1515,13 +1920,14 @@ class PredictionLedger:
         target = str(forecast_spec["target"])
         scope = forecast_spec["scope"]
         record_kind = str(forecast_spec.get("record_kind") or "online")
-        method = forecast_spec.get("method") or "model_inference"
+        method = None if forecast_spec.get("version_role") == "question_version" else forecast_spec.get("method") or "model_inference"
         facts_digest = sha256_json(semantic_facts)
         semantic_forecast = {
             "target": target,
             "scope": scope,
             "record_kind": record_kind,
             "method": method,
+            "version_role": forecast_spec.get("version_role"),
             "basis": forecast_spec.get("basis") or "frozen_judge_input",
             "forecast": {"question": forecast_spec.get("question"),
                          "cycle_id": forecast_spec.get("cycle_id")},
