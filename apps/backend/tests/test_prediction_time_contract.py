@@ -370,6 +370,72 @@ def _official_case(target="EXTRA_FULL"):
     return prediction, context
 
 
+def _official_point_case(target="EXTRA_FULL", timestamp="2026-10-11T15:00:00Z", tweet_id="source-1"):
+    quote = f"The reset is planned to start at {timestamp}."
+    scope = {"value": "unknown", "certainty": "unknown"}
+    effect = {
+        "event_type": "FULL_RESET" if target == "EXTRA_FULL" else "SPECIAL_RESET",
+        "special_type": "BANKED" if target == "BANKED" else None,
+        "claim_kind": "planned_occurrence",
+        "execution_stage": "announced",
+        "time_basis": "explicit_text",
+        "evidence_quote": quote,
+        "event_time_start": timestamp,
+        "event_time_end": None,
+        "prediction_form": "point",
+        "time_precision": "second",
+        "source_timezone": "UTC",
+        "scope": scope,
+    }
+    prediction = _known(
+        target,
+        method="official_time_extraction",
+        scope=scope,
+        predicted_start=timestamp,
+        predicted_end=None,
+        prediction_form="point",
+        source_timezone="UTC",
+        precision="second",
+        time_basis="official_planned",
+        evidence_post_ids=[],
+        evidence_refs=[{"tweet_id": tweet_id, "evidence_quote": quote}],
+    )
+    context = _context(quote, author="@OpenAI", analysis={"effects": [effect]})
+    context["posts"][0]["tweet_id"] = tweet_id
+    return prediction, context
+
+
+def _official_sparse_effect_point_case(quote, normalized_start, tweet_id="source-1"):
+    scope = {"value": "unknown", "certainty": "unknown"}
+    effect = {
+        "event_type": "FULL_RESET",
+        "special_type": None,
+        "claim_kind": "planned_occurrence",
+        "execution_stage": "announced",
+        "time_basis": "explicit_text",
+        "evidence_quote": quote,
+        "event_time_start": normalized_start,
+        "event_time_end": None,
+        "scope": scope,
+    }
+    prediction = _known(
+        "EXTRA_FULL",
+        method="official_time_extraction",
+        scope=scope,
+        predicted_start=normalized_start,
+        predicted_end=None,
+        prediction_form="point",
+        source_timezone="UTC",
+        precision="second",
+        time_basis="official_planned",
+        evidence_post_ids=[],
+        evidence_refs=[{"tweet_id": tweet_id, "evidence_quote": quote}],
+    )
+    context = _context(quote, author="@OpenAI", analysis={"effects": [effect]})
+    context["posts"][0]["tweet_id"] = tweet_id
+    return prediction, context
+
+
 @pytest.mark.parametrize("target_name", ["EXTRA_FULL", "BANKED"])
 def test_official_extraction_requires_a_verbatim_quote_and_matching_formal_effect(target_name):
     prediction, context = _official_case(target_name)
@@ -386,6 +452,135 @@ def test_official_extraction_requires_a_verbatim_quote_and_matching_formal_effec
     assert outputs[target_name]["prediction_form"] == "range"
     assert outputs[target_name]["predicted_start"] == "2026-10-10T10:00:00Z"
     assert outputs[target_name]["predicted_end"] == "2026-10-10T12:00:00Z"
+
+
+def test_official_explicit_point_accepts_equivalent_utc_and_needs_no_end():
+    prediction, context = _official_point_case()
+    prediction["predicted_start"] = "2026-10-11T15:00:00+00:00"
+
+    outputs, summary = validate_predictions(
+        {"EXTRA_FULL": prediction, "BANKED": _unknown("BANKED")}, context
+    )
+
+    assert summary["status"] == "accepted"
+    assert outputs["EXTRA_FULL"]["validation"]["valid"] is True
+    assert outputs["EXTRA_FULL"]["prediction_form"] == "point"
+    assert outputs["EXTRA_FULL"]["precision"] == "second"
+    assert outputs["EXTRA_FULL"]["scope"] == {"value": "unknown", "certainty": "unknown"}
+    assert outputs["EXTRA_FULL"]["predicted_start"] == "2026-10-11T15:00:00Z"
+    assert outputs["EXTRA_FULL"]["predicted_end"] is None
+
+
+def test_official_explicit_point_is_not_degraded_to_start_only_minute():
+    prediction, context = _official_point_case()
+    prediction.update(prediction_form="start_only", precision="minute")
+
+    outputs, summary = validate_predictions(
+        {"EXTRA_FULL": prediction, "BANKED": _unknown("BANKED")}, context
+    )
+
+    assert summary["status"] == "partial"
+    assert outputs["EXTRA_FULL"]["validation"] == {
+        "valid": False,
+        "reason": "OFFICIAL_PLAN_NOT_VERIFIED",
+    }
+
+
+def test_sparse_effect_with_explicit_iso_seconds_accepts_point_with_unknown_scope():
+    quote = "The reset is planned for 2026-10-11T15:00:00Z."
+    prediction, context = _official_sparse_effect_point_case(
+        quote, "2026-10-11T15:00:00Z"
+    )
+    effect = context["posts"][0]["analysis"]["effects"][0]
+    assert not {"prediction_form", "time_precision", "source_timezone"} & effect.keys()
+
+    outputs, summary = validate_predictions(
+        {"EXTRA_FULL": prediction, "BANKED": _unknown("BANKED")}, context
+    )
+
+    assert summary["status"] == "accepted"
+    assert outputs["EXTRA_FULL"]["validation"]["valid"] is True
+    assert outputs["EXTRA_FULL"]["prediction_form"] == "point"
+    assert outputs["EXTRA_FULL"]["precision"] == "second"
+    assert outputs["EXTRA_FULL"]["predicted_start"] == "2026-10-11T15:00:00Z"
+    assert outputs["EXTRA_FULL"]["predicted_end"] is None
+    assert outputs["EXTRA_FULL"]["scope"] == {"value": "unknown", "certainty": "unknown"}
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("prediction_form", "start_only"), ("precision", "minute")],
+)
+def test_sparse_effect_point_rejects_form_or_precision_degradation_independently(field, value):
+    quote = "The reset is planned for 2026-10-11T15:00:00Z."
+    prediction, context = _official_sparse_effect_point_case(
+        quote, "2026-10-11T15:00:00Z"
+    )
+    prediction[field] = value
+
+    outputs, summary = validate_predictions(
+        {"EXTRA_FULL": prediction, "BANKED": _unknown("BANKED")}, context
+    )
+
+    assert summary["status"] == "partial"
+    assert outputs["EXTRA_FULL"]["validation"] == {
+        "valid": False,
+        "reason": "OFFICIAL_PLAN_NOT_VERIFIED",
+    }
+    assert outputs["BANKED"]["validation"]["valid"] is True
+
+
+@pytest.mark.parametrize(("precision", "valid"), [("minute", True), ("second", False)])
+def test_sparse_effect_hhmm_quote_does_not_gain_precision_from_normalized_seconds(precision, valid):
+    quote = "The reset is planned for 2026-10-11T15:00Z."
+    prediction, context = _official_sparse_effect_point_case(
+        quote, "2026-10-11T15:00:00Z"
+    )
+    prediction["precision"] = precision
+    effect = context["posts"][0]["analysis"]["effects"][0]
+    assert not {"prediction_form", "time_precision", "source_timezone"} & effect.keys()
+
+    outputs, summary = validate_predictions(
+        {"EXTRA_FULL": prediction, "BANKED": _unknown("BANKED")}, context
+    )
+
+    assert outputs["EXTRA_FULL"]["validation"]["valid"] is valid
+    if valid:
+        assert summary["status"] == "accepted"
+        assert outputs["EXTRA_FULL"]["precision"] == "minute"
+        assert outputs["EXTRA_FULL"]["predicted_start"] == "2026-10-11T15:00:00Z"
+        assert outputs["EXTRA_FULL"]["predicted_end"] is None
+    else:
+        assert summary["status"] == "partial"
+        assert outputs["EXTRA_FULL"]["validation"]["reason"] == "OFFICIAL_PLAN_NOT_VERIFIED"
+
+
+def test_full_and_banked_keep_distinct_official_plan_times_and_do_not_borrow():
+    full, full_context = _official_point_case(
+        "EXTRA_FULL", "2026-10-11T15:00:00Z", "full-source"
+    )
+    banked, banked_context = _official_point_case(
+        "BANKED", "2026-10-11T18:00:00Z", "banked-source"
+    )
+    context = {"posts": full_context["posts"] + banked_context["posts"]}
+
+    outputs, summary = validate_predictions({"EXTRA_FULL": full, "BANKED": banked}, context)
+
+    assert summary["status"] == "accepted"
+    assert outputs["EXTRA_FULL"]["predicted_start"] == "2026-10-11T15:00:00Z"
+    assert outputs["BANKED"]["predicted_start"] == "2026-10-11T18:00:00Z"
+    assert outputs["EXTRA_FULL"]["scope"]["value"] == "unknown"
+    assert outputs["BANKED"]["scope"]["value"] == "unknown"
+
+    borrowed = {
+        "EXTRA_FULL": {**full, "predicted_start": "2026-10-11T18:00:00Z"},
+        "BANKED": {**banked, "predicted_start": "2026-10-11T15:00:00Z"},
+    }
+    rejected, rejected_summary = validate_predictions(borrowed, context)
+
+    assert rejected_summary["status"] == "rejected"
+    assert rejected["EXTRA_FULL"]["validation"]["reason"] == "OFFICIAL_PLAN_NOT_VERIFIED"
+    assert rejected["BANKED"]["validation"]["reason"] == "OFFICIAL_PLAN_NOT_VERIFIED"
 
 
 @pytest.mark.parametrize("mutation", [

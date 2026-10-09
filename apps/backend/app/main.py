@@ -22,7 +22,11 @@ from .prediction_contract import (
     PREDICTION_API_VERSION,
     PredictionTarget,
 )
-from .prediction_ledger import PredictionLedger
+from .prediction_ledger import (
+    PredictionLedger,
+    normalize_prediction_status_projection,
+    prediction_status_line_state,
+)
 from .runtime_identity import capture_runtime_identity
 from .schemas import CollectorBatch, CollectorHeartbeat, DiagnosticBatch, DiagnosticPayload, ResetEventCreate
 from .version import APP_VERSION, runtime_commit
@@ -40,10 +44,10 @@ PREDICTION_HISTORY_LINE_FIELDS = frozenset({
     "output_available_at", "output_available_at_source", "output_availability_kind",
     "updated_at", "updated_at_source", "recorded_at", "judged_at", "date_boundaries", "baseline_status",
     "valid_until", "validity", "validity_state", "health", "health_state", "health_reason",
-    "reason", "eligibility_reason",
+    "reason", "eligibility_reason", "status_projection",
 })
 PREDICTION_HISTORY_ATTEMPT_FIELDS = frozenset({
-    "target", "series_id", "attempt_number", "attempted_at", "started_at", "finished_at",
+    "target", "series_id", "run_id", "attempt_id", "attempt_number", "attempted_at", "started_at", "finished_at",
     "state", "status", "reason_code", "reason", "output_status",
 })
 
@@ -205,72 +209,36 @@ def create_app(
                             "health": {"state": "unknown", "reason": reason},
                         }
                     line["target"] = target
+                    status_projection = normalize_prediction_status_projection(line, target=target)
+                    status_contract_error = status_projection["capability"]["source"] == "contract_error"
                     baseline = target == "NORMAL_WEEKLY"
-                    raw_state = str(line.get("state") or "").lower()
-                    raw_status = str(line.get("status") or "").upper()
                     reason_code = str(line.get("validation_reason") or line.get("reason_code") or "")
                     raw_valid = line.get("valid") is True
-                    lineage_state = str(line.get("current_or_last_known") or "").lower()
-                    baseline_state = str(line.get("baseline_status") or "").lower()
                     validity = line.get("validity")
-                    raw_validity_state = str(
-                        validity.get("state") if isinstance(validity, dict)
-                        else validity or line.get("validity_state") or ""
-                    ).lower()
-                    explicitly_unimplemented = (
-                        raw_state == "not_implemented"
-                        or line.get("target_implemented") is False
-                        or str(line.get("implementation_state") or "").lower() == "not_implemented"
-                        or reason_code in {"LEGACY_TARGET_NOT_IMPLEMENTED", "TARGET_NOT_IMPLEMENTED"}
-                    )
 
                     # Invalidity and lineage take precedence over a model's UNKNOWN
                     # output. UNKNOWN is preserved only when its own output is valid.
-                    if baseline and reason_code in {"NORMAL_VERSION_NOT_RECORDED", "NOT_BACKFILLED"}:
-                        state = "not_backfilled"
-                        line["reason"] = line.get("reason") or "NOT_BACKFILLED：Normal 参考尚未回填为有版本的账本记录。"
-                    elif explicitly_unimplemented:
-                        state = "not_implemented"
-                    elif raw_state in {"failed", "error", "rejected", "invalid", "stale", "data_stale", "expired", "pending", "partial", "not_backfilled", "waiting_for_verified_history"}:
-                        state = raw_state
-                    elif baseline and baseline_state == "expired":
-                        state = "expired"
-                    elif raw_validity_state in {"expired", "stale", "data_stale", "failed", "error", "rejected", "invalid"}:
-                        state = raw_validity_state
-                    elif reason_code in {"EXPIRED", "PREDICTION_WINDOW_PASSED_NOT_CONFIRMED"}:
-                        state = "expired"
-                    elif lineage_state == "last_known" or reason_code in {"INPUT_CHANGED", "CYCLE_CHANGED", "ANCHOR_CHANGED", "GENERATION_REPLACED"}:
-                        state = "stale"
-                    elif reason_code == "OUTPUT_AVAILABILITY_PENDING":
-                        state = "pending"
-                    elif reason_code.startswith(("MODEL_", "REQUEST_", "FAILED", "ERROR")):
-                        state = "failed"
-                    elif reason_code in {"MISSING_TARGET", "ALL_PREDICTION_TARGETS_REJECTED", "UNKNOWN_REASON_MISSING"}:
-                        state = "rejected"
-                    elif reason_code == "PREDICTION_NOT_RECORDED" and raw_status not in {"KNOWN", "UNKNOWN"}:
-                        # No legacy line is not a model-produced UNKNOWN. New runs
-                        # must report MISSING_TARGET (or another explicit failure).
-                        state = "not_implemented"
-                    elif raw_valid is False and (raw_status in {"KNOWN", "UNKNOWN"} or raw_state in {"known", "current", "ready", "available", "baseline"}):
-                        state = "rejected" if reason_code and reason_code != "VALID" else "invalid"
-                    elif baseline and baseline_state in {"baseline", "current"} and raw_valid:
-                        state = "baseline"
-                    elif baseline and baseline_state == "waiting_for_verified_history":
-                        state = "waiting_for_verified_history"
-                    elif raw_status == "UNKNOWN" or raw_state == "unknown":
-                        state = "unknown" if raw_valid else "invalid"
-                    elif raw_status == "KNOWN" and raw_valid and lineage_state == "current":
-                        state = "baseline" if baseline else "current"
-                    elif raw_state == "baseline" and baseline and raw_valid:
-                        state = "baseline"
-                    elif raw_state in {"ready", "current", "available"} and raw_valid:
-                        state = raw_state
-                    elif reason_code and reason_code != "VALID":
-                        state = "rejected"
-                    elif not raw_status and not raw_state:
-                        state = "not_implemented"
+                    if status_contract_error:
+                        state = "unavailable"
+                        for key in ("forecast_id", "series_id", "revision", "question_revision", "question_version",
+                                    "forecast_version", "forecast_revision", "output_revision", "target_output_id",
+                                    "form", "resolved_prediction_form", "prediction_form", "predicted_start",
+                                    "predicted_end", "expression", "relative_expression", "relative_anchor",
+                                    "relative_anchor_at", "posted_anchor", "origin_judgement_id", "run_id", "attempt_id",
+                                    "updated_at", "recorded_at", "judged_at", "valid_until", "output_available_at",
+                                    "output_available_at_source"):
+                            line[key] = None
+                        line["valid"] = False
+                        raw_valid = False
+                        reason_code = "PREDICTION_STATUS_CONTRACT_ERROR"
+                        validity = {"state": "unknown", "reason": reason_code}
+                        line["current_or_last_known"] = "unavailable"
+                        line["validity"] = validity
+                        line["validity_state"] = "unknown"
+                        line["validation_reason"] = "PREDICTION_STATUS_CONTRACT_ERROR"
+                        line["reason"] = "来源记录与预测契约不一致。"
                     else:
-                        state = "invalid"
+                        state = prediction_status_line_state(line, status_projection)
                     line["state"] = state
                     validity = line.get("validity")
                     validity_state = str(validity.get("state") if isinstance(validity, dict) else validity or line.get("validity_state") or ("valid" if raw_valid else state)).lower()
@@ -312,6 +280,29 @@ def create_app(
                     line_state_ok = state in {"ready", "current", "available", "baseline"}
                     validity_ok = validity_state in {"valid", "ready", "current", "not_applicable"} and line.get("valid") is not False
                     line_health_ok = source_health_state in {"healthy", "ready", "current", "not_applicable"}
+                    normal_status = status_projection.get("normal", {})
+                    normal_reference_calculated = (
+                        baseline
+                        and normal_status.get("helper_status") == "baseline"
+                        and normal_status.get("calculation_status") == "calculated"
+                        and status_projection.get("history_status") == "not_backfilled"
+                        and reason_code == "NORMAL_VERSION_NOT_RECORDED"
+                        and not any(line.get(key) for key in (
+                            "forecast_id", "question_version", "forecast_version", "record_id",
+                            "series_id", "revision", "question_revision", "output_revision",
+                            "target_output_id",
+                        ))
+                        and line.get("anchor_limitation") is None
+                        and line.get("expiry_basis") == "closed_upper_bound"
+                        and line.get("precision") not in (None, "unknown")
+                        and line.get("output_available_at") is None
+                        and line.get("output_available_at_source") is None
+                        and not line.get("clock_anomaly")
+                    )
+                    if normal_reference_calculated:
+                        # Calculation and history completeness are independent:
+                        # a calculable helper reference remains visible before backfill.
+                        validity_ok = True
                     global_ok = current_data_health == "HEALTHY"
                     if not baseline:
                         global_ok = (
@@ -322,6 +313,7 @@ def create_app(
                         )
                     eligible = global_ok and line_state_ok and validity_ok and line_health_ok
                     line["current_advice_eligible"] = eligible
+                    line["status_projection"] = status_projection
                     line["global_health"] = global_health
                     if not eligible:
                         if state in {"ready", "current", "available", "baseline"}:
@@ -629,52 +621,35 @@ def create_app(
 
             def normalize_history_line(item: dict[str, Any]) -> dict[str, Any]:
                 line = {key: value for key, value in item.items() if key in PREDICTION_HISTORY_LINE_FIELDS}
-                status_value = str(line.get("status") or "").upper()
-                state_value = str(line.get("state") or "").lower()
+                status_projection = normalize_prediction_status_projection(line, target=line.get("target"))
+                status_contract_error = status_projection["capability"]["source"] == "contract_error"
                 reason_code = str(line.get("validation_reason") or "")
                 raw_valid = line.get("valid") is True
-                lineage = str(line.get("current_or_last_known") or "").lower()
                 validity = line.get("validity")
                 validity_state = str(
                     validity.get("state") if isinstance(validity, dict)
                     else validity or line.get("validity_state") or ""
                 ).lower()
-                if line["target"] == "NORMAL_WEEKLY" and reason_code in {"NORMAL_VERSION_NOT_RECORDED", "NOT_BACKFILLED"}:
-                    state = "not_backfilled"
-                elif state_value == "not_implemented" or reason_code in {"LEGACY_TARGET_NOT_IMPLEMENTED", "TARGET_NOT_IMPLEMENTED"}:
-                    state = "not_implemented"
-                elif state_value in {"failed", "error", "rejected", "invalid", "stale", "data_stale", "expired", "pending", "partial", "not_backfilled", "waiting_for_verified_history"}:
-                    state = state_value
-                elif validity_state in {"expired", "stale", "data_stale", "failed", "error", "rejected", "invalid"}:
-                    state = validity_state
-                elif reason_code in {"EXPIRED", "PREDICTION_WINDOW_PASSED_NOT_CONFIRMED"}:
-                    state = "expired"
-                elif lineage == "last_known" or reason_code in {"INPUT_CHANGED", "CYCLE_CHANGED", "ANCHOR_CHANGED", "GENERATION_REPLACED"}:
-                    state = "stale"
-                elif reason_code == "OUTPUT_AVAILABILITY_PENDING":
-                    state = "pending"
-                elif reason_code.startswith(("MODEL_", "REQUEST_", "FAILED", "ERROR")):
-                    state = "failed"
-                elif reason_code in {"MISSING_TARGET", "ALL_PREDICTION_TARGETS_REJECTED", "UNKNOWN_REASON_MISSING"}:
-                    state = "rejected"
-                elif reason_code == "PREDICTION_NOT_RECORDED" and status_value not in {"KNOWN", "UNKNOWN"}:
-                    state = "not_implemented"
-                elif not raw_valid and status_value in {"KNOWN", "UNKNOWN"}:
-                    state = "rejected" if reason_code and reason_code != "VALID" else "invalid"
-                elif state_value == "known" and raw_valid:
-                    state = "historical"
-                elif line["target"] == "NORMAL_WEEKLY" and str(line.get("baseline_status") or "").lower() in {"baseline", "current"} and raw_valid:
-                    state = "baseline"
-                elif status_value == "UNKNOWN" or state_value == "unknown":
-                    state = "unknown" if raw_valid else "invalid"
-                elif status_value == "KNOWN" and raw_valid and lineage == "current":
-                    state = "current"
-                elif state_value in {"ready", "current", "available", "baseline"} and raw_valid:
-                    state = state_value
-                elif reason_code and reason_code != "VALID":
-                    state = "rejected"
+                if status_contract_error:
+                    state = "unavailable"
+                    raw_valid = False
+                    line["valid"] = False
+                    line["current_or_last_known"] = "unavailable"
+                    line["validation_reason"] = "PREDICTION_STATUS_CONTRACT_ERROR"
+                    line["reason"] = "来源记录与预测契约不一致。"
+                    reason_code = "PREDICTION_STATUS_CONTRACT_ERROR"
+                    validity = {"state": "unknown", "reason": reason_code}
+                    validity_state = "unknown"
+                    for key in ("forecast_id", "series_id", "revision", "question_revision", "question_version",
+                                "forecast_version", "forecast_revision", "output_revision", "target_output_id",
+                                "form", "resolved_prediction_form", "prediction_form", "predicted_start",
+                                "predicted_end", "expression", "relative_expression", "relative_anchor",
+                                "relative_anchor_at", "posted_anchor", "origin_judgement_id", "updated_at",
+                                "recorded_at", "judged_at", "valid_until", "output_available_at",
+                                "output_available_at_source"):
+                        line[key] = None
                 else:
-                    state = "not_implemented" if not status_value and not state_value else "invalid"
+                    state = prediction_status_line_state(line, status_projection)
                 line["state"] = state
                 line["form"] = line.get("resolved_prediction_form") or line.get("form") or line.get("prediction_form") or "unknown"
                 line["relative_expression"] = line.get("relative_expression") or line.get("expression")
@@ -695,6 +670,10 @@ def create_app(
                 health = line.get("health")
                 if not isinstance(health, dict):
                     line["health_state"] = str(health or line.get("health_state") or "unknown").lower()
+                if status_contract_error:
+                    line["validity"] = {"state": "unknown", "reason": "PREDICTION_STATUS_CONTRACT_ERROR"}
+                    line["validity_state"] = "unknown"
+                line["status_projection"] = status_projection
                 return line
 
             lines_are_flat = all(is_flat_line(item) for item in items)
@@ -775,6 +754,8 @@ def create_app(
                 "last_items": boundary_items("last_items", "last_item"),
                 "attempts": safe_attempts,
                 "attempts_available": bool(safe_attempts) or result.get("attempts_schema") == "prediction-attempt-v1",
+                "attempt_count": len(safe_attempts),
+                "attempt_count_basis": "target_projection_not_http_count",
                 "attempts_truncated": result.get("attempts_truncated") is True,
                 "total_count": total_count,
                 "total_count_known": total_known,

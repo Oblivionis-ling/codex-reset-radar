@@ -8,6 +8,56 @@ export type PredictionTarget = (typeof PREDICTION_TARGETS)[number];
 export const ACTION_LEVELS = ["GREEN", "YELLOW", "ORANGE", "RED", "UNKNOWN"] as const;
 export type ActionLevel = (typeof ACTION_LEVELS)[number];
 
+export type PredictionCapabilityImplementation = "supported" | "unsupported" | "unknown";
+export type PredictionCapabilitySource = "ledger_v2" | "legacy_undeclared" | "unknown" | "contract_error";
+export type PredictionRunState = "not_started" | "pending" | "succeeded" | "timeout" | "failed" | "cancelled" | "unknown_terminal";
+export type PredictionResultState = "not_attempted" | "not_returned" | "accepted" | "unknown_valid" | "rejected" | "unavailable" | "legacy_missing";
+export type PredictionLastKnownState = "valid" | "expired" | "cycle_changed" | "version_changed" | "invalid";
+export type PredictionNormalCalculationState = "calculated" | "no_business_full_anchor" | "unresolved" | "expired";
+
+export interface PredictionLastKnownProjection {
+  state: PredictionLastKnownState;
+  forecast_id: string | null;
+  series_id: string | null;
+  revision: number | null;
+  origin_judgement_id: number | null;
+  valid_until: string | null;
+  cycle_id: number | null;
+  reason_code: string | null;
+  forecast: {
+    prediction_form: string | null;
+    predicted_start: string | null;
+    predicted_end: string | null;
+    time_basis: string | null;
+    precision: string | null;
+  } | null;
+}
+
+export interface PredictionStatusProjection {
+  capability: {
+    implementation: PredictionCapabilityImplementation | null;
+    source: PredictionCapabilitySource | null;
+  } | null;
+  run: {
+    state: PredictionRunState | null;
+    run_id: string | null;
+    attempt_id: string | null;
+    finished_at: string | null;
+    reason_code: string | null;
+  } | null;
+  result: {
+    state: PredictionResultState | null;
+    reason_code: string | null;
+    summary: string | null;
+  } | null;
+  last_known: PredictionLastKnownProjection | null;
+  normal: {
+    helper_status: string | null;
+    calculation_status: PredictionNormalCalculationState | null;
+  } | null;
+  history_status: "backfilled" | "not_backfilled" | "unknown" | "not_applicable" | null;
+}
+
 export interface PredictionLine {
   target: PredictionTarget;
   record_id: string | null;
@@ -52,6 +102,7 @@ export interface PredictionLine {
   output_availability_kind: string | null;
   current_advice_eligible: boolean;
   eligibility_reason: string | null;
+  status_projection?: PredictionStatusProjection | null;
 }
 
 export interface PredictionProjection {
@@ -110,6 +161,7 @@ export interface PredictionHistoryResponse {
   total_count_known: boolean;
   truncated: boolean;
   order_basis: string | null;
+  attempt_count_basis?: "target_projection_not_http_count" | null;
 }
 
 export interface ResetEvent {
@@ -219,6 +271,32 @@ function nullableText(...values: unknown[]): string | null {
   return values.find((value): value is string => typeof value === "string") ?? null;
 }
 
+function boundedToken(value: unknown, maxLength = 96): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length <= maxLength && /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(normalized)
+    ? normalized
+    : null;
+}
+
+function boundedCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized.length <= 96 && /^[A-Z][A-Z0-9_]*$/.test(normalized) ? normalized : null;
+}
+
+function boundedSummary(value: unknown, maxLength = 240): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+  return normalized ? normalized.slice(0, maxLength) : null;
+}
+
+function enumValue<const T extends readonly string[]>(value: unknown, allowed: T): T[number] | null {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? value as T[number]
+    : null;
+}
+
 function optionalNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
@@ -303,7 +381,126 @@ function parsePredictionLine(value: unknown, target: PredictionTarget): Predicti
     output_available_at: nullableText(item.output_available_at),
     output_availability_kind: nullableText(item.output_availability_kind, item.availability_kind),
     current_advice_eligible: item.current_advice_eligible === true,
-    eligibility_reason: nullableText(item.eligibility_reason)
+    eligibility_reason: nullableText(item.eligibility_reason),
+    status_projection: parsePredictionStatusProjection(
+      item.status_projection,
+      target,
+      Object.prototype.hasOwnProperty.call(item, "status_projection")
+    )
+  };
+}
+
+const CAPABILITY_IMPLEMENTATIONS = ["supported", "unsupported", "unknown"] as const;
+const CAPABILITY_SOURCES = ["ledger_v2", "legacy_undeclared", "unknown", "contract_error"] as const;
+const RUN_STATES = ["not_started", "pending", "succeeded", "timeout", "failed", "cancelled", "unknown_terminal"] as const;
+const RESULT_STATES = ["not_attempted", "not_returned", "accepted", "unknown_valid", "rejected", "unavailable", "legacy_missing"] as const;
+const HISTORY_STATES = ["backfilled", "not_backfilled", "unknown", "not_applicable"] as const;
+const LAST_KNOWN_STATES = ["valid", "expired", "cycle_changed", "version_changed", "invalid"] as const;
+const NORMAL_CALCULATION_STATES = ["calculated", "no_business_full_anchor", "unresolved", "expired"] as const;
+
+function parsePredictionLastKnown(value: unknown): PredictionLastKnownProjection | null | undefined {
+  if (value === null) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const item = record(value);
+  const state = enumValue(item.state, LAST_KNOWN_STATES);
+  if (!state) return undefined;
+  const forecastValue = item.forecast;
+  const forecastObject = forecastValue && typeof forecastValue === "object" && !Array.isArray(forecastValue)
+    ? record(forecastValue)
+    : null;
+  if (state === "valid" && forecastValue !== undefined && forecastValue !== null && !forecastObject) return undefined;
+  return {
+    state,
+    forecast_id: boundedToken(item.forecast_id, 128),
+    series_id: boundedToken(item.series_id, 128),
+    revision: optionalNumber(item.revision),
+    origin_judgement_id: optionalNumber(item.origin_judgement_id),
+    valid_until: boundedSummary(item.valid_until, 80),
+    cycle_id: optionalNumber(item.cycle_id),
+    reason_code: boundedCode(item.reason_code),
+    // Expired/cycle-changed values retain their original validity metadata, never target dates.
+    forecast: state === "valid" && forecastObject ? {
+      prediction_form: boundedToken(forecastObject.prediction_form, 48),
+      predicted_start: boundedSummary(forecastObject.predicted_start, 80),
+      predicted_end: boundedSummary(forecastObject.predicted_end, 80),
+      time_basis: boundedToken(forecastObject.time_basis, 96),
+      precision: boundedToken(forecastObject.precision, 48)
+    } : null
+  };
+}
+
+function contractErrorStatusProjection(): PredictionStatusProjection {
+  return {
+    capability: null,
+    run: null,
+    result: {
+      state: "unavailable",
+      reason_code: "PREDICTION_STATUS_CONTRACT_ERROR",
+      summary: "状态信息与预测契约不一致，当前不可用。"
+    },
+    last_known: null,
+    normal: null,
+    history_status: "unknown"
+  };
+}
+
+function parsePredictionStatusProjection(value: unknown, target: PredictionTarget, present: boolean): PredictionStatusProjection | null {
+  if (!present) return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return contractErrorStatusProjection();
+  const item = record(value);
+  const capabilityValue = item.capability;
+  const capability = capabilityValue && typeof capabilityValue === "object" && !Array.isArray(capabilityValue)
+    ? record(capabilityValue)
+    : null;
+  const runValue = item.run;
+  const run = runValue && typeof runValue === "object" && !Array.isArray(runValue) ? record(runValue) : null;
+  const resultValue = item.result;
+  const result = resultValue && typeof resultValue === "object" && !Array.isArray(resultValue) ? record(resultValue) : null;
+  const implementation = capability ? enumValue(capability.implementation, CAPABILITY_IMPLEMENTATIONS) : null;
+  const source = capability ? enumValue(capability.source, CAPABILITY_SOURCES) : null;
+  const runState = run ? enumValue(run.state, RUN_STATES) : null;
+  const resultState = result ? enumValue(result.state, RESULT_STATES) : null;
+  const historyStatus = enumValue(item.history_status, HISTORY_STATES);
+  const lastKnown = Object.prototype.hasOwnProperty.call(item, "last_known")
+    ? parsePredictionLastKnown(item.last_known)
+    : undefined;
+  const normalValue = item.normal;
+  const normal = normalValue && typeof normalValue === "object" && !Array.isArray(normalValue)
+    ? record(normalValue)
+    : null;
+  const calculationStatus = normal ? enumValue(normal.calculation_status, NORMAL_CALCULATION_STATES) : null;
+  const modelOutcomeWithIncompleteRun = target !== "NORMAL_WEEKLY"
+    && ["accepted", "unknown_valid"].includes(resultState ?? "")
+    && runState !== "succeeded";
+  const acceptedContractErrorSource = source === "contract_error" && resultState !== "unavailable";
+  if (!implementation || !source || !runState || !resultState || !historyStatus || lastKnown === undefined
+    || (target === "NORMAL_WEEKLY" && (!normal || !calculationStatus))
+    || modelOutcomeWithIncompleteRun || acceptedContractErrorSource) {
+    return contractErrorStatusProjection();
+  }
+  return {
+    capability: capability ? {
+      implementation,
+      source
+    } : null,
+    run: run ? {
+      state: runState,
+      run_id: boundedToken(run.run_id, 128),
+      attempt_id: boundedToken(run.attempt_id, 128),
+      finished_at: boundedSummary(run.finished_at, 80),
+      reason_code: boundedCode(run.reason_code)
+    } : null,
+    result: result ? {
+      state: resultState,
+      reason_code: boundedCode(result.reason_code),
+      summary: boundedSummary(result.summary)
+    } : null,
+    last_known: lastKnown,
+    normal: normal ? {
+      helper_status: boundedToken(normal.helper_status),
+      calculation_status: calculationStatus
+    } : null,
+    history_status: historyStatus
   };
 }
 
@@ -404,7 +601,10 @@ export function parsePredictionHistory(
     total_count_known: item.total_count_known === false ? false : reportedTotal !== null,
     truncated: item.truncated === true || item.has_more === true
       || (reportedTotal ?? rows.length) > rows.length,
-    order_basis: nullableText(item.order_basis)
+    order_basis: nullableText(item.order_basis),
+    attempt_count_basis: item.attempt_count_basis === "target_projection_not_http_count"
+      ? "target_projection_not_http_count"
+      : null
   };
 }
 

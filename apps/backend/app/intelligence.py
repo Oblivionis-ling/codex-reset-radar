@@ -17,7 +17,7 @@ from .prediction_contract import (
 
 ANALYSIS_PROMPT_VERSION = "v2-post-semantics-9-context"
 TRANSLATION_PROMPT_VERSION = "v2-zh-translation-2-context"
-JUDGE_PROMPT_VERSION = "v2-reset-judge-9-two-targets"
+JUDGE_PROMPT_VERSION = "v2-reset-judge-10-time-contract"
 
 
 class JsonModel(Protocol):

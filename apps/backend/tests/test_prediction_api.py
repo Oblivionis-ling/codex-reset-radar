@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+from datetime import UTC, datetime, timedelta
+
+import pytest
+
 import app.main as main_module
 from app.db import utc_now
 from app.deepseek import build_request_payload
@@ -89,7 +94,7 @@ def _install_healthy_projection(monkeypatch, client, *, validation=None) -> None
     monkeypatch.setattr(ledger, "prediction_lines", lambda _judgement, *, as_of: projection, raising=False)
 
 
-def _append_synthetic_unknown_output(database, ledger):
+def _begin_synthetic_attempt(database, ledger):
     instant = utc_text()
     context = database.judgement_context(as_of=instant)
     context["pending_inputs"] = []
@@ -127,6 +132,27 @@ def _append_synthetic_unknown_output(database, ledger):
     }, {"runtime_id": "synthetic-api-test", "pid": 1, "platform": "test"})
     tracker.prepare_request(build_request_payload("offline-test", "synthetic", "no network request"))
     attempt = tracker.begin_attempt()
+    return run, attempt
+
+
+def _append_synthetic_unknown_output(
+    database, ledger, *, rejected_target=None, known_target=None, future_validity=False, expired_validity=False,
+):
+    known_evidence = None
+    if known_target is not None:
+        post = database.upsert_posts_detailed([{
+            "tweet_id": "synthetic-api-valid-target-evidence",
+            "text": "Synthetic API target evidence; no network or provider call.",
+            "posted_at": utc_text(datetime.now(UTC) - timedelta(minutes=1)),
+            "source": "synthetic-api-test",
+        }])[0]
+        database.save_analysis(post["post_id"], post["content_hash"], "offline-test", "offline-analysis-v1", {
+            "category": "other", "summary": "Offline target evidence fixture.",
+            "context_sufficient": True, "_input_hash": post["content_hash"],
+            "_text_hash": post["content_hash"], "_analysed_at": utc_now(),
+        })
+        known_evidence = "synthetic-api-valid-target-evidence"
+    run, attempt = _begin_synthetic_attempt(database, ledger)
     target_outputs = {
         target: {
             "target": target,
@@ -149,9 +175,45 @@ def _append_synthetic_unknown_output(database, ledger):
         }
         for target in ("EXTRA_FULL", "BANKED")
     }
+    if rejected_target is not None:
+        rejected = target_outputs[rejected_target]
+        rejected.update({
+            "status": "KNOWN",
+            "predicted_start": "2026-10-10T10:00:00Z",
+            "prediction_form": "point",
+            "precision": "second",
+            "source_timezone": "UTC",
+            "time_basis": "model_inference",
+            "unresolved_reason": None,
+            "lifecycle": "planned",
+            "evidence_post_ids": ["not-exposed-to-this-run"],
+        })
+    if known_target is not None:
+        target_outputs[known_target].update({
+            "status": "KNOWN",
+            "predicted_start": utc_text(datetime.now(UTC) + timedelta(hours=1)),
+            "prediction_form": "point",
+            "precision": "second",
+            "source_timezone": "UTC",
+            "time_basis": "model_inference",
+            "reason": "Explicit offline fixture has no future time evidence.",
+            "relative_offset_seconds": 3600,
+            "unresolved_reason": None,
+            "lifecycle": "planned",
+            "evidence_post_ids": [known_evidence],
+        })
     judged_at = utc_now()
+    created_at = utc_text(datetime.now(UTC) - timedelta(hours=1)) if expired_validity else judged_at
+    valid_until = (
+        utc_text(datetime.now(UTC) - timedelta(minutes=30)) if expired_validity
+        else utc_text(datetime.now(UTC) + timedelta(days=1)) if future_validity
+        else judged_at
+    )
+    context = database.judgement_context(as_of=judged_at)
+    context["pending_inputs"] = []
+    database.refresh_input_snapshot(context)
     result = {
-        "created_at": judged_at,
+        "created_at": created_at,
         "action_level": "UNKNOWN",
         "horizon_24h": "UNKNOWN",
         "horizon_48h": "UNKNOWN",
@@ -165,8 +227,14 @@ def _append_synthetic_unknown_output(database, ledger):
         "estimated_start": None,
         "estimated_end": None,
         "estimate_basis": "Synthetic fixture only.",
-        "valid_until": judged_at,
-        "raw": {"synthetic": True},
+        "valid_until": valid_until,
+        "raw": {
+            "synthetic": True,
+            "input_versions": context["input_versions"],
+            "input_post_ids": list(context["input_versions"]),
+            "input_snapshot": database.input_snapshot(context),
+        },
+        "cycle_id": (context.get("current_cycle") or {}).get("id"),
         "predictions": target_outputs,
     }
     output = ledger.commit_judge(run.run_id, attempt.attempt_id, result)
@@ -182,14 +250,279 @@ def test_radar_adds_three_line_projection_without_changing_legacy_reset_fields(c
     assert payload["next_reset"]["status"] == "waiting_for_verified_history"
     assert "estimated_start" in payload
     assert "valid_until" in payload
-    assert payload["prediction"]["state"] == "not_implemented"
+    assert payload["prediction"]["state"] == "unknown"
+    for target in ("EXTRA_FULL", "BANKED"):
+        status_projection = payload["prediction"]["lines"][target]["status_projection"]
+        assert status_projection["capability"] == {"implementation": "supported", "source": "ledger_v2"}
+        assert status_projection["run"]["state"] == "not_started"
+        assert status_projection["result"]["state"] == "not_attempted"
+        assert payload["prediction"]["lines"][target]["state"] == "not_attempted"
     assert set(payload["prediction"]["lines"]) == {"NORMAL_WEEKLY", "EXTRA_FULL", "BANKED"}
-    assert payload["prediction"]["lines"]["NORMAL_WEEKLY"]["state"] == "not_backfilled"
-    assert all(payload["prediction"]["lines"][target]["state"] == "not_implemented" for target in ("EXTRA_FULL", "BANKED"))
+    normal = payload["prediction"]["lines"]["NORMAL_WEEKLY"]
+    assert normal["state"] == "unavailable"
+    assert normal["status_projection"]["normal"]["calculation_status"] == "no_business_full_anchor"
+    assert normal["status_projection"]["history_status"] == "not_applicable"
     assert payload["prediction"]["capabilities"]["history"] is True
-    assert "NOT_BACKFILLED" in payload["prediction"]["lines"]["NORMAL_WEEKLY"]["reason"]
+    assert "NO_BUSINESS_FULL_ANCHOR" in normal["reason"]
     assert client.app.state.database.counts() == before
     assert client.app.state.pipeline is None
+
+
+def test_normal_calculable_helper_is_not_misclassified_as_unbackfilled(monkeypatch, client):
+    database = client.app.state.database
+    anchor_at = utc_text(datetime.now(UTC) - timedelta(hours=1))
+    database.upsert_reset_event({
+        "event_key": "synthetic-normal-helper-anchor",
+        "event_type": "FULL_RESET",
+        "occurred_at": anchor_at,
+        "title": "Synthetic Full anchor for Normal helper test",
+        "summary": "Offline test fixture only.",
+        "time_basis": "explicit_text",
+        "scope": "all_paid",
+        "execution_stage": "completed",
+        "evidence_post_ids": [],
+        "provenance": {"time_form": "point", "time_precision": "second", "source_timezone": "UTC"},
+    }, is_synthetic=True)
+    monkeypatch.setattr(main_module, "collector_health", lambda _states: {
+        "data_health": "HEALTHY",
+        "collector": {
+            "profile_monitor": {"state": "healthy", "reason": "FIXTURE"},
+            "replies_monitor": {"state": "healthy", "reason": "FIXTURE"},
+        },
+    })
+    before_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+
+    normal = client.get("/api/v2/radar").json()["prediction"]["lines"]["NORMAL_WEEKLY"]
+
+    after_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+    assert normal["status_projection"]["normal"]["calculation_status"] == "calculated"
+    assert normal["status_projection"]["history_status"] == "not_backfilled"
+    assert normal["validation_reason"] == "NORMAL_VERSION_NOT_RECORDED"
+    assert normal["state"] == "baseline"
+    assert normal["predicted_start"] is not None
+    assert normal["current_advice_eligible"] is True
+    assert normal.get("forecast_id") is None and normal.get("record_id") is None
+    assert after_hash == before_hash
+
+
+def test_real_ledger_normal_baseline_without_output_observation_is_not_current_advice(monkeypatch, client):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    anchor = database.upsert_reset_event({
+        "event_key": "synthetic-normal-unobserved-anchor",
+        "event_type": "FULL_RESET",
+        "occurred_at": utc_text(datetime.now(UTC) - timedelta(hours=1)),
+        "title": "Synthetic Full anchor with unobserved Normal output",
+        "summary": "Offline API protection fixture.",
+        "time_basis": "explicit_text",
+        "scope": "all_paid",
+        "execution_stage": "completed",
+        "evidence_post_ids": [],
+        "provenance": {"time_form": "point", "time_precision": "second", "source_timezone": "UTC"},
+    }, is_synthetic=True)
+    original_read_connection = ledger._read_connection
+    fail_observation_once = True
+
+    def skip_first_read():
+        nonlocal fail_observation_once
+        if fail_observation_once:
+            fail_observation_once = False
+            raise RuntimeError("synthetic output observation failure")
+        return original_read_connection()
+
+    monkeypatch.setattr(ledger, "_read_connection", skip_first_read)
+    record = ledger.record_normal_baseline(anchor, is_synthetic=True)
+    assert record is not None
+    monkeypatch.setattr(main_module, "collector_health", lambda _states: {
+        "data_health": "HEALTHY",
+        "collector": {
+            "profile_monitor": {"state": "healthy", "reason": "FIXTURE"},
+            "replies_monitor": {"state": "healthy", "reason": "FIXTURE"},
+        },
+    })
+
+    normal = client.get("/api/v2/radar").json()["prediction"]["lines"]["NORMAL_WEEKLY"]
+
+    assert normal["status_projection"]["history_status"] == "backfilled"
+    assert normal["status_projection"]["normal"]["calculation_status"] == "calculated"
+    assert normal["validation_reason"] == "OUTPUT_AVAILABILITY_PENDING"
+    assert normal["output_available_at"] is None
+    assert normal["current_advice_eligible"] is False
+
+
+def test_real_ledger_normal_unknown_upper_bound_is_not_current_advice(monkeypatch, client):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    anchor = database.upsert_reset_event({
+        "event_key": "synthetic-normal-unknown-upper-anchor",
+        "event_type": "FULL_RESET",
+        "occurred_at": utc_text(datetime.now(UTC) - timedelta(hours=1)),
+        "title": "Synthetic Full anchor without an upper bound",
+        "summary": "Offline API protection fixture.",
+        "time_basis": "explicit_text",
+        "scope": "all_paid",
+        "execution_stage": "completed",
+        "evidence_post_ids": [],
+        "provenance": {"time_form": "start_only", "time_precision": "minute", "source_timezone": "UTC"},
+    }, is_synthetic=True)
+    record = ledger.record_normal_baseline(anchor, is_synthetic=True)
+    assert record is not None
+    monkeypatch.setattr(main_module, "collector_health", lambda _states: {
+        "data_health": "HEALTHY",
+        "collector": {
+            "profile_monitor": {"state": "healthy", "reason": "FIXTURE"},
+            "replies_monitor": {"state": "healthy", "reason": "FIXTURE"},
+        },
+    })
+
+    normal = client.get("/api/v2/radar").json()["prediction"]["lines"]["NORMAL_WEEKLY"]
+
+    assert normal["status_projection"]["history_status"] == "backfilled"
+    assert normal["status_projection"]["normal"]["calculation_status"] == "calculated"
+    assert normal["validation_reason"] == "ANCHOR_UPPER_BOUND_UNKNOWN"
+    assert normal["anchor_limitation"] == "ANCHOR_UPPER_BOUND_UNKNOWN"
+    assert normal["current_advice_eligible"] is False
+
+
+def test_real_ledger_partial_rejection_hides_question_id_as_current_output_and_keeps_legal_unknown(client):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    run, _ = _append_synthetic_unknown_output(
+        database, ledger, rejected_target="EXTRA_FULL", future_validity=True,
+    )
+    before_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+
+    radar = client.get("/api/v2/radar").json()["prediction"]
+    full = radar["lines"]["EXTRA_FULL"]
+    banked = radar["lines"]["BANKED"]
+    assert full["state"] == "rejected"
+    assert full["status_projection"]["result"]["state"] == "rejected"
+    assert full["forecast_id"] is None
+    assert full["form"] == "unknown"
+    assert full["predicted_start"] is None and full["predicted_end"] is None
+    assert full["origin_judgement_id"] is None
+    assert "rejected_output" not in full
+    assert full["evidence_post_ids"] is None and full["evidence_refs"] is None
+    assert full["relative_offset_seconds"] is None and full["lifecycle"] is None
+    assert full["reason"] == full["validation_reason"]
+    assert full["question_version"] is not None and full["question_revision"] is not None
+    assert full["run_id"] == run.run_id and full["attempt_id"] is not None
+    assert full["series_id"] == run.target_refs["EXTRA_FULL"]["series_id"]
+
+    assert banked["state"] == "unknown"
+    assert banked["status"] == "UNKNOWN" and banked["valid"] is True
+    assert banked["status_projection"]["result"]["state"] == "unknown_valid"
+    assert banked["forecast_id"] is not None
+    assert banked["question_version"] == banked["forecast_id"]
+    assert banked["predicted_start"] is None and banked["predicted_end"] is None
+    assert banked["run_id"] == full["run_id"] and banked["attempt_id"] == full["attempt_id"]
+
+    history = client.get("/api/v2/predictions/history").json()
+    run_items = {item["target"]: item for item in history["items"]}
+    assert run_items["EXTRA_FULL"]["status_projection"]["result"]["state"] == "rejected"
+    assert run_items["EXTRA_FULL"]["state"] == "rejected"
+    assert "rejected_output" not in run_items["EXTRA_FULL"]
+    assert run_items["EXTRA_FULL"]["reason"] == run_items["EXTRA_FULL"]["validation_reason"]
+    assert run_items["BANKED"]["status_projection"]["result"]["state"] == "unknown_valid"
+    assert run_items["BANKED"]["state"] == "historical"
+    assert hashlib.sha256(database.path.read_bytes()).hexdigest() == before_hash
+
+
+@pytest.mark.parametrize("target", ["EXTRA_FULL", "BANKED"])
+def test_real_ledger_timeout_keeps_a_valid_prior_forecast_only_inside_last_known(client, target):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    prior_run, prior_output = _append_synthetic_unknown_output(
+        database, ledger, known_target=target, future_validity=True,
+    )
+    failed_run, failed_attempt = _begin_synthetic_attempt(database, ledger)
+    ledger.append_attempt_event(
+        failed_run.run_id, failed_attempt.attempt_id, "timeout", failure_terminal=True,
+        reason_code="TIMEOUT", attempt_finished_at=utc_text(), output_available_at=None,
+    )
+    before_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+
+    radar = client.get("/api/v2/radar").json()["prediction"]["lines"]
+    after_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+    full = radar[target]
+
+    assert full["state"] == "timeout"
+    assert full["forecast_id"] is None and full["predicted_start"] is None
+    assert full["question_version"] is not None and full["question_revision"] is not None
+    assert full["origin_judgement_id"] is None
+    assert full["reason"] == "TIMEOUT"
+    assert full["evidence_post_ids"] is None and full["evidence_refs"] is None
+    assert full["relative_offset_seconds"] is None and full["lifecycle"] is None
+    assert full["record_id"] is None and full["ledger_seq"] is None
+    assert full["input_snapshot"] in failed_run.input_artifact_refs
+    assert full["runtime"] == {"runtime_id": "synthetic-api-test"}
+    assert full["prompt_artifact_ref"] == failed_run.prompt_artifact_ref
+    assert full["schema_artifact_ref"] == failed_run.schema_artifact_ref
+    assert full["record_kind"] == "replay" and full["is_synthetic"] is True
+    last_known = full["status_projection"]["last_known"]
+    assert last_known["state"] == "valid"
+    assert last_known["origin_judgement_id"] == prior_output.judgement_id
+    assert last_known["forecast"]["status"] == "KNOWN"
+    assert last_known["forecast"]["predicted_start"] is not None
+    assert last_known["forecast"]["reason"] == "Explicit offline fixture has no future time evidence."
+    assert last_known["forecast"]["evidence_post_ids"] == ["synthetic-api-valid-target-evidence"]
+    assert last_known["forecast"]["relative_offset_seconds"] == 3600
+    assert full["status_projection"]["run"]["run_id"] == failed_run.run_id
+    assert full["status_projection"]["run"]["attempt_id"] == failed_attempt.attempt_id
+    prior_history_line = next(
+        item for item in client.get("/api/v2/predictions/history").json()["items"]
+        if item["target"] == target and item["reason"] == "Explicit offline fixture has no future time evidence."
+    )
+    assert prior_history_line["reason"] == "Explicit offline fixture has no future time evidence."
+    assert after_hash == before_hash
+
+
+@pytest.mark.parametrize("change", ["input", "cycle"])
+def test_real_ledger_timeout_hides_prior_forecast_after_input_or_cycle_change(client, change):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    _append_synthetic_unknown_output(database, ledger, known_target="EXTRA_FULL", future_validity=True)
+    if change == "input":
+        database.upsert_posts_detailed([{
+            "tweet_id": "synthetic-api-valid-target-evidence",
+            "text": "Changed synthetic evidence invalidates the prior judgement.",
+            "posted_at": utc_text(datetime.now(UTC) - timedelta(minutes=1)),
+            "source": "synthetic-api-test",
+        }])
+        expected_reasons = {"INPUT_CHANGED", "INPUT_SNAPSHOT_CHANGED", "QUESTION_VERSION_CHANGED"}
+    else:
+        database.upsert_reset_event({
+            "event_key": "synthetic-api-cycle-change-anchor",
+            "event_type": "FULL_RESET",
+            "occurred_at": utc_text(datetime.now(UTC) - timedelta(minutes=1)),
+            "title": "Synthetic Full anchor changing the cycle",
+            "summary": "Offline cycle-change fixture only.",
+            "time_basis": "explicit_text",
+            "scope": "all_paid",
+            "execution_stage": "completed",
+            "evidence_post_ids": [],
+            "provenance": {"time_form": "point", "time_precision": "second", "source_timezone": "UTC"},
+        }, is_synthetic=True)
+        expected_reasons = {"CYCLE_CHANGED", "QUESTION_VERSION_CHANGED"}
+    failed_run, failed_attempt = _begin_synthetic_attempt(database, ledger)
+    ledger.append_attempt_event(
+        failed_run.run_id, failed_attempt.attempt_id, "timeout", failure_terminal=True,
+        reason_code="TIMEOUT", attempt_finished_at=utc_text(), output_available_at=None,
+    )
+    before_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+
+    full = client.get("/api/v2/radar").json()["prediction"]["lines"]["EXTRA_FULL"]
+
+    after_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+    last_known = full["status_projection"]["last_known"]
+    assert full["state"] == "timeout"
+    assert full["forecast_id"] is None and full["predicted_start"] is None
+    assert last_known["state"] != "valid"
+    assert last_known["reason_code"] in expected_reasons
+    assert "forecast" not in last_known
+    assert full["status_projection"]["run"]["run_id"] == failed_run.run_id
+    assert full["status_projection"]["run"]["attempt_id"] == failed_attempt.attempt_id
+    assert after_hash == before_hash
 
 
 def test_partial_projection_keeps_targets_independent_and_preserves_date_envelope(monkeypatch, client):
@@ -369,6 +702,8 @@ def test_history_is_read_only_preserves_ledger_order_and_reports_truncation(monk
     assert response.json()["truncated"] is True
     assert [row["output_revision"] for row in response.json()["items"]] == [1, 2]
     assert response.json()["attempts"][0]["reason_code"] == "MISSING_TARGET"
+    assert all(item["status_projection"]["result"]["state"] == "accepted" for item in response.json()["items"])
+    assert all(item["state"] == "current" for item in response.json()["items"])
     assert "run_context" not in response.text
     assert calls == [{"target": "EXTRA_FULL", "series_id": "series-a", "limit": 2}]
     assert client.app.state.database.counts() == before
@@ -422,3 +757,116 @@ def test_truncated_history_uses_real_ledger_boundary_dtos(client):
     assert body["last_items"][0]["target_output_id"] == f"{outputs[-1][1].judgement_id}:EXTRA_FULL"
     assert all(item["is_synthetic"] is True for item in [*body["first_items"], *body["last_items"]])
     assert all("payload" not in item and "payload_json" not in item for item in [*body["items"], *body["first_items"], *body["last_items"]])
+
+
+def test_malformed_status_projection_fails_closed_at_radar_boundary(monkeypatch, client):
+    _install_healthy_projection(monkeypatch, client)
+    ledger = client.app.state.prediction_ledger
+    malformed = {
+        "target": "EXTRA_FULL", "state": "current", "status": "KNOWN", "valid": True,
+        "form": "point", "predicted_start": "2026-10-10T10:00:00Z",
+        "status_projection": {
+            "capability": {"implementation": "supported", "source": "ledger_v2"},
+            "run": {"state": "failed", "run_id": "run-x", "attempt_id": "attempt-x", "finished_at": None},
+            "result": {"state": "accepted", "reason_code": "VALID", "summary": None},
+            "history_status": "backfilled", "last_known": None,
+        },
+    }
+    raw = ledger.prediction_lines
+
+    def broken_projection(_judgement, *, as_of):
+        value = raw(None, as_of=as_of)
+        return {
+            **value,
+            "lines": {"NORMAL_WEEKLY": {}, "EXTRA_FULL": malformed, "BANKED": {}},
+            "capabilities": {"model_targets": ["EXTRA_FULL", "BANKED"]},
+        }
+
+    monkeypatch.setattr(ledger, "prediction_lines", broken_projection, raising=False)
+    line = client.get("/api/v2/radar").json()["prediction"]["lines"]["EXTRA_FULL"]
+
+    assert line["state"] == "unavailable"
+    assert line["status_projection"]["capability"]["source"] == "contract_error"
+    assert line["status_projection"]["result"]["state"] == "unavailable"
+    assert line["predicted_start"] is None and line["form"] == "unknown"
+    assert line["origin_judgement_id"] is None
+
+
+def test_malformed_status_projection_fails_closed_at_history_boundary(monkeypatch, client):
+    ledger = client.app.state.prediction_ledger
+    item = {
+        "target": "EXTRA_FULL", "series_id": "series-a", "forecast_id": "question-a",
+        "question_version": "question-a", "question_revision": 1, "revision": 1,
+        "origin_judgement_id": 7, "state": "current", "status": "KNOWN", "valid": True,
+        "form": "point", "predicted_start": "2026-10-10T10:00:00Z",
+        "status_projection": {
+            "capability": {"implementation": "supported", "source": "ledger_v2"},
+            "run": {"state": "failed", "run_id": "run-a", "attempt_id": "attempt-a", "finished_at": None},
+            "result": {"state": "accepted", "reason_code": "VALID", "summary": None},
+            "history_status": "backfilled", "last_known": None,
+        },
+    }
+    monkeypatch.setattr(ledger, "prediction_history", lambda **_kwargs: {
+        "state": "ready", "target": "EXTRA_FULL", "series_id": "series-a",
+        "item_schema": "prediction-history-line-v1", "capabilities": {"history_lines": True},
+        "items": [item], "attempts": [], "total_count": 1, "truncated": False,
+    }, raising=False)
+
+    response = client.get("/api/v2/predictions/history?target=EXTRA_FULL&series_id=series-a")
+
+    line = response.json()["items"][0]
+    assert line["state"] == "unavailable"
+    assert line["status_projection"]["capability"]["source"] == "contract_error"
+    assert line["status_projection"]["result"]["state"] == "unavailable"
+    assert line["forecast_id"] is None and line["predicted_start"] is None
+    assert line["origin_judgement_id"] is None and line["form"] == "unknown"
+
+
+@pytest.mark.parametrize(("event_type", "expected_state", "reason_code"), [
+    ("timeout", "timeout", "TIMEOUT"),
+    ("cancelled", "cancelled", "CANCELLED"),
+    ("http_failure", "failed", "HTTP_FAILURE"),
+    ("recovered_terminal_unknown", "unknown_terminal", "TERMINAL_UNKNOWN"),
+])
+def test_real_ledger_terminal_states_reach_radar_and_history_without_get_writes(
+    client, event_type, expected_state, reason_code,
+):
+    database = client.app.state.database
+    ledger = client.app.state.prediction_ledger
+    _append_synthetic_unknown_output(database, ledger, expired_validity=True)
+    failed_run, failed_attempt = _begin_synthetic_attempt(database, ledger)
+    ledger.append_attempt_event(
+        failed_run.run_id, failed_attempt.attempt_id, event_type, failure_terminal=True,
+        reason_code=reason_code, attempt_finished_at=utc_text(), output_available_at=None,
+    )
+    before_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+    with database.connect() as connection:
+        before_rows = connection.execute("SELECT count(*) FROM prediction_ledger").fetchone()[0]
+
+    radar = client.get("/api/v2/radar").json()["prediction"]
+    history = client.get("/api/v2/predictions/history").json()
+
+    with database.connect() as connection:
+        after_rows = connection.execute("SELECT count(*) FROM prediction_ledger").fetchone()[0]
+    after_hash = hashlib.sha256(database.path.read_bytes()).hexdigest()
+    assert after_rows == before_rows and after_hash == before_hash
+    for target in ("EXTRA_FULL", "BANKED"):
+        line = radar["lines"][target]
+        status_projection = line["status_projection"]
+        assert line["state"] == expected_state
+        assert status_projection["run"]["state"] == expected_state
+        assert status_projection["run"]["run_id"] == failed_run.run_id
+        assert status_projection["run"]["attempt_id"] == failed_attempt.attempt_id
+        assert status_projection["result"]["state"] == "not_returned"
+        assert line["predicted_start"] is None and line["origin_judgement_id"] is None
+        assert status_projection["last_known"] is not None
+        assert status_projection["last_known"]["state"] == "expired"
+        assert "forecast" not in status_projection["last_known"]
+    failed_history_attempts = [item for item in history["attempts"] if item["run_id"] == failed_run.run_id]
+    assert {item["target"] for item in failed_history_attempts} == {"EXTRA_FULL", "BANKED"}
+    assert {item["attempt_id"] for item in failed_history_attempts} == {failed_attempt.attempt_id}
+    assert {item["state"] for item in failed_history_attempts} == {event_type}
+    assert {item["reason_code"] for item in failed_history_attempts} == {reason_code}
+    assert history["attempt_count"] == len(history["attempts"])
+    assert history["attempt_count_basis"] == "target_projection_not_http_count"
+    assert all("status_projection" in item for item in history["items"])

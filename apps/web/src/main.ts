@@ -26,6 +26,7 @@ import {
   predictionMethodLabel,
   predictionReasonLabel,
   predictionStateLabel,
+  predictionStatusProjectionNotes,
   predictionTimeSummary,
   tone
 } from "./radar-ui";
@@ -170,6 +171,10 @@ function predictionLineCard(
     ? `${predictionHealthLabel(line.health_state)} · ${line.health_reason}`
     : predictionHealthLabel(line.health_state);
   const outputAvailability = outputAvailabilityLabel(line.output_available_at);
+  const statusProjection = predictionStatusProjectionNotes(line);
+  const statusProjectionNote = statusProjection.length
+    ? `<p class="prediction-status-projection" role="status">${escapeHtml(statusProjection.join(" · "))}</p>`
+    : "";
   const basis = line.basis && line.basis !== "user_full_plus_7d"
     ? `<div><dt>依据</dt><dd>${escapeHtml(line.basis)}</dd></div>`
     : "";
@@ -192,13 +197,18 @@ function predictionLineCard(
   const eligibilityWarning = notCurrent
     ? `<p class="prediction-stale-warning" role="status">${escapeHtml(globalHealth.refresh_failed
       ? "刷新失败；下方仅为最后成功数据，不作为当前建议。"
-      : predictionReasonLabel(line.eligibility_reason ?? "此记录未通过当前全局校验/健康门控，不作为当前建议。"))}</p>`
+      : line.status_projection
+        ? line.eligibility_reason
+          ? `${predictionReasonLabel(line.eligibility_reason)}；不作为当前建议。`
+          : "当前不可用，不作为当前建议；请查看运行状态、有效性与数据健康信息。"
+        : predictionReasonLabel(line.eligibility_reason ?? "此记录未通过当前全局校验/健康门控，不作为当前建议。"))}</p>`
     : "";
   return `<article class="prediction-line${line.target === "BANKED" ? " prediction-line-banked" : ""}${notCurrent ? " prediction-line-stale" : ""}">
     <header><span class="eyebrow${line.target === "BANKED" ? " purple-text" : ""}">${line.target === "BANKED" ? "BANKED · PURPLE" : escapeHtml(line.target)}</span>
       <h3>${escapeHtml(predictionTitles[line.target])}</h3><span class="prediction-state">${escapeHtml(predictionStateLabel(state))}</span></header>
     ${line.target === "NORMAL_WEEKLY" ? `<p class="prediction-note">参考规则，非官方恢复承诺。</p>${anchorCaveat}` : anchorCaveat}
     <strong class="prediction-time">${escapeHtml(predictionTimeSummary(line))}</strong>
+    ${statusProjectionNote}
     <dl>
       <div><dt>时间形式</dt><dd>${escapeHtml(predictionFormLabel(line.form))}</dd></div>
       <div><dt>来源 / 方法</dt><dd>${escapeHtml(predictionMethodLabel(line.method, line.basis))}</dd></div>
@@ -210,7 +220,7 @@ function predictionLineCard(
       <div><dt>有效性</dt><dd>${escapeHtml(validity)}</dd></div>
       <div><dt>数据健康</dt><dd>${escapeHtml(health)}</dd></div>${basis}
     </dl>
-    <p class="prediction-reason">${escapeHtml(line.reason ? predictionReasonLabel(line.reason) : line.health_reason ?? "暂无可审查依据")}</p>
+    ${line.status_projection ? "" : `<p class="prediction-reason">${escapeHtml(line.reason ? predictionReasonLabel(line.reason) : line.health_reason ?? "暂无可审查依据")}</p>`}
     ${relativeDetails}${eligibilityWarning}
     ${historyLink}
   </article>`;
@@ -272,6 +282,10 @@ function pageRoute(): PageRoute {
 
 function historyVersion(line: PredictionLine, label: string): string {
   const revisions = historyRevisionLabel(line);
+  const statusProjection = predictionStatusProjectionNotes(line);
+  const statusProjectionNote = statusProjection.length
+    ? `<p class="history-status-projection" role="status">${escapeHtml(statusProjection.join(" · "))}</p>`
+    : "";
   const available = outputAvailabilityLabel(line.output_available_at);
   const provenance = line.is_synthetic === true ? "合成账本版本"
     : line.is_synthetic === false ? "非合成来源（不代表时间事实已核实）" : "来源属性未记录";
@@ -286,6 +300,7 @@ function historyVersion(line: PredictionLine, label: string): string {
   return `<article class="history-version">
     <span class="eyebrow">${escapeHtml(label)}</span><h3>${escapeHtml(revisions)} · ${escapeHtml(predictionStateLabel(line.state))}</h3>
     <strong>${escapeHtml(predictionTimeSummary(line))}</strong>
+    ${statusProjectionNote}
     <dl><div><dt>输出可用时间</dt><dd>${escapeHtml(available)}${line.output_availability_kind ? ` · 来源 ${escapeHtml(line.output_availability_kind)}` : ""}</dd></div>
       <div><dt>形式 / 方法</dt><dd>${escapeHtml(predictionFormLabel(line.form))} · ${escapeHtml(predictionMethodLabel(line.method, line.basis))}</dd></div>
       <div><dt>范围 / 时区 / 精度 / 时间依据</dt><dd>${escapeHtml(line.scope ?? "范围未记录")} · ${escapeHtml(line.source_timezone ?? "未确认时区")} · ${escapeHtml(line.precision ?? "未提供精度")} · ${escapeHtml(line.time_basis ?? "未说明")}${line.date_boundaries ? ` · ${escapeHtml(line.date_boundaries)}` : ""}</dd></div>
@@ -306,7 +321,10 @@ function historyAttemptsSection(history: PredictionHistoryResponse): string {
     const timing = time ? ` · ${formatTime(time)}` : " · 时间未记录";
     return `<li><strong>${escapeHtml(predictionStateLabel(attempt.state))}</strong>${escapeHtml(timing)}<span> · ${escapeHtml(reason)}</span>${attempt.output_status ? `<span> · 输出：${escapeHtml(attempt.output_status)}</span>` : ""}</li>`;
   }).join("");
-  return `<details class="history-more"><summary>目标尝试与失败原因（${history.attempts.length}${history.attempts_truncated ? "+，已截断" : ""}）</summary><ul>${rows}</ul></details>`;
+  const countBasis = history.attempt_count_basis === "target_projection_not_http_count"
+    ? " · 按目标投影计数，不代表 HTTP 请求次数"
+    : "";
+  return `<details class="history-more"><summary>目标尝试与失败原因（${history.attempts.length}${history.attempts_truncated ? "+，已截断" : ""}${countBasis}）</summary><ul>${rows}</ul></details>`;
 }
 
 function renderHistoryPage(history: PredictionHistoryResponse, target: PredictionTarget, seriesId: string, warning = ""): string {
