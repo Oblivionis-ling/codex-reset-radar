@@ -1,4 +1,68 @@
-## 受控模型验收（2026-10-09；本轮结果已定稿；Git同步以 controlled-model-test-v1/git-final-01/receipt.json 为准）
+## 当前续验：状态修复与定向回归（2026-10-10）
+
+**当前结论：ENGINEERING_FIXED / WAITING_FOR_CONTROLLED_TEST。** freeze-02 正式源码、Backend/Web 最终离线套件及主方五场隔离 UI 观察均通过。Curie 的 FIX-S1/S3/S4/S5 输入与双时钟 proof 已完成并由主接受；四场尚未运行，用户模型授权仍为 0。实际准确率仍 NOT_EVALUATED，部署仍 NOT_DEPLOYED。源码 13 文件组提交为 `1ccbfaa6ccd91d2d340b2050b49d078f8313a31b`；六文档组的最终 HEAD 与 CI 状态由本地 `docs-git-closeout-01.json` 动态记录，正文不重复嵌入文档 HEAD。
+
+### 冻结身份与工程验证
+
+最终 source-freeze-02 有 108 项 code/test 路径，使用 SortedDictionary<string,object> 和 StringComparer.Ordinal 明确路径序，按 path TAB 十进制 bytes TAB 小写 SHA-256 LF 连接后 SHA-256：312868b4adf81d88955a9b630d1b0833b553072dc592954052e28f397924c9fc。Source 与 clean-source-02 逐项一致。完整性补充清单中只有 README.md 是 108 项之外的补充（SHA-256 d4d958c6a65608f8638e17a7e97bf691b8fa714b69fbec9378f94d62eaa2a714）；另三项正式 marker 已在 108 项内，只是也被完整性清单单列。
+
+最终 freeze-02 回归：Backend 360 passed / 0 failed / 0 skipped，exit 0，含一条上游 Starlette 弃用警告；Web 31 passed，typecheck/build 均 exit 0。Collector 18 项仅复用未变化 fingerprint 的既有证据，本轮未重跑。请直接复核四套原始 receipt，而非不存在的汇总回执：
+
+- Backend：runtime/review/prediction-three-lines-v1-20261009/state-fix-and-targeted-retest-v1/preparation/stage-a-02/backend-full-final-freeze02/（command.json、result.json、stdout/stderr、guard-*.json）
+- Web：同目录 web-test-final-freeze02/（command.json、result.json、stdout/stderr、node-guard-*.json）
+- Web typecheck：同目录 web-typecheck-final-freeze02/（command.json、result.json、stdout/stderr、node-guard-*.json）
+- Web build：同目录 web-build-final-freeze02/（command.json、result.json、stdout/stderr、node-guard-*.json）
+
+Hubble 的 reason-isolation 修补限定为 prediction_ledger.py 与 test_prediction_api.py，SHA-256 分别为 ac79985607f926b26d43d2afbfcbc7f47ec2883ecfe01561ea56f2455f09e5c3、59960cc66cf75131eaba64b44e26b387180bc2be64b81474c48c09add844ba6b；其 focused 回执为 9 passed / 15 deselected，只代表其声明的焦点范围。以上 freeze-02 Backend 全量是修补后的最终全量结果。旧 clean-copy 缺 README 的 358/1 与补齐 README 后、Hubble 修补前的 359/0 均保留为各自历史结果，不取代最终 360/0。
+
+本轮记录的三个 Prompt ID 为 v2-post-semantics-9-context、v2-zh-translation-2-context、v2-reset-judge-10-time-contract；旧 Judge ID v2-reset-judge-9-two-targets 仅保留在历史章节。SHA-256 c5772576a57a690367217f8c6fb9a47cb40011182e26106b6a95f2725f800dbf 仅为 PREDICTION_PROMPT_EXTENSION 的运行时字符串 hash；不是完整 Judge request、组装后 prompt 或 basePrompt 的 hash。本轮 Judge prompt successor 在 freeze-02 前修订一次并冻结，最终测试之后未继续修改。
+
+### 本轮变更摘要
+
+正式状态映射修正现代 timeout 与 legacy 状态的区分；Normal 在无可信 business anchor 时不再暗示可计算。Last-known timeout 不再沿用上次 accepted 输出的 reason。S3 的 point 与 start-only 区别通过一次 v10 Judge prompt 后继修订表达，严格校验没有放宽；上述工程与 UI 结果不等于模型语义已验证。
+
+### FIX-S1/S3/S4/S5 输入冻结与成本边界（尚未执行模型请求）
+
+Curie 输入/上下文 proof SHA-256 `fa93ad14a4f419b75851c8974f68a2667074c81d2b2009537e1c9d2909536a5b`；冻结计划 SHA-256 `d7a4360f9193438a82e09c246e7cd92ac02346c1df4f905dd4ce0bcc9e2efee9`。proof 已完成并获主接受。四场总上限为 **8 次 HTTP attempts（不是 runs）**，分配 1/1/3/3、retries=0、timeout=45s；这是计划上限，不是模型授权。四场实际均未运行，真实 provider HTTP=0；离线 MockTransport 实际 4 次（analysis 2、translation 2），另有 1 条作者诊断不属于 HTTP。旧 S2 是独立只读证据，不计入此四场预算。
+
+| 场景 | business as-of（来源） | HTTP attempt 上限 | 已冻结的输入/门禁事实 |
+| --- | --- | ---: | --- |
+| FIX-S1 | `2026-10-09T09:16:27.312224Z`；正式 request JSON 的 `context.judged_at` | 1 | synthetic/replay 上游版本匹配；正式 context 的 `previous_judgement=null`，准备库不含 Judge/预测输出。 |
+| FIX-S3 | `2026-10-09T09:40:18.629816Z`；正式 request JSON 的 `context.judged_at` | 1 | 原整库 context 实测会把自己的旧 Judge 带入 `previous_judgement`；新准备库只保留合法上游层并清除旧 Judge/目标行，正式 context 实测为 null，且上游版本匹配。旧库未改。 |
+| FIX-S4 | `2026-10-08T19:48:33.4539Z`；来自原 execution-plan 的 `pre_analysis_as_of`，作为新回放边界，不是当前日期推定 | 3 | acquired real source text；provenance 为 `legacy_undeclared`、`is_synthetic=null`，不升级为完整现代身份或推断为 false；fresh analysis、translation、Judge 各预留 1 次。Judge request hash 为 `POST_ANALYSIS_FREEZE_REQUIRED`。 |
+| FIX-S5 | `2026-10-09T09:00:00Z`；冻结的 synthetic replay business clock | 3 | 合成正文与 `author_handle=synthetic_control`、SYNTHETIC provenance、显式 URN 与 `no_original_url=true` 已进入结构化上下文；但通用 analysis prompt 仍含 Tibo/真实 X 身份冲突，故本场不得作为 official 合格证据，且不放宽资格或新增 prompt。Judge request hash 为 `POST_ANALYSIS_FREEZE_REQUIRED`。 |
+
+四个准备库均 integrity=`ok`、FK violations=0；prepared 库 hash 未变且不含 mock 请求或预填答案。两场 S1/S3 保持原 synthetic/replay 控制性质，不称真实官方验证。proof/plan 原件位于 `state-fix-and-targeted-retest-v1/preparation/targeted-freeze-01/actual-freeze-proof.json` 与 `preparation/fix-four-freeze-and-dry-run-plan.json`。Curie 自有临时 helper/mock 清理被策略拒绝，相关 `_tmp` 文件仍保留；这是 Curie 的清理状态，不与 Parfit 的服务/缓存清理回执混称。
+
+freeze-01 原声明摘要 516f1438… 保留。排序更正说明：在 PowerShell 7.6.5 / zh-CN 下，将 JSON rows 重建为原脚本的 [ordered] Dictionary 后执行 Sort-Object -Property path，可复现 516f1438…；对同一 JSON 解码为 PSCustomObject 再排序得到 388625b4…，并非源码字节变化。原 OrderedDictionary/Sort-Object 实际序列没有定义为稳定的 ordinal path order，所以 freeze-01 排序口径属 underspecified，不称 ordinal 或跨环境 canonical。freeze-02 才是本次全量套件与 UI 绑定的明确 ordinal 身份。
+
+### 主方隔离 UI 五场
+
+五场都绑定 freeze-02 manifest 312868b4…924c9fc 与 Backend Ledger SHA-256 ac799856…09e5c3；逐场 ready identity、main-browser-observation / main-ax-observation 和 final-freeze02-association 保存在 runtime/review/prediction-three-lines-v1-20261009/state-fix-and-targeted-retest-v1/ui-isolation/ui-acceptance-01/。观察时间是窗口，不冒称精确导航或截图时刻：
+
+| 场景 | 主方观察窗口（UTC） | 结果及边界 |
+| --- | --- | --- |
+| S1-03 | 2026-10-09 16:16:53–16:17:51 | timeout/not_returned 与 legacy not_implemented、UNKNOWN 清楚分离；Normal 无 business Full anchor。正式 API 读取隔离 Ledger clone。沿用 synthetic/replay 控制，不是官方真实验证。 |
+| S3-03 | 2026-10-09 16:19:53–16:20:23 | Full 部分拒收与合法 UNKNOWN 分离，拒收日期不作为当前预测。business as-of 2026-10-09T09:40:18.629816Z；历史 UI display_read_at 独立为 2026-10-09T09:40:57.435865Z。正式 API 读取隔离 Ledger clone；仍是 synthetic/replay 控制。 |
+| Last-known-valid-02 | 2026-10-09 16:00:49–16:03:04 | 离线 generic formal-ledger fixture 保留原 expiry；旧 point 只在 last-known 区域呈现，timeout 不泄漏上次 accepted reason。 |
+| Last-known-expired-01 | 2026-10-09 16:13:27–16:14:23 | 离线 generic formal-ledger fixture 显示 EXPIRED；不展示或续期旧预测和 reason。 |
+| Point-02 | 2026-10-09 16:23:50–16:24:31 | 离线 synthetic display-shape fixture 展示 end=null 的单点。这只是 renderer/状态形状正控，不代表真实模型语义或准确率正例。 |
+
+截图按原 receipt 仅 inline 观察、未保存本地图片。Parfit 的 services-stop-receipt 记录只停止其隔离 18787/15173；cache-cleanup-receipt 仅移除精确归属的 2 个 Vite cache 文件及已验证为空的 env 目录。5 个 guard JSON 与其他 _tmp 遗留项受策略阻止而保留，不能概括为全部已清理。Alpha5 8787/PID 18612 与 5173/PID 6488 未被本任务启停。
+
+### 旧读回、当前安全计数与授权边界
+
+S1/S2/S3/EMPTY 的 API GET readback、empty CLI、S1/S2/S3 CLI export/verify 属旧 freeze-01 证据；不可说它们覆盖 freeze-02 或验证了 Hubble 新修补。API readback 只保存路由状态/保护摘要，不保存 API body 或 DB payload rows；source DB/WAL/SHM 与 clone snapshots 在 GET 前后不变。S1/S2/S3 导出包 verify valid=true、各 10 个包内文件 hash 通过。Empty DB 前后 SHA-256 为 f6d0e290a0afaa550d10cd4a98f0100fac580ff888ef5d0fc2439aec92115c78，22 tables、8 rows、integrity ok、FK violations 0。主方 2026-10-09T16:49:59.4770868Z 只读复核 freeze-02 全 108 项 0 mismatch、P-main 原有 13 个 untracked 用户文件 13/13 hash match；该保护快照未重跑测试，逐项原始路径和哈希仍在 preparation/preparation-receipt.json。
+
+主方 2026-10-09T16:41:47.4845104Z（Asia/Shanghai 本地日期 2026-10-10）对生产 /api/v2/health 做过一次只读 GET：version 2.0.0-alpha.5，status healthy，data_health HEALTHY，database.status ready。Profile 16:41:34.043Z、Replies 16:41:34.023Z、Search 16:41:34.046Z，age 13.4s、state healthy、reason FRESH。它只是该时点快照，不是持续健康验收；GET 未触发 POST 或模型任务，不用旧 counts 固定分母。本任务主动 DeepSeek HTTP/Laya/微信/邮件 = 0；生产迁移/启停 = 0。该主动操作计数不代表生产自然调度为零。
+
+旧 2026-10-09 模型账本 13 HTTP budget / 11 used / 2 remaining 独立保留；旧剩余 2 未获授权。新计划上限 8 次 HTTP attempt（非 8 runs），四场分配 1/1/3/3；输入/context proof 已完成并接受，但四场尚未运行，且模型授权只能由用户给出，目前为 0。S4 的 provenance 仍为 legacy undeclared、`is_synthetic=null`；S5 结构化输入是 synthetic_control，但通用 analysis prompt 的 Tibo/真实 X 冲突使其 official 不合格。S4/S5 最终 Judge request hash 在 analysis 前均为 `POST_ANALYSIS_FREEZE_REQUIRED`。
+
+Backend4+tests4+Web5 源码组已提交并普通推送，commit 1ccbfaa6ccd91d2d340b2050b49d078f8313a31b；PR #11 仍 OPEN。文档六文件组随后独立提交并普通推送；最终文档 HEAD 与对应 CI 三项结果以 `state-fix-and-targeted-retest-v1/preparation/docs-git-closeout-01.json` 为准，正文不自嵌文档 HEAD。未 merge/tag。不得将旧 11 HTTP 历史与本轮零模型执行混为一账。
+
+---
+
+## 历史记录：受控模型验收（2026-10-09；原始结论及 11 HTTP 账目保留）
 
 S3 正式 N=0 评分已执行：导出/评分 freeze_at 为 2026-10-09T10:02:41Z，评分窗口为 [2026-10-09T09:00:00Z, 2026-10-09T10:02:41Z)。16 个 panels 的 N 均为 0，比例均为 null/不可计算。四个文件实际路径分别为 validation-01/s3-no-independent-truth-definition.json、validation-01/s3-no-independent-truth-set.json、validation-01/s3-no-independent-truth-assessment.json、validation-01/s3-no-independent-truth-final-only.json。只有 assessment.json 与 final-only.json 两个文件各为 10,429 bytes，SHA256 均为 54ef4e98c84663c51462701b5c6c1947081983be5feaecbfbda19d6daa35e8dd 且字节相等；不将此文件哈希归给 definition 或 set。scored 包 s3-review-03-scored.zip 为 29,513 bytes、SHA256 237285da0504a08881c2bfad1bde5dbb755e9b853c09325c1d8c39d55d409c10，verify exit 0、valid=true、10 个包内文件哈希通过、assessment reproduced 1。该 N=0 结果不是 100% 预测准确率或 model quality pass；准确率仍为 NOT_EVALUATED。
 
@@ -165,6 +229,8 @@ acceptance 的 artifact measurement：18,618 artifact DTO投影、648 distinct v
 A/C/D再次ready及主逻辑审查后，用新目录重冻结所有最新正式文件和tracked差异；三方hash/显式白名单、fresh dependencies身份、防护、完整Backend、受影响整套、smoke/两个样包/UI、Git diff-check/secret/bigfile/最终source comparison按实际回执收口。候选目录和旧结果不覆盖；不通过造.git、跳过/排除正式测试或改业务公式达标。
 
 最终冻结 code/test manifest、完整 Backend、Web/Collector、smoke、样包、隔离 UI 和源码比较均已完成并有 runtime 回执。临时 helper 与运行证据留在事项目录；测试进程已退出。事项 `_tmp` 清理曾被环境策略拒绝，原路径保留，不绕过策略删除。
+
+Hubble 的 `reason-isolation-fix-01.json` 曾将 guard/pytest 临时文件记为已清理；其最终终端结果是递归 `Remove` 被策略拒绝，五个 guard JSON 仍保留。该清理状态由 [cleanup correction](../../../state-fix-and-targeted-retest-v1/backend-owner/reason-isolation-fix-01-cleanup-correction.json) 更正；原回执保留，未尝试替代清理方式。修复源码与测试 SHA-256 已复核未变。
 
 Git收口已完成：按显式互不重叠shiplist提交核心、评分、API-Web、导出、六文档五组；feature分支 `codex/prediction-three-lines-v1-20261009` 已普通push，草稿依赖PR [#11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 的base为 `codex/prediction-ledger-v1-20261007`，依赖仍开放的PR #10。代码与六文档提交头 `1893db2d05e1ac72682f45d870c6bcb547c1fae9` 的GitHub Actions run `37841210618` 中 backend、web、collector-extension jobs 均为 SUCCESS。后续仅文档元数据提交；最终提交头与其三项CI结论见 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json`。未改main、未打tag、未部署或触碰生产；未强推、未重跑本地测试、未调用模型。
 

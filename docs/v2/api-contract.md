@@ -2,7 +2,7 @@
 
 Base URL: `http://127.0.0.1:8787/api/v2`
 
-The confirmed prediction semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b`. The isolated three-line development contract below passed final offline acceptance against code manifest `1c7a29ad…` (Backend 318/0/0, Web 17, Collector 18, type checks and builds). It is not deployed. See the [current report](../maintenance/prediction-three-lines-v1-report.md).
+The confirmed prediction semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b`. Code manifest `1c7a29ad…` and its Backend 318/0/0, Web 17, Collector 18, type-check and build results are a historical offline baseline only; they do not report acceptance of later changes. The three-line contract is not deployed. Consult the [current report](../maintenance/prediction-three-lines-v1-report.md) for the current task status.
 
 ## Prediction review export boundary
 
@@ -43,15 +43,35 @@ each target history successfully; the database remained byte-identical through C
 | `capabilities` | Boolean `normal_weekly`, `extra_full`, `banked`, `history` support flags; support does not prove that historical source records exist. |
 | `health` | Current collection health, generation health and global judgement validation remain visible. |
 | `lines` | Separate entries keyed by `NORMAL_WEEKLY`, `EXTRA_FULL`, `BANKED`; each retains its own availability and validity. |
-| Per-line time/source | `form`, nullable `predicted_start/end`, `expression`, `source_timezone`, `precision`, `time_basis`, relative anchor/unresolved reason, `method` and Normal `basis`. |
+| Per-line time/source | `form`, nullable `predicted_start/end`, `expression`, `source_timezone`, `precision`, `time_basis`, relative anchor/unresolved reason, `method` and Normal `basis`. A `point` identifies the target event's start; its `predicted_end` may stay null. |
 | Per-line lineage | Forecast/series/revision/previous links, update time, nullable `output_available_at` and availability kind. |
 | Per-line eligibility | State, validity, health, `current_advice_eligible` and an explanation when the record is only a historical reference. |
+| Per-line `status_projection` | Four independent dimensions: `capability{implementation,source}`, `run{state,run_id,attempt_id,finished_at,reason_code}`, `result{state,reason_code,summary}` and `history_status`; `last_known` is null or a flat status/lineage object with a safe `forecast` when valid. `NORMAL_WEEKLY` additionally has `normal{helper_status,calculation_status}`. |
 
 Compatibility absence and a valid returned model UNKNOWN are separate contracts. A legacy Judge
 without Banked output, an unavailable projection, a missing target field or unrecorded history must
 retain its absence/rejection reason; it must not be labelled as a historical model UNKNOWN. Only an
 accepted target response explicitly declaring UNKNOWN can support that model state. Errors and
 reasons use safe summaries, and the read API does not expose raw Ledger payloads or model requests.
+
+For `ledger_v2`, `result=not_attempted` means no attempt, `run=pending` is distinct from a terminal
+`run=timeout` (whose result is `not_returned`), and accepted explicit UNKNOWN is `unknown_valid`;
+validation rejection is `rejected`. A legacy undeclared target is `source=legacy_undeclared` /
+`result=legacy_missing`, not a model UNKNOWN. The latest run/result and `last_known` stay separate:
+a prior accepted forecast retains its own validity state and `valid_until`; a later failure does not
+renew that validity. `NORMAL_WEEKLY` exposes helper/calculation separately from history; without a
+usable Full anchor its calculation is `no_business_full_anchor`, regardless of history availability.
+For a modern target's latest pending, timeout or rejected attempt, current-output fields
+`target_output_id`, `forecast_id`, `prediction_form`, `predicted_start` and `predicted_end` are null;
+the Web-normalized `form` falls back to `unknown`. The current question references
+`question_version` / `question_revision` and run/attempt IDs remain, while any prior forecast stays
+under `last_known`. The Web UI renders that prior date only when `last_known.state=valid`.
+
+For time fields, an explicit `at` / `planned for` start is a `point`; do not infer an event end or
+copy the start into `predicted_end`. Keep true one-sided bounds, ranges and dates in their stated
+forms. Derive precision from the original quote and declared source metadata: a serialized `:00`
+does not upgrade an original `HH:MM` expression to second precision. Equivalent timezone formats
+may identify the same instant while `source_timezone` retains the original declaration.
 
 `GET /api/v2/predictions/history` is the development history entry point. Query parameters are optional
 `target` (one of the three target IDs), optional `series_id` and `limit` (default 100, range 1–200).

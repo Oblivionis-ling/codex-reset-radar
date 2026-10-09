@@ -2,7 +2,7 @@
 
 The V2 database is a new SQLite file at `runtime/data/codex-reset-radar-v2.db`. The V1 database remains a read-only migration source and is never opened as the active V2 database.
 
-Forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b` with schema 7. Schema 8 is isolated development only. Final empty-DB smoke observed schema versions 1–8, 22 tables, integrity `ok`, zero FK errors and an unchanged DB hash across CLI use. No production migration was run. See the [current report](../maintenance/prediction-three-lines-v1-report.md).
+Forecast, attempt, truth-revision and review-export semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b` with schema 7. Schema 8 is isolated development only. Historical offline baseline at code manifest `1c7a29ad…` recorded Backend 318/0/0, Web 17, Collector 18 and an empty-DB smoke with schema versions 1–8, 22 tables, integrity `ok`, zero FK errors and an unchanged DB hash across CLI use; these results do not attest later changes. The prior v9 11-HTTP controlled model-semantics result is `PARTIAL`; v10 time-contract retest was not authorized and remains `NOT_EVALUATED`. Actual accuracy remains `NOT_EVALUATED`; deployment remains `NOT_DEPLOYED`. No production migration was run for that historical baseline. See the [current report](../maintenance/prediction-three-lines-v1-report.md) for current status.
 
 ## Core tables
 
@@ -104,8 +104,9 @@ to the resident `main` checkout or enabled in production.
 The Ledger baseline at `ef226ebe14cf45ad7af80af1b14d87e17638e355` has historical regression
 evidence, including Backend 140, Web 7 and Collector 18. Those numbers belong only to the old
 implementation described in the [Ledger report](../maintenance/prediction-review-ledger-v1-report.md).
-The final frozen three-line manifest passed Backend 318/0/0, Web 17 and Collector 18, with type
-checks, builds and empty-DB API/CLI verified. The branch depends on OPEN [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10); no production migration was run.
+The historical offline result for code manifest `1c7a29ad…` recorded Backend 318/0/0, Web 17 and
+Collector 18, with type checks, builds and empty-DB API/CLI verified. It does not cover later source
+changes; see the current report above. The branch depends on OPEN [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10); no production migration was run.
 
 - `prediction_artifacts` stores immutable JSON payloads by `id`, `kind`, `content_hash`,
   `payload_json`, and `recorded_at`, with a uniqueness constraint on `(kind, content_hash)`.
@@ -155,9 +156,10 @@ Schema7 input retains `LEGACY_UNDECLARED`, missing Banked forecasts/history and 
 an attached assessment does not make it a modern producer or prove real accuracy.
 
 Official-time extraction retains independently checkable source qualification and the stated time
-expression. Relative time retains the source-post anchor and conversion evidence. Final full
-acceptance is bound to code manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`;
-Backend passed 318 tests with no failures or skips. Old candidate failures remain historical evidence.
+expression. Relative time retains the source-post anchor and conversion evidence. Historical full
+offline acceptance was bound to code manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`;
+its Backend result was 318 tests with no failures or skips. These historical results do not cover
+later source changes. Old candidate failures remain historical evidence.
 `tzdata>=2025.2,<2027` is
 declared for Python `ZoneInfo` on Windows; the dependency
 does not supply a missing source timezone or justify extra time precision.

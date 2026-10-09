@@ -1,9 +1,11 @@
 # V2 Product Model
 
-Implementation note, 2026-10-09: engineering status is `READY_FOR_CONTROLLED_MODEL_TEST`.
-The final frozen code manifest `1c7a29ad…` passed Backend 318/0/0, Web 17 and Collector 18;
-type checks, builds, empty-DB API/CLI, sample verification and isolated UI review have final receipts.
-Real-model semantics and actual accuracy remain `NOT_EVALUATED`; deployment remains `NOT_DEPLOYED`.
+Historical engineering status only: `READY_FOR_CONTROLLED_MODEL_TEST` was the result for frozen
+code manifest `1c7a29ad…` (Backend 318/0/0, Web 17, Collector 18, type checks, builds, empty-DB
+API/CLI, sample verification and isolated UI review). It is not acceptance of later changes.
+Model-semantics status: the prior v9 11-HTTP controlled result is `PARTIAL`; the v10 time-contract
+retest has not been authorized and remains `NOT_EVALUATED`. Actual accuracy remains `NOT_EVALUATED`;
+deployment remains `NOT_DEPLOYED`.
 This branch depends on OPEN [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10).
 Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b`. See the
 [single report](../maintenance/prediction-three-lines-v1-report.md) for scope and evidence.

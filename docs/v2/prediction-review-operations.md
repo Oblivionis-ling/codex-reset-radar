@@ -4,9 +4,9 @@
 
 更新：2026-10-09。业务语义唯一入口为[日期预测与复盘规范](prediction-and-review-spec.md)，本指南只记录实现/操作，不另设计评分规则。四层状态、失败与回执见[唯一专项报告](../maintenance/prediction-three-lines-v1-report.md)。
 
-工程状态为 `READY_FOR_CONTROLLED_MODEL_TEST`：最终冻结 code manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df` 对应 Backend 318 passed / 0 failed / 0 skipped、Web 17、Collector 18，类型检查、构建、空库 API/CLI、样包和隔离 UI 均有最终回执。模型语义与实际准确率 `NOT_EVALUATED`；部署 `NOT_DEPLOYED`。旧 candidate 309/4 仅为历史证据，见 `runtime/review/prediction-three-lines-v1-20261009/e-clean-candidate-01/backend-full/result.json`。主动真实模型 HTTP、Laya、通知、生产迁移/启停均为 0。
+冻结 code manifest `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df` 的 Backend 318/0/0、Web 17、Collector 18、类型检查、构建、空库 API/CLI、样包和隔离 UI 结果均为历史离线基线，不是后续改动的验收结果。模型语义状态：v9 旧版 11 次受控 HTTP 的结论为 `PARTIAL`；Judge 时间契约已升至 `v2-reset-judge-10-time-contract`，v10 本轮受控补测未获授权，因此该版本语义为 `NOT_EVALUATED`。实际准确率仍为 `NOT_EVALUATED`，部署仍为 `NOT_DEPLOYED`；当前任务状态见[专项报告](../maintenance/prediction-three-lines-v1-report.md)。旧 candidate 309/4 仅为历史证据，见 `runtime/review/prediction-three-lines-v1-20261009/e-clean-candidate-01/backend-full/result.json`。
 
-当前 source 为 D:\work\20260828-CodexResetRadar\runtime\review\prediction-three-lines-v1-20261009\source；feature 分支 `codex/prediction-three-lines-v1-20261009` 的依赖基线为 `ef226ebe14cf45ad7af80af1b14d87e17638e355`。正式实现及六文档已分5组提交，实现+六文档提交头为 `1893db2d05e1ac72682f45d870c6bcb547c1fae9`，代码 manifest 为 `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`。草稿依赖 [PR #11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 以 `codex/prediction-ledger-v1-20261007` 为 base 并依赖仍 OPEN 的 [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10)。最终doc-only提交头与该head三项CI以 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json` 为准。生产 Alpha5/main `1e865c37d1643f429162adeb0fab61bb7371a47b`、原服务和 main 的11个用户 untracked 不动。
+**历史冻结阶段记录（非本轮状态）：** 当前 source 为 D:\work\20260828-CodexResetRadar\runtime\review\prediction-three-lines-v1-20261009\source；feature 分支 `codex/prediction-three-lines-v1-20261009` 的依赖基线为 `ef226ebe14cf45ad7af80af1b14d87e17638e355`。正式实现及六文档已分5组提交，实现+六文档提交头为 `1893db2d05e1ac72682f45d870c6bcb547c1fae9`，代码 manifest 为 `1c7a29ad5c561c240e5ce6b67e59cf4eb68d213e3c42160e260769acce58a3df`。草稿依赖 [PR #11](https://github.com/Oblivionis-ling/codex-reset-radar/pull/11) 以 `codex/prediction-ledger-v1-20261007` 为 base 并依赖仍 OPEN 的 [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10)。最终doc-only提交头与该head三项CI以 `runtime/review/prediction-three-lines-v1-20261009/git-closeout-01/receipt.json` 为准。生产 Alpha5/main `1e865c37d1643f429162adeb0fab61bb7371a47b`、原服务和 main 的11个用户 untracked 不动。
 
 正式入口为 [export_prediction_review.py](../../scripts/export_prediction_review.py) 与 [score_prediction_review.py](../../scripts/score_prediction_review.py)，不是临时 helper 或旧实验。CLI 只读取既存 SQLite/已验证包，不初始化、迁移、回填或写源 DB，不调模型。源 DB 使用 mode=ro、query_only 和单一事务快照；Schema 8 仅属开发，生产仍 Schema 7。
 
@@ -112,9 +112,11 @@ npm run dev -- --host 127.0.0.1 --port 15173 --strictPort
 
 开发 /api/v2/radar 在旧 Full 字段之外增加版本化 prediction.lines，Normal/Extra Full/Banked 独立；GET 不调模型。history 示例为 /api/v2/predictions/history?target=EXTRA_FULL&limit=100，也支持 Normal/Banked 和 series_id。flat DTO、边界项、total/truncated、安全 attempt 摘要见 [API 契约](api-contract.md#three-line-read-extension-development-contract)；追加顺序不是评分器首次/末次事前证明。
 
-Normal 是用户参考、非官方承诺，method=null、独立分母；旧参考保留代理/精度/NOT_BACKFILLED。合法模型 UNKNOWN、missing/rejected、legacy NOT_IMPLEMENTED 分别说明。undetermined 保留真值/关联/时钟不足副标签，事后通报不计提前预测；首末不挑最好、方法不跨栏挑优、24/48h 各类之和等于固定 N。观察型 output_available_at 是“至迟已可见”的保守上界，不是精确首次可用；拒收不成为产品可用预测。
+Normal 是用户参考、非官方承诺，method=null、独立分母；无可用 Full 锚点时没有可计算的周参考，计算/helper 状态与历史是否回填分开。旧参考保留代理/精度/NOT_BACKFILLED。合法模型 UNKNOWN、missing/rejected、legacy NOT_IMPLEMENTED 分别说明。undetermined 保留真值/关联/时钟不足副标签，事后通报不计提前预测；首末不挑最好、方法不跨栏挑优、24/48h 各类之和等于固定 N。观察型 output_available_at 是“至迟已可见”的保守上界，不是精确首次可用；拒收不成为产品可用预测。
 
-Sol 主代理已通过隔离 API/Web formal06 clone 实看三线与 history：Banked 紫色、Normal 单边 legacy 参考、STALE 时 UNKNOWN/last-known 警示，历史 7 项（question 1/3/5、output 1/4/7）。截图只在主工具输出、未落盘；reviewer 不是用户人工验收，fixture 不是 final07 评分样本。隔离服务已退出，生产 8787/5173 未动。
+时间表达沿用[规范 4.2](prediction-and-review-spec.md#42-预测内容与时间)：明确计划的开始时刻是 `point`，结束可保持 `null`；原文精度不因规范化补出的 `:00` 升级。读回旧版本不得补写结束、重判拒收值或改动原 `output_available_at`。读取 Radar/history/preview/verify 不创建尝试、不改写历史，也不延长 last-known 的原有效期；新失败与旧 last-known 的有效性分开。Judge v10 的时间形式与来源精度尚无受控模型补测结论。
+
+**历史冻结阶段记录（非本轮状态）：** Sol 主代理已通过隔离 API/Web formal06 clone 实看三线与 history：Banked 紫色、Normal 单边 legacy 参考、STALE 时 UNKNOWN/last-known 警示，历史 7 项（question 1/3/5、output 1/4/7）。截图只在主工具输出、未落盘；reviewer 不是用户人工验收，fixture 不是 final07 评分样本。隔离服务已退出，生产 8787/5173 未动。
 
 ## 历史资产（旧基线/旧包，不是当前能力）
 
