@@ -5,6 +5,7 @@ import json
 import re
 import sqlite3
 from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable, Iterator
@@ -13,6 +14,7 @@ ACTION_LEVELS = {"GREEN", "YELLOW", "ORANGE", "RED", "UNKNOWN"}
 LEVEL_ORDER = {"GREEN": 0, "YELLOW": 1, "ORANGE": 2, "RED": 3}
 EVENT_TYPES = {"FULL_RESET", "SPECIAL_RESET"}
 SPECIAL_TYPES = {"PARTIAL", "BANKED", "RESET_CARD", "STAGED", "EXTRA_CREDIT", "OTHER"}
+_ACTIVE_DATABASE_CONNECTION: ContextVar[Any] = ContextVar("crr_database_scoped_connection", default=None)
 
 
 class JudgementReferenceError(ValueError):
@@ -121,6 +123,13 @@ CREATE INDEX IF NOT EXISTS ix_prediction_ledger_run ON prediction_ledger(run_id,
 CREATE INDEX IF NOT EXISTS ix_prediction_ledger_attempt ON prediction_ledger(attempt_id,seq);
 CREATE INDEX IF NOT EXISTS ix_prediction_ledger_recorded ON prediction_ledger(recorded_at,seq);
 CREATE INDEX IF NOT EXISTS ix_prediction_ledger_event ON prediction_ledger(event_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_kind_seq ON prediction_ledger(kind,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_kind_judge ON prediction_ledger(kind,judgement_id,seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_stage ON prediction_ledger(kind,json_extract(payload_json,'$.stage'),seq);
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_banked_series ON prediction_ledger(
+ json_extract(payload_json,'$.target_refs.BANKED.series_id'),seq) WHERE kind IN ('output_committed','run_started');
+CREATE INDEX IF NOT EXISTS ix_prediction_ledger_output_observation ON prediction_ledger(
+ json_extract(payload_json,'$.output_id'),seq) WHERE kind='output_observed';
 """
 
 CORPUS_TABLES_SQL = """
@@ -222,6 +231,10 @@ class Database:
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
+        active = _ACTIVE_DATABASE_CONNECTION.get()
+        if active is not None and active[0] is self:
+            yield active[1]
+            return
         self.path.parent.mkdir(parents=True, exist_ok=True)
         connection = sqlite3.connect(self.path, timeout=10)
         connection.row_factory = sqlite3.Row
@@ -232,6 +245,15 @@ class Database:
                 yield connection
         finally:
             connection.close()
+
+    @contextmanager
+    def using_connection(self, connection: sqlite3.Connection) -> Iterator[None]:
+        """Reuse the caller's atomic/RO connection for nested business getters."""
+        token = _ACTIVE_DATABASE_CONNECTION.set((self, connection))
+        try:
+            yield
+        finally:
+            _ACTIVE_DATABASE_CONNECTION.reset(token)
 
     @staticmethod
     def _add_columns(connection: sqlite3.Connection, table: str, columns: dict[str, str]) -> None:
@@ -1477,6 +1499,29 @@ class Database:
             str(event['id']): self._snapshot_digest({k:v for k,v in event.items() if k not in {'created_at','updated_at'}})
             for event in reset_events
         }
+        event_source_posts = []
+        prompt_ids = {str(post['tweet_id']) for post in posts}
+        for tweet_id in sorted({str(value) for event in reset_events for value in event.get('evidence_post_ids') or []} - prompt_ids):
+            cutoff = normalise_time(as_of) if as_of is not None else None
+            analysis_filter = ' AND a.created_at<=?' if cutoff else ''
+            with self.connect() as connection:
+                row = connection.execute(f"""SELECT p.*,
+                    (SELECT a.analysis_json FROM post_analysis a WHERE a.post_id=p.id
+                     AND a.analysis_type='post_semantics' AND a.status='COMPLETED'{analysis_filter}
+                     ORDER BY a.id DESC LIMIT 1) latest_analysis_json
+                    FROM tibo_posts p WHERE p.tweet_id=?""", (cutoff, tweet_id) if cutoff else (tweet_id,)).fetchone()
+            source = self._post_input_at(self._post(row), as_of) if row else None
+            if not source or not self.content_use_allowed(source, 'judge_evidence') or source.get('input_hash') != input_versions.get(tweet_id):
+                continue
+            analysis = source.get('analysis')
+            if analysis and analysis.get('_input_hash') and analysis['_input_hash'] != source['input_hash']:
+                analysis = None
+            event_source_posts.append({
+                'tweet_id': tweet_id, 'post_id': source['id'], 'posted_at': source.get('posted_at'),
+                'text': source['original_text'], 'is_reply': source['is_reply'], 'analysis': analysis,
+                'reply_context': source.get('reply_context'), 'input_hash': source['input_hash'],
+                'author': source.get('author_handle') or 'thsottiaux', 'role': 'event_source_post',
+            })
         last_full_reset = next((event for event in reset_events if event["event_type"] == "FULL_RESET"), None)
         current_cycle = None
         if last_full_reset is not None:
@@ -1494,7 +1539,7 @@ class Database:
             previous_judgement = None
         historical_cases = self.retrieve_historical_cases(source_posts,as_of=as_of)
         case_versions = {str(case['case_id']):self._snapshot_digest(case) for case in historical_cases}
-        context = {"posts": posts, "reset_events": reset_events,
+        context = {"posts": posts, "event_source_posts": event_source_posts, "reset_events": reset_events,
                    "last_full_reset": last_full_reset,
                    "current_cycle": current_cycle,
                    "previous_judgement": previous_judgement,
@@ -1509,7 +1554,7 @@ class Database:
     def refresh_input_snapshot(self, context: dict[str,Any]) -> dict[str,Any]:
         """Freeze every content/version identity exposed by the shared Judge context."""
         post_analysis_versions = {}
-        for post in context.get('posts') or []:
+        for post in [*(context.get('posts') or []), *(context.get('event_source_posts') or [])]:
             analysis = post.get('analysis')
             if analysis is not None:
                 post_analysis_versions[str(post['tweet_id'])] = self._snapshot_digest(analysis)
@@ -1792,11 +1837,6 @@ class Database:
         return result
 
 
-def next_reset_baseline(last_full_reset: dict[str, Any] | None) -> dict[str, Any]:
-    if not last_full_reset:
-        return {"status": "waiting_for_verified_history", "estimated_at": None, "basis": "最近一次完整 Reset 尚无足够证据确认。"}
-    occurred = datetime.fromisoformat(str(last_full_reset["occurred_at"]).replace("Z", "+00:00"))
-    estimate_dt = (occurred + timedelta(days=7)).astimezone(UTC)
-    return {"status": "expired" if estimate_dt < datetime.now(UTC) else "baseline",
-            "estimated_at": estimate_dt.isoformat().replace("+00:00", "Z"),
-            "basis": "按上次完整重置加 7 天估算；不是官方承诺或模型概率结论。"}
+def next_reset_baseline(last_full_reset: dict[str, Any] | None, *, as_of=None) -> dict[str, Any]:
+    from .prediction_contract import next_reset_baseline as shared_baseline
+    return shared_baseline(last_full_reset, as_of=as_of)

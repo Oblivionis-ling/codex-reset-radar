@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+import copy
+import hashlib
 from collections import Counter, defaultdict
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from .review_common import sha256_json, utc_text
+from .review_common import canonical_bytes, sha256_json, utc_text
 from .review_privacy import PrivacyContext, sanitize_dto
 
 
@@ -15,6 +18,12 @@ REVIEW_SCHEMA_VERSION = "crr-review-v1"
 DEFAULT_MAX_RECORDS = 20_000
 MAX_SOURCE_ROWS = 200_000
 MAX_JSON_CHARS = 2_000_000
+REVIEW_SCHEMA_VERSION_V2 = "crr-review-v2"
+SOURCE_BINDING_VERSION = "crr-review-source-binding-v1"
+RECORD_DIGEST_VERSION = "crr-review-record-digest-v1"
+MAX_FROZEN_DTO_BYTES = 100 * 1024 * 1024
+CORE_COLLECTIONS = ("forecasts", "outputs", "attempts", "truth_revisions", "public_evidence", "input_snapshots", "runtime_identities")
+CORE_COLLECTION_BINDING_VERSION = "crr-review-core-collections-v1"
 
 _LEDGER_COLUMNS = (
     "seq", "record_id", "kind", "series_id", "forecast_id", "run_id", "attempt_id", "revision",
@@ -41,6 +50,7 @@ _FORECAST_FIELDS = {
     "status", "reason_summary", "trigger", "change_reason", "is_synthetic", "recorded_at", "occurred_at",
     "output_available_at", "source_kind", "selection_basis", "version_history_complete", "precision_reason",
     "source_anchor_at", "source_anchor_time_basis", "anchor_precision", "dependency_reason", "is_dependency",
+    "version_role", "anchor_event_id", "anchor_time_basis", "anchor_limitation", "expression", "date_boundaries",
 }
 _OUTPUT_FIELDS = {
     "record_id", "output_id", "forecast_id", "series_id", "attempt_id", "run_id", "output_kind", "status",
@@ -49,12 +59,14 @@ _OUTPUT_FIELDS = {
     "is_synthetic", "recorded_at", "occurred_at", "reason_code", "judgement_as_of", "declared_model",
     "time_gap_reason", "is_dependency", "selection_basis", "forecast_ref", "attempt_ref", "evidence_refs",
     "operation", "processing_output", "artifact_recorded_at", "source_content_status",
+    "target_refs", "target_outputs", "prediction_validation", "prediction_contract_version", "target_forecast_refs",
 }
 _OUTPUT_STRUCTURED_FIELDS = {
     "action_level", "horizon_24h", "horizon_48h", "horizon_72h", "estimated_start", "estimated_end",
     "estimate_basis", "data_health", "judgement_as_of", "status", "evidence_post_ids",
     "estimated_start_expression", "estimated_end_expression",
     "estimated_start_time_metadata", "estimated_end_time_metadata",
+    "predictions", "prediction_validation", "prediction_contract_version",
 }
 _ATTEMPT_FIELDS = {
     "record_id", "attempt_id", "forecast_id", "series_id", "run_id", "status", "stage", "event_type",
@@ -64,6 +76,7 @@ _ATTEMPT_FIELDS = {
     "clock_anomaly", "time_limitation", "publication_status",
     "reported_model", "reported_model_source", "reported_model_missing_reason",
     "declared_model", "structured_output", "input_version_delta",
+    "target_refs", "prediction_contract_version",
 }
 _TRUTH_FIELDS = {
     "record_id", "event_id", "forecast_id", "series_id", "event_type", "actual_event_type", "special_type", "scope", "actual_start",
@@ -923,8 +936,23 @@ def _selection_matches(
     timestamp, basis = _activity_time(row)
     in_window = _in_window(timestamp, start, end)
     if series_id is not None:
-        return series == series_id and (in_window if start is not None or end is not None else True), in_window, basis
+        target_series = {str(ref.get("series_id")) for ref in _target_refs(payload).values()}
+        return (series == series_id or series_id in target_series) and (in_window if start is not None or end is not None else True), in_window, basis
     return in_window, in_window, basis
+
+
+def _target_refs(payload: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    refs = payload.get("target_refs")
+    return {str(target): ref for target, ref in refs.items()
+            if target in {"NORMAL_WEEKLY", "EXTRA_FULL", "BANKED"} and isinstance(ref, Mapping)} if isinstance(refs, Mapping) else {}
+
+
+def _target_forecast_ids(row: Mapping[str, Any], payload: Mapping[str, Any]) -> set[str]:
+    ids = {str(ref["forecast_id"]) for ref in _target_refs(payload).values() if isinstance(ref.get("forecast_id"), str)}
+    primary = _row_forecast(row, payload)
+    if primary:
+        ids.add(primary)
+    return ids
 
 
 def _safe_reason_code(value: object) -> str | None:
@@ -957,8 +985,9 @@ def _build_ledger_records(
             forecast_id = _row_forecast(row, payload)
             run_id = _row_run(row, payload)
             run_payload = run_payloads.get(str(run_id)) if run_id else None
-            if forecast_id and run_payload is not None and isinstance(run_payload.get("is_synthetic"), bool):
-                forecast_synthetic[forecast_id] = bool(run_payload["is_synthetic"])
+            if run_payload is not None and isinstance(run_payload.get("is_synthetic"), bool):
+                for identity in _target_forecast_ids(row, payload):
+                    forecast_synthetic[identity] = bool(run_payload["is_synthetic"])
     for item in included:
         row, payload = item["row"], item.get("payload") or {}
         kind = str(row.get("kind") or "")
@@ -990,6 +1019,10 @@ def _build_ledger_records(
             forecast_body = payload.get("forecast")
             if isinstance(forecast_body, Mapping):
                 base.update(forecast_body)
+            if kind == "normal_baseline":
+                base["basis"] = payload.get("basis")
+                if payload.get("output_id") and _target_refs(payload):
+                    output_rows[str(payload["output_id"])].append(item)
             base.setdefault("forecast_id", forecast_id)
             base.setdefault("record_kind", "baseline" if kind == "normal_baseline" else None)
             if safe_id in forecast_synthetic:
@@ -1104,7 +1137,7 @@ def _build_ledger_records(
     outputs: list[dict[str, Any]] = []
     for output_id, records in output_rows.items():
         records.sort(key=lambda item: int(item["row"].get("seq") or 0))
-        committed_records = [item for item in records if item["row"].get("kind") == "output_committed"]
+        committed_records = [item for item in records if item["row"].get("kind") in {"output_committed", "normal_baseline"}]
         if len(committed_records) > 1:
             raise ReviewReadError("duplicate_committed_output_identity")
         committed = committed_records[0] if committed_records else None
@@ -1121,7 +1154,7 @@ def _build_ledger_records(
             "run_id": _row_run(row, payload),
             "recorded_at": row.get("recorded_at"),
             "occurred_at": row.get("occurred_at"),
-            "output_kind": "judge_structured_output" if committed else "observed_without_committed_record",
+            "output_kind": "normal_baseline_output" if row.get("kind") == "normal_baseline" else "judge_structured_output" if committed else "observed_without_committed_record",
             "is_dependency": any(item.get("dependency_reason") is not None for item in records),
             "dependency_reason": next((item.get("dependency_reason") for item in records if item.get("dependency_reason")), None),
         }
@@ -1148,6 +1181,7 @@ def _build_ledger_records(
             source = observation_payload.get("source")
             observed_data.append({
                 "record_id": _record_id(observation["row"]),
+                "ledger_seq": int(observation["row"].get("seq") or 0),
                 "observed_at": observed_at if isinstance(observed_at, str) else None,
                 "source": source if isinstance(source, str) else None,
                 "clock_anomaly": _safe_reason_code(observation_payload.get("clock_anomaly")),
@@ -1169,11 +1203,13 @@ def _build_ledger_records(
         run_payload = run_payloads.get(str(base.get("run_id"))) if base.get("run_id") else None
         if run_payload is not None and isinstance(run_payload.get("is_synthetic"), bool):
             base["is_synthetic"] = bool(run_payload["is_synthetic"])
+        elif row.get("kind") == "normal_baseline" and isinstance(payload.get("is_synthetic"), bool):
+            base["is_synthetic"] = payload["is_synthetic"]
         else:
             base["is_synthetic"] = None
         item_out = _dto(base, _OUTPUT_FIELDS, context, identifier=output_id, source_id=_record_id(row))
         item_out["ledger_seq"] = int(row.get("seq") or 0)
-        item_out["ledger_kind"] = "output_committed" if committed else "output_observed"
+        item_out["ledger_kind"] = str(row["kind"]) if committed else "output_observed"
         item_out["dependency_reason"] = base.get("dependency_reason")
         outputs.append(item_out)
     outputs.sort(key=lambda item: (int(item.get("ledger_seq") or 0), str(item.get("id"))))
@@ -1207,6 +1243,12 @@ def _attach_references(
             event_truth[str(truth_row["event_id"])] = str(truth_row["id"])
     for item in included:
         row, payload = item["row"], item["payload"]
+        for target_forecast in _target_forecast_ids(row, payload):
+            if target_forecast not in forecast_ids:
+                collections["forecasts"].append({"id": target_forecast, "forecast_id": target_forecast,
+                                               "placeholder": True, "omission_reason": "target_question_version_not_available_as_of_freeze",
+                                               "redacted": False, "redaction_categories": []})
+                forecast_ids.add(target_forecast)
         forecast_id = _row_forecast(row, payload)
         if forecast_id and forecast_id not in forecast_ids:
             collections["forecasts"].append({
@@ -1252,6 +1294,12 @@ def _attach_references(
         forecast_id = _id(row.get("forecast_id"))
         if forecast_id:
             references["forecast"] = _reference("forecasts", forecast_id, id_sets.get("forecasts", set()), "forecast_version_not_in_package", placeholders.get("forecasts"))
+        if _target_refs(row):
+            row["target_forecast_refs"] = {
+                target: _reference("forecasts", _id(ref.get("forecast_id")), id_sets["forecasts"],
+                                   "target_question_version_not_available_as_of_freeze", placeholders.get("forecasts"))
+                for target, ref in _target_refs(row).items()
+            }
         attempt_id = _id(row.get("attempt_id"))
         if attempt_id:
             references["attempt"] = _reference("attempts", attempt_id, id_sets.get("attempts", set()), "attempt_not_recorded_or_outside_freeze", placeholders.get("attempts"))
@@ -1262,7 +1310,7 @@ def _attach_references(
                 "attempts", source_id, id_sets.get("attempts", set()),
                 "known_cache_source_attempt_not_available_as_of_freeze", placeholders.get("attempts"),
             )
-        event_id = _id(row.get("event_id"))
+        event_id = _id(row.get("event_id") or (row.get("anchor_event_id") if row.get("target") == "NORMAL_WEEKLY" else None))
         if event_id and collection_name != "truth_revisions":
             truth_id = event_truth.get(event_id)
             references["truth"] = _reference("truth_revisions", truth_id, id_sets.get("truth_revisions", set()), "truth_revision_not_in_package", placeholders.get("truth_revisions"))
@@ -1372,6 +1420,8 @@ def read_review(
     high_water: int | None = None,
     *,
     max_records: int = DEFAULT_MAX_RECORDS,
+    _transaction_open: bool = False,
+    _materialize: bool = False,
 ) -> dict[str, Any]:
     """Read a bounded review timeline from one query-only SQLite snapshot."""
     if not isinstance(selection, Mapping):
@@ -1392,12 +1442,15 @@ def read_review(
     if high_water is not None and (isinstance(high_water, bool) or not isinstance(high_water, int) or high_water < 0):
         raise ReviewReadError("high_water_must_be_nonnegative_integer")
 
-    if connection.in_transaction:
+    if _transaction_open and not connection.in_transaction:
+        raise ReviewReadError("frozen_read_requires_open_transaction")
+    if connection.in_transaction and not _transaction_open:
         raise ReviewReadError("connection_must_be_idle_before_read")
     connection.execute("PRAGMA query_only=ON")
     if int(connection.execute("PRAGMA query_only").fetchone()[0]) != 1:
         raise ReviewReadError("sqlite_query_only_unavailable")
-    connection.execute("BEGIN")
+    if not _transaction_open:
+        connection.execute("BEGIN")
     try:
         tables = {str(row[0]) for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
         ledger_available = "prediction_ledger" in tables
@@ -1477,7 +1530,11 @@ def read_review(
                 selected_by_seq[seq] = item
                 seed_seqs.add(seq)
 
-        by_forecast = {_row_forecast(item["row"], item["payload"]): item for item in ledger_rows if item["row"].get("kind") == "forecast_version" and _row_forecast(item["row"], item["payload"])}
+        by_forecast = {_row_forecast(item["row"], item["payload"]): item for item in ledger_rows if item["row"].get("kind") in {"forecast_version", "normal_baseline"} and _row_forecast(item["row"], item["payload"])}
+        linked_by_forecast: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for item in ledger_rows:
+            for identity in _target_forecast_ids(item["row"], item["payload"]):
+                linked_by_forecast[identity].append(item)
         by_attempt: dict[str, list[dict[str, Any]]] = defaultdict(list)
         by_run: dict[str, list[dict[str, Any]]] = defaultdict(list)
         by_runtime_id: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -1514,17 +1571,21 @@ def read_review(
             row, payload = current["row"], current["payload"]
             current_kind = str(row.get("kind") or "")
             related: list[tuple[dict[str, Any], str]] = []
+            for target_forecast in _target_forecast_ids(row, payload):
+                if target_forecast in by_forecast:
+                    related.append((by_forecast[target_forecast], "target_question_version_for_shared_run"))
+                related.extend((linked, "target_linked_shared_attempt_or_output")
+                               for linked in linked_by_forecast.get(target_forecast, []) if linked is not current)
             forecast = _row_forecast(row, payload)
             attempt = _row_attempt(row, payload)
             run = _row_run(row, payload)
             if forecast:
-                if current_kind == "forecast_version":
+                if current_kind in {"forecast_version", "normal_baseline"}:
                     previous = _id(payload.get("previous_id") or payload.get("previous_forecast_id"))
                     if previous and previous in by_forecast:
                         related.append((by_forecast[previous], "previous_forecast_version"))
                     elif previous:
                         gaps["previous_forecast_version_missing"] += 1
-                related.extend((linked, "forecast_linked_attempt_or_output") for linked in ledger_rows if _row_forecast(linked["row"], linked["payload"]) == forecast and linked is not current)
             if attempt:
                 related.extend((linked, "attempt_event_closure") for linked in by_attempt.get(attempt, []) if linked is not current)
             if run:
@@ -1737,7 +1798,8 @@ def read_review(
 
         forecasts, outputs, attempts, truth, runtime = _build_ledger_records(included, privacy, gaps)
         normal_baseline = None
-        if normal_baseline_requested:
+        modern_normal_present = any(item["row"].get("kind") == "normal_baseline" and _target_refs(item["payload"]) for item in ledger_rows)
+        if normal_baseline_requested and not modern_normal_present:
             if normal_anchor_event is None:
                 gaps["normal_baseline_anchor_missing"] += 1
             else:
@@ -2262,6 +2324,34 @@ def read_review(
                 raw_id = raw_artifact_by_safe_id.get((collection_name, str(dto.get("id") or "")))
                 if raw_id is not None and raw_id in artifact_synthetic:
                     dto["is_synthetic"] = artifact_synthetic[raw_id]
+        # New target quotes are evidence data too. Only disclose a quote when
+        # its exact frozen version is present and not restricted; never borrow
+        # a current body to fill it. Dates/validation are not recomputed here.
+        allowed_quote_versions = {
+            (str(dto.get("tweet_id")), str(dto.get("source_version") or dto.get("content_version"))): dto
+            for dto in public_evidence if not dto.get("placeholder") and not dto.get("redacted")
+            and isinstance(dto.get("text") or dto.get("original_text"), str)
+        }
+        for rows in collections.values():
+            for dto in rows:
+                def restrict_quotes(value: Any) -> None:
+                    if isinstance(value, dict):
+                        if "evidence_quote" in value and value.get("evidence_quote"):
+                            source = allowed_quote_versions.get((str(value.get("tweet_id")), str(value.get("source_version"))))
+                            quote = value["evidence_quote"]
+                            if source is None or not isinstance(quote, str) or quote not in str(source.get("text") or source.get("original_text") or ""):
+                                value["evidence_quote"] = None
+                                value["quote_omission_reason"] = "exact_frozen_body_unavailable_or_restricted"
+                                dto["redacted"] = True
+                                dto["redaction_categories"] = sorted(set(dto.get("redaction_categories", [])) | {"target_evidence_quote_restricted"})
+                                gaps["target_evidence_quote_unavailable_or_restricted"] += 1
+                        for child in value.values():
+                            restrict_quotes(child)
+                    elif isinstance(value, list):
+                        for child in value:
+                            restrict_quotes(child)
+                if "target_outputs" in dto or "structured_output" in dto or "events" in dto:
+                    restrict_quotes(dto)
         package_rows = sum(len(rows) for rows in collections.values())
         if package_rows > max_records:
             raise ReviewRangeTooLarge(f"package_projection_has_more_than_{max_records}_records; narrow the selection")
@@ -2293,6 +2383,15 @@ def read_review(
         if normal_baseline is not None:
             source_modes.append("normal_baseline_compatibility_view")
             dependency_counts["normal_baseline_compatibility_view"] += 1
+        banked_accepted = any(
+            item["row"].get("kind") == "output_committed"
+            and isinstance(item["payload"].get("target_outputs"), Mapping)
+            and isinstance(item["payload"]["target_outputs"].get("BANKED"), Mapping)
+            and isinstance(item["payload"]["target_outputs"]["BANKED"].get("validation"), Mapping)
+            and item["payload"]["target_outputs"]["BANKED"]["validation"].get("valid") is True
+            for item in ledger_rows
+        )
+        banked_question_present = any("BANKED" in _target_refs(item["payload"]) for item in ledger_rows)
         metadata = {
             "review_schema_version": REVIEW_SCHEMA_VERSION,
             "freeze_at": freeze_text,
@@ -2311,9 +2410,9 @@ def read_review(
             "gaps": [{"code": code, "count": count} for code, count in sorted(gaps.items()) if count],
             "capabilities": {
                 "prediction_ledger": "READ_ONLY" if ledger_available else "NOT_PRESENT_LEGACY_COMPATIBILITY",
-                "independent_banked_forecasts": "NOT_IMPLEMENTED",
-                "normal_baseline": "COMPATIBILITY_VIEW_ONLY",
-                "normal_baseline_history": "NOT_BACKFILLED",
+                "independent_banked_forecasts": "RECORDED_ACCEPTED_TARGET_OUTPUT" if banked_accepted else "NOT_RECORDED_IN_FROZEN_SOURCE" if banked_question_present else "NOT_IMPLEMENTED",
+                "normal_baseline": "RECORDED_BASELINE" if modern_normal_present else "COMPATIBILITY_VIEW_ONLY",
+                "normal_baseline_history": "RECORDED_FROM_IMPLEMENTATION_ONLY" if modern_normal_present else "NOT_BACKFILLED",
                 "assessments": "NOT_IMPLEMENTED",
             },
             "source_modes": source_modes or ["empty_readonly_source"],
@@ -2322,6 +2421,52 @@ def read_review(
             "records_selected": len(included) + len(selected_judgements) + len(selected_truth_events) + (1 if normal_baseline is not None else 0),
             "package_records": package_rows,
         }
+        if _materialize:
+            # Root identities refer to actual source activity, not every DTO in
+            # its dependency closure. One attempt DTO may represent many roots.
+            dto_by_source: dict[str, list[dict[str, str]]] = defaultdict(list)
+            for target, rows in collections.items():
+                for dto in rows:
+                    identities = {str(dto.get(key)) for key in ("source_record_id", "record_id") if dto.get(key) is not None}
+                    identities.update(str(event.get("source_record_id") or event.get("record_id"))
+                                      for event in dto.get("events", []) if isinstance(event, Mapping))
+                    identities.update(str(obs.get("record_id")) for obs in dto.get("availability_observations", [])
+                                      if isinstance(obs, Mapping))
+                    for identity in identities:
+                        dto_by_source[identity].append({"target": target, "id": str(dto["id"])})
+            roots = []
+            for item in included:
+                row = item["row"]
+                if int(row.get("seq") or 0) not in seed_seqs:
+                    continue
+                source_id = _record_id(row)
+                activity, basis = _activity_time(row)
+                roots.append({"id": f"ledger:{source_id}", "kind": str(row["kind"]),
+                              "activity_at": utc_text(activity) if activity else None, "time_basis": basis,
+                              "members": dto_by_source.get(source_id, []),
+                              "omission_reason": None if dto_by_source.get(source_id) else "unsupported_source_kind_not_projected"})
+            for item in selected_judgements:
+                if item.get("is_dependency"):
+                    continue
+                jid = str(item["row"]["id"])
+                roots.append({"id": f"legacy-judgement:{jid}", "kind": "legacy_judgements",
+                              "activity_at": item["row"].get("created_at"), "time_basis": "judgement_as_of_proxy",
+                              "members": [{"target": "outputs", "id": f"legacy-output-{jid}"},
+                                          {"target": "input_snapshots", "id": f"legacy-snapshot-{jid}"}],
+                              "omission_reason": None})
+            for event in legacy_events:
+                if str(event["row"].get("id")) not in legacy_event_seed_ids:
+                    continue
+                row = event["row"]
+                activity = _maybe_utc(row.get("occurred_at")) or event["recorded_at"]
+                if not _in_window(activity, start_dt, end_dt) or series_id is not None:
+                    continue
+                matching = [{"target": "truth_revisions", "id": str(dto["id"])} for dto in truth
+                            if str(dto.get("event_id")) == str(row["id"])]
+                roots.append({"id": f"legacy-event:{row['id']}", "kind": "legacy_reset_events",
+                              "activity_at": utc_text(activity), "time_basis": "occurred_at_or_recorded_proxy",
+                              "members": matching, "omission_reason": None if matching else "event_not_projected"})
+            metadata["activity_roots"] = sorted(roots, key=lambda root: (str(root["activity_at"]), root["id"]))
         result = {
             "forecasts": forecasts,
             "outputs": outputs,
@@ -2333,6 +2478,212 @@ def read_review(
             "assessments": [],
             "metadata": metadata,
         }
+        if not _transaction_open:
+            connection.commit()
+        return result
+    except BaseException:
+        if not _transaction_open:
+            connection.rollback()
+        raise
+
+
+def _is_reference(value: Mapping[str, Any]) -> bool:
+    return value.get("status") in {"included", "missing"} and "target" in value and "id" in value
+
+
+def record_digest(record: Mapping[str, Any]) -> str:
+    """Hash a final DTO using common JSONL canonicalization (including its LF).
+
+    Only the root record_sha256 and sha256 on typed reference nodes are
+    excluded. Content hashes and arbitrary nested keys named sha256 survive.
+    """
+    def project(value: Any, *, root: bool = False) -> Any:
+        if isinstance(value, Mapping):
+            reference = _is_reference(value)
+            return {key: project(child) for key, child in value.items()
+                    if not (root and key == "record_sha256") and not (reference and key == "sha256")}
+        if isinstance(value, list):
+            return [project(child) for child in value]
+        return value
+    return sha256_json(project(record, root=True))
+
+
+def core_collection_binding(review: Mapping[str, Any]) -> dict[str, Any]:
+    """Stable scoring input identity; assessment attachment creates no hash cycle.
+
+    Source sets/results and all ZIP/manifest bytes are outside this basis.
+    Reference hashes are checked by the verifier; the inventory binds every
+    target record digest as well as its stable referenced ID in the parent DTO.
+    """
+    collections = {}
+    for target in CORE_COLLECTIONS:
+        inventory = []
+        seen = set()
+        for row in review.get(target, []):
+            identifier = row.get("id")
+            if not isinstance(identifier, str) or identifier in seen or row.get("record_sha256") != record_digest(row):
+                raise ReviewReadError("core_collection_record_identity_or_digest_invalid")
+            seen.add(identifier)
+            inventory.append({"id": identifier, "sha256": row["record_sha256"]})
+        inventory.sort(key=lambda item: item["id"])
+        collections[target] = {"records": len(inventory), "sha256": sha256_json(inventory)}
+    result = {"binding_version": CORE_COLLECTION_BINDING_VERSION, "collections": collections}
+    result["sha256"] = sha256_json(result)
+    return result
+
+
+def with_record_digests(review: Mapping[str, Any]) -> dict[str, Any]:
+    """Annotate only final, already-whitelisted/aliased DTOs, never raw payloads."""
+    result = copy.deepcopy(dict(review))
+    def normalize_reference_schema(value: Any) -> None:
+        if isinstance(value, dict):
+            if _is_reference(value):
+                # v1 evidence usage refs carried a role decoration. In v2 role
+                # belongs to the referenced evidence DTO; the digest ref itself
+                # has exactly five fields, before any final record is hashed.
+                unsupported = set(value) - {"target", "id", "status", "reason", "sha256", "role"}
+                if unsupported:
+                    raise ReviewReadError("typed_reference_fields_unsupported")
+                value.pop("role", None)
+            for child in value.values():
+                normalize_reference_schema(child)
+        elif isinstance(value, list):
+            for child in value:
+                normalize_reference_schema(child)
+    normalize_reference_schema(result)
+    collections = {name: rows for name, rows in result.items() if isinstance(rows, list)}
+    index: dict[tuple[str, str], dict[str, Any]] = {}
+    for name, rows in collections.items():
+        for row in rows:
+            key = (name, str(row.get("id")))
+            if row.get("id") is None or key in index:
+                raise ReviewReadError("invalid_or_duplicate_dto_identity")
+            row["record_sha256"] = record_digest(row)
+            index[key] = row
+
+    def annotate(value: Any) -> None:
+        if isinstance(value, dict):
+            if _is_reference(value):
+                target = index.get((str(value["target"]), str(value["id"])))
+                if value["status"] == "included":
+                    if target is None or target.get("placeholder"):
+                        raise ReviewReadError("unresolved_included_digest_reference")
+                    value["sha256"] = target["record_sha256"]
+                else:
+                    value["sha256"] = None
+            for child in value.values():
+                annotate(child)
+        elif isinstance(value, list):
+            for child in value:
+                annotate(child)
+    annotate(collections)
+    for root in result["metadata"].get("activity_roots", []):
+        root["members"] = [{"target": ref["target"], "id": ref["id"], "status": "included", "reason": None,
+                            "sha256": index[(ref["target"], ref["id"])]["record_sha256"]}
+                           for ref in root["members"] if (ref["target"], ref["id"]) in index]
+    result["metadata"]["record_digest_version"] = RECORD_DIGEST_VERSION
+    return result
+
+
+# These are the reader's data inputs, not configuration, users or credentials.
+# Digests bind the complete transactional projection, including current policy
+# restrictions, rather than pretending a live main-file hash includes its WAL.
+_SOURCE_PROJECTION = {
+    "prediction_ledger": _LEDGER_COLUMNS,
+    "prediction_artifacts": _ARTIFACT_COLUMNS,
+    "radar_judgements": (*_LEGACY_JUDGEMENT_COLUMNS, "ledger_attempt_id"),
+    "reset_events": _LEGACY_EVENT_COLUMNS,
+    "tibo_posts": ("id", "tweet_id", "text_hash"),
+    "post_content_policies": ("post_id", "content_hash", "judge_evidence_allowed", "event_promotion_allowed"),
+    "reply_context_inputs": ("input_hash", "post_id", "input_json", "created_at"),
+    "reply_context_history": ("tweet_id", "content_hash", "body_json", "observed_at"),
+    "schema_versions": ("version", "applied_at"),
+}
+
+
+def _transaction_source_digest(connection: sqlite3.Connection) -> str:
+    inventory = {}
+    for table, approved in sorted(_SOURCE_PROJECTION.items()):
+        available = _columns(connection, table)
+        columns = [column for column in approved if column in available]
+        if not columns:
+            inventory[table] = None
+            continue
+        count = int(connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0])
+        if count > MAX_SOURCE_ROWS:
+            raise ReviewRangeTooLarge(f"snapshot_source_{table}_exceeds_{MAX_SOURCE_ROWS}")
+        digest = hashlib.sha256()
+        order = ",".join(str(index + 1) for index in range(len(columns)))
+        for row in connection.execute(f'SELECT {",".join(columns)} FROM "{table}" ORDER BY {order}'):
+            digest.update(canonical_bytes(dict(zip(columns, row))))
+        inventory[table] = {"columns": columns, "rows": count, "sha256": digest.hexdigest()}
+    return sha256_json({"version": SOURCE_BINDING_VERSION, "tables": inventory})
+
+
+def _snapshot_file_hash(connection: sqlite3.Connection, path: Path, expected: str) -> str:
+    if not isinstance(expected, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", expected):
+        raise ReviewReadError("snapshot_sha256_invalid")
+    actual_path = path.resolve(strict=True)
+    main = next((row[2] for row in connection.execute("PRAGMA database_list") if row[1] == "main"), None)
+    if not main or Path(main).resolve() != actual_path or not actual_path.is_file():
+        raise ReviewReadError("snapshot_file_does_not_match_connection")
+    for suffix in ("-wal", "-journal"):
+        sidecar = Path(str(actual_path) + suffix)
+        if sidecar.exists() and sidecar.stat().st_size:
+            raise ReviewReadError("snapshot_file_has_nonempty_wal_or_journal")
+    digest = hashlib.sha256()
+    with actual_path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    actual = digest.hexdigest()
+    if actual != expected.lower():
+        raise ReviewReadError("snapshot_file_sha256_mismatch")
+    return actual
+
+
+def freeze_review(
+    connection: sqlite3.Connection, selection: Mapping[str, object], freeze_at: str,
+    high_water: int | None = None, *, multipart: bool = False,
+    max_records: int = DEFAULT_MAX_RECORDS, snapshot_file: Path | None = None,
+    source_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Detach final DTOs from a single query-only transaction for preview/publish.
+
+    Multipart has a separate bounded *materialization* ceiling, never a higher
+    publish limit. No initialize, migration, checkpoint, or source DML occurs.
+    A file SHA is claimed only with an explicit expected immutable-snapshot hash
+    and matching connection/file checks both before and after the frozen read.
+    """
+    if isinstance(max_records, bool) or not isinstance(max_records, int) or not 0 < max_records <= DEFAULT_MAX_RECORDS:
+        raise ReviewReadError("package_max_records_must_be_between_1_and_20000")
+    if (snapshot_file is None) != (source_sha256 is None):
+        raise ReviewReadError("snapshot_file_and_expected_sha256_required_together")
+    if connection.in_transaction:
+        raise ReviewReadError("connection_must_be_idle_before_freeze")
+    connection.execute("PRAGMA query_only=ON")
+    connection.execute("BEGIN")
+    try:
+        transaction_digest = _transaction_source_digest(connection)
+        verified_sha = _snapshot_file_hash(connection, snapshot_file, source_sha256) if snapshot_file is not None else None
+        review = read_review(connection, selection, freeze_at, high_water,
+                             max_records=MAX_SOURCE_ROWS if multipart else max_records,
+                             _transaction_open=True, _materialize=True)
+        if snapshot_file is not None:
+            _snapshot_file_hash(connection, snapshot_file, source_sha256)
+        metadata = review["metadata"]
+        binding = {"binding_version": SOURCE_BINDING_VERSION,
+                   "sourcekind": "verified_snapshot_file" if verified_sha else "readonly_transaction",
+                   "source_sha256": verified_sha, "transaction_snapshot_digest": transaction_digest,
+                   "freeze_at": metadata["freeze_at"], "high_water": metadata["high_water"]}
+        binding["snapshot_id"] = sha256_json(binding)
+        metadata.update({"review_schema_version": REVIEW_SCHEMA_VERSION_V2, "source_binding": binding,
+                         "max_records": max_records, "materialization_only": multipart,
+                         "binding_scope": "reader source projections in one query-only transaction; file SHA only for explicitly verified snapshot"})
+        review["evaluation_sets"] = []
+        result = with_record_digests(review)
+        result["metadata"]["core_collection_binding"] = core_collection_binding(result)
+        if len(canonical_bytes(result)) > MAX_FROZEN_DTO_BYTES:
+            raise ReviewRangeTooLarge("frozen_dto_materialization_byte_limit_exceeded")
         connection.commit()
         return result
     except BaseException:

@@ -136,7 +136,7 @@ def owner_status(owner: dict[str, Any], *, current_runtime_id: str | None = None
 
 
 def capture_runtime_identity(settings: Any, client: Any) -> dict[str, Any]:
-    from . import collector_health, db, deepseek, intelligence, main, pipeline, reply_context
+    from . import collector_health, db, deepseek, intelligence, main, pipeline, reply_context, prediction_contract, prediction_ledger
     from .version import APP_VERSION, runtime_commit
 
     runtime_id = str(uuid.uuid4())
@@ -160,12 +160,31 @@ def capture_runtime_identity(settings: Any, client: Any) -> dict[str, Any]:
         "db.Database._insert_judgement": db.Database._insert_judgement,
         "pipeline.IntelligencePipeline._run_judge": pipeline.IntelligencePipeline._run_judge,
         "intelligence.judge": intelligence.judge,
+        "intelligence._previous_judgement_for_model": intelligence._previous_judgement_for_model,
         "reply_context.ReplyContexts.input": reply_context.ReplyContexts.input,
         "collector_health.collector_health": collector_health.collector_health,
         "active_client.complete_json": getattr(type(client), "complete_json", None),
+        "prediction_contract.normalize_prediction_time": prediction_contract.normalize_prediction_time,
+        "prediction_contract.validate_predictions": prediction_contract.validate_predictions,
+        "prediction_contract.exposed_evidence": prediction_contract.exposed_evidence,
+        "prediction_contract._validate_target": prediction_contract._validate_target,
+        "prediction_contract._instant": prediction_contract._instant,
+        "prediction_contract._zone": prediction_contract._zone,
+        "prediction_contract._quoted_zone_matches": prediction_contract._quoted_zone_matches,
+        "prediction_contract._official_plan_matches": prediction_contract._official_plan_matches,
+        "prediction_contract.next_reset_baseline": prediction_contract.next_reset_baseline,
+        "prediction_ledger.PredictionLedger.commit_judge": prediction_ledger.PredictionLedger.commit_judge,
+        "prediction_ledger.PredictionLedger._semantic_facts": prediction_ledger.PredictionLedger._semantic_facts,
+        "prediction_ledger.PredictionLedger._forecast_version": prediction_ledger.PredictionLedger._forecast_version,
+        "prediction_ledger.PredictionLedger._fresh_judge_context": prediction_ledger.PredictionLedger._fresh_judge_context,
+        "prediction_ledger.PredictionLedger.record_normal_baseline": prediction_ledger.PredictionLedger.record_normal_baseline,
     }
     code_hashes = {name: _code_hash(function) for name, function in callables.items()}
-    algorithm = {"version": "prediction-ledger-core-v1", "callable_code_hashes": code_hashes}
+    algorithm = {"version": "prediction-ledger-three-lines-v1", "callable_code_hashes": code_hashes,
+                 "target_algorithm_version": prediction_contract.PREDICTION_ALGORITHM_VERSION,
+                 "loaded_contract_material_hash": sha256_json({"schema": prediction_contract.prediction_schema(),
+                     "prompt_extension": prediction_contract.PREDICTION_PROMPT_EXTENSION,
+                     "forms": sorted(prediction_contract.PREDICTION_FORMS), "methods": sorted(prediction_contract.PREDICTION_METHODS)})}
     return {
         "runtime_id": runtime_id,
         "app_version": APP_VERSION,

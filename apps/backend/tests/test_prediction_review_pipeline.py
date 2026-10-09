@@ -10,6 +10,7 @@ import sys
 import time
 import zipfile
 from collections import deque
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -27,6 +28,7 @@ from app.logging_runtime import RuntimeLog
 from app.main import create_app
 from app.pipeline import IntelligencePipeline
 from app.prediction_ledger import PredictionLedger, current_attempt_tracker
+from app.prediction_contract import PREDICTION_TARGETS
 from app.review_export import export_review, preview_review, verify_review
 from app.review_reader import read_review
 
@@ -135,6 +137,16 @@ class FakeClock:
         self.current += amount
 
 
+@contextmanager
+def _fake_clock(monkeypatch: pytest.MonkeyPatch, clock: FakeClock):
+    """Restore module clocks even when a scenario assertion aborts early."""
+    with monkeypatch.context() as scoped:
+        for name in ('app.prediction_ledger.utc_text', 'app.deepseek.utc_text', 'app.pipeline.utc_text',
+                     'app.db.utc_now', 'app.reply_context.now'):
+            scoped.setattr(name, clock.text)
+        yield
+
+
 def _parse_json_tail(text: str) -> dict[str, Any]:
     start = text.find("{")
     if start < 0:
@@ -162,6 +174,21 @@ def _judge_result(
         "estimate_basis": "synthetic isolated fixture only",
         "reason_summary": reason,
         "evidence_post_ids": [PLAN_TWEET_ID],
+        # The new formal Judge contract requires both targets. These old Full
+        # alert regression fixtures have no independent date evidence for the
+        # target contract, so they explicitly say UNKNOWN instead of inventing
+        # a Banked prediction from legacy estimated_start.
+        "predictions": {
+            target: {"target": target, "status": "UNKNOWN", "method": "model_inference",
+                     "scope": {"value": "unknown", "certainty": "not_established"},
+                     "predicted_start": None, "predicted_end": None, "prediction_form": "unknown",
+                     "source_timezone": None, "precision": "unknown", "time_basis": "unknown",
+                     "expression": None, "relative_anchor_at": None, "relative_offset_seconds": None,
+                     "reason": "Legacy Full-alert fixture has no independent prospective target date.",
+                     "unresolved_reason": "NO_INDEPENDENT_TIME_BASIS", "evidence_post_ids": [],
+                     "evidence_refs": [], "lifecycle": "unknown"}
+            for target in ("EXTRA_FULL", "BANKED")
+        },
     }
 
 
@@ -486,6 +513,20 @@ def _attempt_events(database: Database, attempt_id: str) -> list[dict[str, Any]]
     return [row for row in _ledger_rows(database, "attempt_event") if row["attempt_id"] == attempt_id]
 
 
+def _forecast_chains(database: Database) -> dict[str, list[dict[str, Any]]]:
+    rows = _ledger_rows(database, 'forecast_version')
+    assert {row['payload']['target'] for row in rows} == set(PREDICTION_TARGETS)
+    chains = {target: [row for row in rows if row['payload']['target'] == target] for target in PREDICTION_TARGETS}
+    assert len({row['forecast_id'] for row in rows}) == len(rows)
+    for target, chain in chains.items():
+        for index, row in enumerate(chain):
+            assert row['series_id'] == chain[0]['series_id']
+            assert row['revision'] == index + 1
+            assert row['payload']['previous_id'] == (chain[index - 1]['forecast_id'] if index else None)
+            assert row['payload']['version_role'] == 'question_version' and row['payload']['method'] is None
+    return chains
+
+
 def _record_banked_marker(
     database: Database,
     occurred_at: str,
@@ -531,11 +572,6 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
     assert not settings.database_path.exists(), "timeline migration is allowed only on a fresh isolated DB"
 
     clock = FakeClock(datetime.now(UTC) - timedelta(minutes=1))
-    monkeypatch.setattr("app.prediction_ledger.utc_text", clock.text)
-    monkeypatch.setattr("app.deepseek.utc_text", clock.text)
-    monkeypatch.setattr("app.pipeline.utc_text", clock.text)
-    monkeypatch.setattr("app.db.utc_now", clock.text)
-    monkeypatch.setattr("app.reply_context.now", clock.text)
 
     async def scenario() -> None:
         harness = await _start_harness(settings, clock)
@@ -658,12 +694,19 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
             assert transport.send_persistence_checks == len(transport.all_attempt_ids)
             assert len(transport.all_attempt_ids) == harness.model.requests_started
             assert len(_ledger_rows(database, "attempt_started")) == harness.model.requests_started
+            initial_forecasts = _forecast_chains(database)
+            assert all(len(chain) == 1 for chain in initial_forecasts.values())
+            for target, chain in initial_forecasts.items():
+                assert run['payload']['target_refs'][target]['forecast_id'] == chain[0]['forecast_id']
+                assert committed['payload']['target_refs'][target] == run['payload']['target_refs'][target]
+                assert committed['payload']['accepted_attempt_id'] == first_attempt['attempt_id']
+                assert committed['payload']['target_outputs'][target]['output_revision'] == 1
 
             # Repeated collector sighting is a duplicate and cannot generate a new forecast.
             repeated = database.upsert_posts_detailed([_post_record(PLAN_TWEET_ID, PLAN_BODY_V1, posted)])
             assert repeated[0]["status"] == "duplicate"
             assert pipeline.enqueue_ingest(repeated) == 0
-            assert len(_ledger_rows(database, "forecast_version")) == 1
+            assert _forecast_chains(database) == initial_forecasts
             judge_sends_before_cache = len(transport.judge_attempt_ids)
             await pipeline._process_post(plan_id)
             assert len(transport.judge_attempt_ids) == judge_sends_before_cache
@@ -679,6 +722,7 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
                 and row["payload"].get("source_attempt_id")
                 for row in cache_events
             ), "cache reuse must point to real formal processing attempts, not an invented source"
+            assert _forecast_chains(database) == initial_forecasts
 
             # A real body revision is processed by the same production pipeline and
             # yields a distinct semantic forecast revision.
@@ -692,12 +736,15 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
             transport.queue_judge(JudgeAction(
                 result=_judge_result(second_forecast_time, reason="Synthetic revised input forecast.")
             ))
+            sends_before_revision = len(transport.judge_attempt_ids)
             await pipeline.run_judge(as_of=clock.text(t0 + timedelta(minutes=4)), data_health="HEALTHY")
-            forecasts_after_revision = _ledger_rows(database, "forecast_version")
-            assert len(forecasts_after_revision) == 2
-            latest_forecast = forecasts_after_revision[-1]
-            assert latest_forecast["revision"] == forecasts_after_revision[-2]["revision"] + 1
-            assert latest_forecast["payload"]["previous_id"] == forecasts_after_revision[-2]["forecast_id"]
+            assert len(transport.judge_attempt_ids) == sends_before_revision + 1
+            forecasts_after_revision = _forecast_chains(database)
+            assert all(len(chain) == 2 for chain in forecasts_after_revision.values())
+            latest_forecasts = {target: chain[-1] for target, chain in forecasts_after_revision.items()}
+            for target, chain in forecasts_after_revision.items():
+                assert chain[0] == initial_forecasts[target][0]
+                assert chain[-1]['payload']['semantic_hash'] != chain[0]['payload']['semantic_hash']
 
             # Same forecast facts at a later as-of with different non-forecast Judge
             # fields remain the same forecast revision.
@@ -709,15 +756,15 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
                 reason="Different synthetic explanation and date, same frozen forecast identity.",
             )
             transport.queue_judge(JudgeAction(result=same_facts_result))
+            sends_before_same_facts = len(transport.judge_attempt_ids)
             await pipeline.run_judge(as_of=clock.text(t0 + timedelta(minutes=5)), data_health="HEALTHY")
+            assert len(transport.judge_attempt_ids) == sends_before_same_facts + 1
             output_after_same_facts = database.latest_judgement()
             assert output_after_same_facts is not None
             assert output_after_same_facts["id"] != output_before_same_facts["id"]
             assert output_after_same_facts["reason_summary"] != output_before_same_facts["reason_summary"]
             assert output_after_same_facts["estimated_start"] != output_before_same_facts["estimated_start"]
-            same_fact_forecasts = _ledger_rows(database, "forecast_version")
-            assert len(same_fact_forecasts) == len(forecasts_after_revision)
-            assert same_fact_forecasts[-1]["forecast_id"] == latest_forecast["forecast_id"]
+            assert _forecast_chains(database) == forecasts_after_revision
             same_fact_outputs = [
                 row for row in _ledger_rows(database, "output_committed")
                 if row["judgement_id"] in {output_before_same_facts["id"], output_after_same_facts["id"]}
@@ -725,7 +772,11 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
             assert len(same_fact_outputs) == 2
             assert len({row["judgement_id"] for row in same_fact_outputs}) == 2
             assert len({row["run_id"] for row in same_fact_outputs}) == 2
-            assert all(row["forecast_id"] == latest_forecast["forecast_id"] for row in same_fact_outputs)
+            for target in PREDICTION_TARGETS:
+                assert all(row['payload']['target_refs'][target]['forecast_id'] == latest_forecasts[target]['forecast_id'] for row in same_fact_outputs)
+                target_outputs = [row['payload']['target_outputs'][target] for row in same_fact_outputs]
+                assert len({item['target_output_id'] for item in target_outputs}) == 2
+                assert target_outputs[1]['output_revision'] == target_outputs[0]['output_revision'] + 1
             assert all(row["payload"]["output_id"] for row in same_fact_outputs)
             same_fact_run_ids = {row["run_id"] for row in same_fact_outputs}
             same_fact_runs = [
@@ -734,6 +785,9 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
             ]
             assert len(same_fact_runs) == 2
             assert same_fact_runs[0]["payload"]["judgement_as_of"] != same_fact_runs[1]["payload"]["judgement_as_of"]
+            for shared_run in same_fact_runs:
+                assert len([attempt for attempt in _ledger_rows(database, 'attempt_started') if attempt['run_id'] == shared_run['run_id']]) == 1
+                assert set(shared_run['payload']['target_refs']) == set(PREDICTION_TARGETS)
 
             # Policy version belongs to the frozen input identity even when body
             # bytes are unchanged; it must not be silently absent from the run hash.
@@ -745,6 +799,11 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
             await pipeline.run_judge(as_of=clock.text(t0 + timedelta(minutes=6)), data_health="HEALTHY")
             after_policy_run = _ledger_rows(database, "run_started")[-1]["payload"]["semantic_input_hash"]
             assert before_policy_run != after_policy_run
+            policy_forecasts = _forecast_chains(database)
+            assert all(len(chain) == 3 for chain in policy_forecasts.values())
+            for target, chain in policy_forecasts.items():
+                assert chain[:2] == forecasts_after_revision[target]
+                assert chain[-1]['payload']['semantic_hash'] != latest_forecasts[target]['payload']['semantic_hash']
 
             # A legal UNKNOWN is a successful output with no invented date; the
             # subsequent HTTP failure is a separate failed run, not that output.
@@ -1217,7 +1276,8 @@ def test_formal_pipeline_synthetic_timeline_and_verified_export(
         finally:
             await harness.close()
 
-    asyncio.run(asyncio.wait_for(scenario(), timeout=90))
+    with _fake_clock(monkeypatch, clock):
+        asyncio.run(asyncio.wait_for(scenario(), timeout=90))
 
 
 def test_transport_failure_modes_recovery_and_commit_observation_gap(
@@ -1227,11 +1287,6 @@ def test_transport_failure_modes_recovery_and_commit_observation_gap(
 ):
     assert not settings.database_path.exists()
     clock = FakeClock(datetime.now(UTC) - timedelta(minutes=1))
-    monkeypatch.setattr("app.prediction_ledger.utc_text", clock.text)
-    monkeypatch.setattr("app.deepseek.utc_text", clock.text)
-    monkeypatch.setattr("app.pipeline.utc_text", clock.text)
-    monkeypatch.setattr("app.db.utc_now", clock.text)
-    monkeypatch.setattr("app.reply_context.now", clock.text)
 
     async def scenario() -> None:
         harness = await _start_harness(settings, clock)
@@ -1412,7 +1467,25 @@ def test_transport_failure_modes_recovery_and_commit_observation_gap(
         finally:
             await harness.close()
 
-    asyncio.run(asyncio.wait_for(scenario(), timeout=90))
+    with _fake_clock(monkeypatch, clock):
+        asyncio.run(asyncio.wait_for(scenario(), timeout=90))
+
+
+def test_fake_clock_is_restored_when_a_fixture_assertion_fails(monkeypatch):
+    import app.prediction_ledger as ledger_module
+    import app.deepseek as deepseek_module
+    import app.pipeline as pipeline_module
+    import app.db as db_module
+    import app.reply_context as context_module
+    originals = [(module, name, getattr(module, name)) for module, name in (
+        (ledger_module, 'utc_text'), (deepseek_module, 'utc_text'), (pipeline_module, 'utc_text'),
+        (db_module, 'utc_now'), (context_module, 'now'))]
+    clock = FakeClock(datetime(2099, 1, 1, tzinfo=UTC))
+    with pytest.raises(AssertionError, match='intentional fixture abort'):
+        with _fake_clock(monkeypatch, clock):
+            assert all(getattr(module, name)() == clock.text() for module, name, _ in originals)
+            raise AssertionError('intentional fixture abort')
+    assert all(getattr(module, name) is original for module, name, original in originals)
 
 
 def test_legacy_partial_judgement_body_is_placeholder_not_proof(

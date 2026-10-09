@@ -24,6 +24,13 @@ class FakeDeepSeek:
                 "action_level": "GREEN", "horizon_24h": "GREEN", "horizon_48h": "YELLOW", "horizon_72h": "ORANGE",
                 "estimated_start": None, "estimated_end": None, "estimate_basis": "隔离测试没有真实时间判断。",
                 "reason_summary": "隔离测试合法 Judge 输出。", "evidence_post_ids": [],
+                "predictions": {target: {
+                    "target": target, "status": "UNKNOWN", "method": "model_inference", "scope": "unknown",
+                    "predicted_start": None, "predicted_end": None, "prediction_form": "unknown",
+                    "source_timezone": None, "precision": "unknown", "time_basis": "unknown", "expression": None,
+                    "relative_anchor_at": None, "reason": "Explicit Fake has no independent future-time evidence.",
+                    "unresolved_reason": "OFFLINE_NO_TIME_EVIDENCE", "evidence_post_ids": [], "evidence_refs": [], "lifecycle": "unknown",
+                } for target in ("EXTRA_FULL", "BANKED")},
             }
         body = json.loads(user.rsplit('\n', 1)[-1])["post"]["text"]
         special = "banked" in body.lower()

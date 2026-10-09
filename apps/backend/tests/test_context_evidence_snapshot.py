@@ -59,6 +59,13 @@ class SourceJudge:
             "estimate_basis": "Offline contract fixture; no time prediction.",
             "reason_summary": "Offline source-version contract fixture.",
             "evidence_post_ids": [self.source_id],
+            "predictions": {target: {
+                "target": target, "status": "UNKNOWN", "method": "model_inference", "scope": "unknown",
+                "predicted_start": None, "predicted_end": None, "prediction_form": "unknown",
+                "source_timezone": None, "precision": "unknown", "time_basis": "unknown", "expression": None,
+                "relative_anchor_at": None, "reason": "Source-version fixture does not claim future dates.",
+                "unresolved_reason": "OFFLINE_NO_TIME_EVIDENCE", "evidence_post_ids": [], "evidence_refs": [], "lifecycle": "unknown",
+            } for target in ("EXTRA_FULL", "BANKED")},
         }
 
 

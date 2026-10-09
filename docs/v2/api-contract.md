@@ -2,13 +2,13 @@
 
 Base URL: `http://127.0.0.1:8787/api/v2`
 
-Future dual-object date prediction and review design is defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Its proposed fields and export capabilities are not implemented endpoint fields; this document continues to describe the current `/api/v2` contract.
+The confirmed prediction semantics are defined in [CRR 日期预测与复盘规范](prediction-and-review-spec.md). Production remains Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b`. Code manifest `1c7a29ad…` and its Backend 318/0/0, Web 17, Collector 18, type-check and build results are a historical offline baseline only; they do not report acceptance of later changes. The three-line contract is not deployed. Consult the [current report](../maintenance/prediction-three-lines-v1-report.md) for the current task status.
 
 ## Prediction review export boundary
 
-The isolated development worktree contains a local `prepare` / `preview` / `export` / `verify`
-CLI. It does not add or change an HTTP route or `/api/v2` response field. Schema 8 and the review
-reader/exporter have not been applied to the resident `main` checkout or enabled in production.
+The Ledger baseline contains a local `prepare` / `preview` / `export` / `verify` CLI and did not
+add an HTTP route. The current branch adds the read projection and history route described
+below. Schema 8, the reader/exporter and these extensions have not been enabled in production.
 
 The CLI requires an existing SQLite database and opens it read-only; it does not initialize or
 migrate the source. Review selection, freeze cutoff, ledger high-water, dependency closure, legacy
@@ -16,10 +16,10 @@ gaps, and export capabilities are reported in the local preview/package, not exp
 API. The [operations guide](prediction-review-operations.md) documents the isolated CLI and its
 limits.
 
-The isolated engineering regression for this snapshot passed (clean Backend 140 tests; Web and
-Collector tests, typechecks, and builds passed). The API contract and response fields remain
-unchanged. Production runtime-identity verification, Schema 8 migration/enablement/deployment, and
-model-accuracy evaluation have not been performed; see the operations guide for the evidence scope.
+OPEN [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10), head `ef226ebe...`,
+is the dependency. Its historical Backend 140 / Web 7 / Collector 18 results and CI are baseline
+evidence, not this round's results. Scoring and export remain explicit local actions; neither a
+health GET nor a package-verification result constitutes model or prediction-quality acceptance.
 
 ## Product reads
 
@@ -29,6 +29,69 @@ model-accuracy evaluation have not been performed; see the operations guide for 
 - `GET /resets?limit=50` — canonical events, current last Full Reset, and explicitly separated review candidates.
 
 The Radar response accepts only `GREEN`, `YELLOW`, `ORANGE`, `RED`, and `UNKNOWN`. It never exposes confidence or confidence percentage. `judgement_state` distinguishes processing, failed, stale, blocked and ready. With no verified Full Reset, `next_reset.status` is `waiting_for_verified_history`; an elapsed +7-day reference is `expired` and is never rolled forward automatically.
+
+## Three-line read extension (development contract)
+
+The development `/radar` response adds `prediction` with version `prediction-three-lines-v1` and
+algorithm version `three-lines-time-v1`. Existing `estimated_start/end`, horizons, cycle and
+`next_reset` fields retain their Full meanings. Final empty-DB API smoke returned health/Radar and
+each target history successfully; the database remained byte-identical through CLI use.
+
+| Projection field | Read contract |
+| --- | --- |
+| `version`, `algorithm_version`, `state` | Explicit projection identity and overall availability/partial-failure state. |
+| `capabilities` | Boolean `normal_weekly`, `extra_full`, `banked`, `history` support flags; support does not prove that historical source records exist. |
+| `health` | Current collection health, generation health and global judgement validation remain visible. |
+| `lines` | Separate entries keyed by `NORMAL_WEEKLY`, `EXTRA_FULL`, `BANKED`; each retains its own availability and validity. |
+| Per-line time/source | `form`, nullable `predicted_start/end`, `expression`, `source_timezone`, `precision`, `time_basis`, relative anchor/unresolved reason, `method` and Normal `basis`. A `point` identifies the target event's start; its `predicted_end` may stay null. |
+| Per-line lineage | Forecast/series/revision/previous links, update time, nullable `output_available_at` and availability kind. |
+| Per-line eligibility | State, validity, health, `current_advice_eligible` and an explanation when the record is only a historical reference. |
+| Per-line `status_projection` | Four independent dimensions: `capability{implementation,source}`, `run{state,run_id,attempt_id,finished_at,reason_code}`, `result{state,reason_code,summary}` and `history_status`; `last_known` is null or a flat status/lineage object with a safe `forecast` when valid. `NORMAL_WEEKLY` additionally has `normal{helper_status,calculation_status}`. |
+
+Compatibility absence and a valid returned model UNKNOWN are separate contracts. A legacy Judge
+without Banked output, an unavailable projection, a missing target field or unrecorded history must
+retain its absence/rejection reason; it must not be labelled as a historical model UNKNOWN. Only an
+accepted target response explicitly declaring UNKNOWN can support that model state. Errors and
+reasons use safe summaries, and the read API does not expose raw Ledger payloads or model requests.
+
+For `ledger_v2`, `result=not_attempted` means no attempt, `run=pending` is distinct from a terminal
+`run=timeout` (whose result is `not_returned`), and accepted explicit UNKNOWN is `unknown_valid`;
+validation rejection is `rejected`. A legacy undeclared target is `source=legacy_undeclared` /
+`result=legacy_missing`, not a model UNKNOWN. The latest run/result and `last_known` stay separate:
+a prior accepted forecast retains its own validity state and `valid_until`; a later failure does not
+renew that validity. `NORMAL_WEEKLY` exposes helper/calculation separately from history; without a
+usable Full anchor its calculation is `no_business_full_anchor`, regardless of history availability.
+For a modern target's latest pending, timeout or rejected attempt, current-output fields
+`target_output_id`, `forecast_id`, `prediction_form`, `predicted_start` and `predicted_end` are null;
+the Web-normalized `form` falls back to `unknown`. The current question references
+`question_version` / `question_revision` and run/attempt IDs remain, while any prior forecast stays
+under `last_known`. The Web UI renders that prior date only when `last_known.state=valid`.
+
+For time fields, an explicit `at` / `planned for` start is a `point`; do not infer an event end or
+copy the start into `predicted_end`. Keep true one-sided bounds, ranges and dates in their stated
+forms. Derive precision from the original quote and declared source metadata: a serialized `:00`
+does not upgrade an original `HH:MM` expression to second precision. Equivalent timezone formats
+may identify the same instant while `source_timezone` retains the original declaration.
+
+`GET /api/v2/predictions/history` is the development history entry point. Query parameters are optional
+`target` (one of the three target IDs), optional `series_id` and `limit` (default 100, range 1–200).
+The response carries `version`, `state`, selection fields, `items`, `total_count`,
+`total_count_known`, `truncated` and a safe reason. `items` must contain flat, target-specific
+prediction DTOs with `item_schema=prediction-history-line-v1`, stable lineage and time/source
+fields. The safe Ledger getter supplies first/last record IDs, singular/plural boundary items,
+`source_output_count`, `truncated`, `attempts_truncated` and safe `prediction-attempt-v1`
+summaries. Ordering is `append_sequence_not_proven_temporal_or_pre_event_order`, not scorer
+first/last pre-event selection. Raw rows with a nested `payload` are not a history DTO.
+First, intermediate and latest versions remain distinguishable; truncation does not claim
+complete coverage. Final empty-DB smoke returned 200 with zero items and the flat schema for all
+three targets; invalid targets returned 422. Populated UI review used a separate formal06 clone.
+
+Final clean acceptance covers official-source/time-expression protection, relative anchors, legacy
+expiry/absence and flat history. Synthetic A and real legacy B packages independently verified
+their assessment/reference bindings. The isolated UI review showed seven history items and the
+expected stale/Normal/Banked distinctions. The UI clone was from formal06, not the final formal07
+scoring sample; its screenshot was not persisted. Old candidate failures remain historical and
+are not relabelled. These reads do not trigger a model request, notification or scoring write.
 
 ## Controlled writes
 

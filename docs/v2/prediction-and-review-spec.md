@@ -3,16 +3,16 @@
 > 规范版本：`crr-prediction-review-v1`
 > 规范日期：2026-10-03，用户时区 `Asia/Shanghai`；机器时间统一保存为带时区的 UTC。
 > 源代码核查：`main` / `af3cde32aa4c9f7f6d58973535f39445fb4d71c5`。
-> 状态：产品规则已确认；只读复盘 reader/exporter/CLI 已在隔离开发 worktree 实现。隔离业务工程回归已通过：C 的 formal focused 3 passed、Backend 138 passed（在最终 no-clobber 发布修复前）；最终 clean 源码包含该修复，Backend 140 passed、`test_review_export.py` 24 passed、Web 7 与 Collector 18 passed，且 Web/Collector 的 typecheck/build 均通过。以上只证明隔离工程回归；生产运行身份核验、Schema 8 生产迁移/启用/部署及模型准确率评价未实施。最终 clean receipt 与逐步退出码见[操作指南](prediction-review-operations.md)及 `runtime/review/ledger-v1-20261007/clean-final-20261007T060513118-fefce178/clean-receipt.json`。
+> 历史离线基线：冻结 code manifest `1c7a29ad…` 对应 Backend 318 passed / 0 failed / 0 skipped、Web 17、Collector 18，以及当时的类型检查、构建、空库 API/CLI、样包与隔离 UI 回执。旧 candidate 的 309/4 失败仍是历史记录。这些结果不覆盖后续改动。模型语义状态：v9 旧版 11 次受控 HTTP 的结论为 `PARTIAL`；Judge 时间契约 Prompt 已升级为 `v2-reset-judge-10-time-contract`，v10 本轮受控补测未获授权，因此 v10 语义为 `NOT_EVALUATED`。实际准确率仍为 `NOT_EVALUATED`，部署为 `NOT_DEPLOYED`。当前状态见[专项报告](../maintenance/prediction-three-lines-v1-report.md)。
 
-> 操作入口：[预测复盘操作指南](prediction-review-operations.md)。当前 CLI、Schema 8 与兼容读取仅属隔离开发实现；不改变下列已确认产品规则或现行 API 契约。
+> 操作入口：[预测复盘操作指南](prediction-review-operations.md)。开发分支 `codex/prediction-three-lines-v1-20261009` 以 `ef226ebe14cf45ad7af80af1b14d87e17638e355` 为基线，依赖仍为 OPEN 的 [Ledger PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10)。该基线的历史工程回归仅见[Ledger 报告](../maintenance/prediction-review-ledger-v1-report.md)，不能替代本轮结果。生产仍为 Alpha5 / main `1e865c37d1643f429162adeb0fab61bb7371a47b`。本次仅补实现状态和契约引用，下列业务语义保持已确认版本。
 
 ## 1 适用范围与证据边界
 
 本规范统一日期预测、长期复盘日志、脱敏导出与评价验收，供后续正式链实现及用户离线 ChatGPT 复盘使用。
-产品核心意图已收敛；只读复盘读取和脱敏导出已有隔离实现，但这不等于完整产品能力、Banked 独立预测、正式评分或准确率目标已经实现或验证。
+产品核心意图已收敛；Ledger 基线已有隔离只读读取和脱敏导出。较早冻结源码曾完成三线、评分、导出和 API/Web 的离线实现与验收；后续改动及其状态以专项报告为准。任何工程回归都不等于真实模型语义、实际准确率或生产验收。
 源码核查只能确认该提交中的实现，不能证明当前进程加载身份、配置、模型、Prompt 或机器运行状态。
-现行 Judge 日期窗口仍只针对 Full；现行表名、事件枚举与 API 契约保持其已有含义。
+生产 Alpha5 的 Judge 日期窗口仍只针对 Full；隔离开发的双目标扩展不改变原表名、事件枚举或旧 Full 字段含义。
 2026-09-30 运行事实及固定历史审核包保持历史证据身份，不能用本规范反写其结果。
 代码方案、变更授权、隔离回归、受控业务预算和上线确认属于后续阶段。
 
@@ -21,7 +21,7 @@
 近期服务个人使用，未来考虑付费消息分发；Full/Banked 日期预测与信息分发同等重要。
 预测目标是实际执行或发放开始，公告发布时间、代理观察时间与个人账号到账时间须分别记录。
 
-| 目标标识（待实现） | 产品问题 | 与正式事件的关系 |
+| 目标标识（实现状态见文首） | 产品问题 | 与正式事件的关系 |
 | --- | --- | --- |
 | `NORMAL_WEEKLY` | 按最近确认的实际 Full 推算正常周额度恢复参考 | 仅用户基线，不自行生成正式事件 |
 | `EXTRA_FULL` | 额外全局 Full 的实际执行开始何时发生 | 后续经证据核实关联 `FULL_RESET` |
@@ -32,16 +32,16 @@ Banked 不推进、不重置 Full 周期，也不改变 Normal 七天时钟；�
 七天是用户确认的参考基线，尚未验证为所有账号政策，不能据此承诺个人到账。
 Full 锚点只有日期、范围或公告代理时，保留原时区、精度与代理标记；平移七天仍只是同精度的参考范围。
 基线到期只记录过期并复核，不等于观测到正常恢复，不制造额外 Full，不偷偷滚动旧基线。
-没有新实际 Full 锚点时，不得以当前时间或旧基线再加七天冒充新的已确认周期。
+没有新实际 Full 锚点时，不得以当前时间或旧基线再加七天冒充新的已确认周期。没有可用的实际 Full 商业锚点时，Normal 周参考不可计算；计算/helper 状态与历史回填状态分开，有历史记录不等于已有可计算基线。
 公开信息、上下文、来源资格或实际 Full 锚点发生实质变化时形成新预测；重复 sighting 不重算。
 实质变化以语义输入、证据内容版本和内容政策版本识别，采集时间或心跳变化本身不是新预测依据。
 缺少独立前瞻依据时，Extra Full 与 Banked 日期保持未知，与 Normal 参考基线分开展示和评价。
 官方明确计划时间与模型推断分列；计划或预告不能晋升为实际执行事件。
 新模型发布、故障、恢复或补偿等可作为未来待验证理论来源，不能写死事件、日期或自动升色。
 
-## 3 现有复用入口与待补能力
+## 3 历史源码复用入口与当时缺口
 
-下表来自上述提交的有界源码核查；“待补”均为设计要求，未实施或验收。
+下表来自文首 `af3cde32...` 的有界历史源码核查；“待补”是当时缺口，不是对 `ef226` Ledger 成果或本轮在途代码的最新判定。当前存储/API 映射分别维护在[数据模型](data-model.md)和[API 契约](api-contract.md)，最终验证状态维护在专项报告。
 
 | 真实路径与 symbol | 当前可复用事实 | 待补边界 |
 | --- | --- | --- |
@@ -59,7 +59,7 @@ Full 锚点只有日期、范围或公告代理时，保留原时区、精度与
 现有 Judge 字段、内部快照及候选预告可作为底座；新增设计不得冒充当前 DB 字段或当前 API 输出。
 现行契约见 [产品模型](product-model.md)、[数据模型](data-model.md) 与 [API 契约](api-contract.md)。
 
-## 4 待实现的逻辑记录与字段
+## 4 逻辑记录与字段
 
 以下定义逻辑记录组，不指定建表数量，也不声称已有五个新表；存储迁移另行设计。
 所有记录携带本规范版本、记录 schema 版本与稳定 ID；缺失值显式为 `null` 并记录原因。
@@ -84,14 +84,14 @@ Full 锚点只有日期、范围或公告代理时，保留原时区、精度与
 
 | 字段组 | 必要语义 |
 | --- | --- |
-| `predicted_start`、`predicted_end`、`prediction_form` | 明确点、有限范围或未知；明确点可内部退化为同值两端；只有单边时不得伪造另一端 |
+| `predicted_start`、`predicted_end`、`prediction_form` | `point` 表示目标事件的开始时刻，`predicted_end` 可为 `null`；不得仅为补齐点而复制开始值。真实范围、单边边界、日期和未知各自保留原形式 |
 | `source_timezone`、`precision`、`time_basis` | 保留原时区、日期/时刻/范围精度，以及明确文本、推断或代理依据 |
 | `judgement_as_of` | 语义判断/回放的历史参考时刻，不等于真实生成或用户可用时刻 |
 | `input_cutoff_at` | 本次输入冻结边界；迟到观测即使声称早发布，也不得倒灌该版本 |
 | `attempt_started_at`、`attempt_finished_at` | 实际尝试开始与终止时间；失败、超时、取消同样记录 |
 | `output_available_at` | 结果经校验且首次可供产品读取的实际时间；用于事前性与提前量 |
 
-时间采用带时区格式；转换 UTC 时保留原表达及转换依据。日期/范围不强塞午夜实测点，不取中点，不补造分钟。
+时间采用带时区格式；转换 UTC 时保留原表达及转换依据。日期/范围不强塞午夜实测点，不取中点，不补造分钟。精度来自原始引文及其声明元数据；原文 `HH:MM` 即使在规范化字段中序列化为 `HH:MM:00` 仍是 minute，不升为 second；原始 ISO 明确含秒时保留 second。等价时区格式可指向同一绝对时刻，但不得改写来源时区声明或猜补未声明时区。
 日期可按可靠时区与声明精度表达整日范围；不能形成可信有限闭区间时保留未知或单边状态。
 回放 `created_at=as_of` 只能映射到语义参考时间；实际执行与输出可用时刻必须另记。
 正常顺序为实际开始不晚于结束、结束不晚于输出可用；缺少可信时钟或违序时不能认证事前性。
@@ -155,7 +155,7 @@ CRR 不自动调用高级模型，不新增复盘调用预算，不自动调参�
 
 ## 7 固定集合与评价算法
 
-用户已确认 ±24h 为主、±48h 为辅助及首次/末次事前评价口径；本节为据此形成、经 Sol 审查的初版技术算法设计。本轮没有执行评分或验证线上准确率。
+用户已确认 ±24h 为主、±48h 为辅助及首次/末次事前评价口径；本节为据此形成、经 Sol 审查的技术算法。离线评分器和可重算 assessment 已通过最终冻结源码验收；本节公式与业务口径保持原样。v9 旧版 11 次受控 HTTP 的语义结论为 `PARTIAL`；v10 尚未获授权补测，实际准确率仍未评估。
 评分前固定目标事件集合、范围、观测截止、去重与纳入/排除规则、真值审核版本、评分版本及集合哈希。
 Full 与 Banked 各有固定 `N`；Normal 参考基线独立报表，不能混入额外 Full 命中或失败。
 真实已识别事件即使缺精确时间也保留在集合内；不能因无预测、未知或误差大而删事件改变分母。
@@ -213,29 +213,29 @@ Full/Banked 的首次、末次事前分别每事件一票；按 `output_availabl
 
 ## 8 回归与验收矩阵
 
-下表是产品规则与业务评价验收矩阵。表中“待执行”指对应完整业务场景/正式评价尚未完成，不表示所列既有测试未运行；隔离工程回归结果与范围见[操作指南](prediction-review-operations.md)。
+下表保留历史产品规则与离线验收记录，结果对应当时冻结 code manifest `1c7a29ad…` 及其样包；不涵盖后续 Judge v10 Prompt 的受控补测。v9 旧版 11 次受控 HTTP 的语义证据为 `PARTIAL`，不构成准确率结论；实际准确率仍未评估。旧 candidate 的 4 项失败留作历史回执，不重标。当前任务状态见[专项报告](../maintenance/prediction-three-lines-v1-report.md)及[操作指南](prediction-review-operations.md)。
 文件路径均相对项目根；新增用例沿现有测试体系实现，不依赖 ignored 真实资产或临时模块。
 
-| 验收主题 | 已核实的既有入口或待补用例 | 状态 |
+| 验收主题 | 已核实的入口 | 离线状态 |
 | --- | --- | --- |
-| Full+7、中途 Full、Banked 不动周期、过期 Normal 无假事件 | `apps/backend/tests/test_v2_contract.py::test_full_reset_closes_previous_cycle_and_opens_new_cycle`、`test_special_reset_is_purple_and_does_not_change_last_full_reset`、`test_expired_default_date_is_not_rolled_forward`；补 Normal 版本 | 待执行 |
-| 代理、日期/范围、未知保真 | `apps/backend/tests/test_effects_pipeline.py::test_unknown_time_cannot_be_invented_from_post_time_and_mechanism_is_not_an_event`；补精度与代理基线 | 待执行 |
-| Full/Banked 独立、多效果只一次 Full | `apps/backend/tests/test_effects_pipeline.py::test_multi_effect_product_flow_preserves_one_cycle_and_a_future_candidate`；补双对象预测 | 待执行 |
-| 重复/实质新输入、在途 dirty、旧结果拒收 | `apps/backend/tests/test_context_evidence_snapshot.py::test_input_change_while_judge_is_in_flight_discards_late_result`、`test_parent_history_is_as_of_safe_and_semantic_hash_tracks_real_edits`；补尝试链 | 待执行 |
-| 父帖/祖先 input_versions、未来信息、质量限制 | `apps/backend/tests/test_context_evidence_snapshot.py::test_parent_first_observed_after_as_of_is_not_used_early`；`apps/backend/tests/test_reply_context.py::test_parent_content_policy_applies_through_context`；补祖先导出 | 待执行 |
-| DB raw 到 API、STALE 失效、GET 只读 | `apps/backend/tests/test_judge_contract_health.py::test_storage_corruption_has_reason_and_safe_api`、`test_stale_generation_stays_last_known_after_recovery`、`test_health_decays_get_is_read_only_and_old_heartbeat_cannot_recover` | 待执行 |
-| 首次/末次、中间留存、事后与回放隔离 | 待新增：真实 output_available_at、严格事前、同刻顺序、跨方法分栏及不挑最佳 | 待执行 |
-| 同中点宽窄范围、覆盖不能刷分、24/48边界 | 待新增：第7节合成例、有限闭区间、分类总和与固定分母 | 待执行 |
-| 缺真值、无预测、迟到、失败/解析失败/超时 | `apps/backend/tests/test_effects_pipeline.py::test_judge_rejects_missing_levels_instead_of_silently_saving_unknown`；补全终态留痕和互斥分类 | 待执行 |
-| 轮转不丢长期记录 | `apps/backend/tests/test_runtime_logging.py::test_runtime_log_is_valid_jsonl_and_bounds_daily_shards`、`test_runtime_log_prunes_files_older_than_retention`；补长期账本独立性 | 待执行 |
-| secret/私人信息/私有推理排除、manifest、干净检出 | `apps/backend/tests/test_notifications.py::test_tokens_are_redacted_from_paths_queries_and_plain_text`；`apps/backend/tests/test_corpus_standard.py::test_canonical_export_keeps_original_translation_and_string_tweet_id`；补完整包与清洁检出 | 待执行 |
-| Backend/Web/Collector 既有测试、类型与构建、受控业务验收 | 后续代码阶段按现有项目声明核对并执行；本轮未核验前端具体命令，不编造通过记录 | 待执行 |
+| Full+7、中途 Full、Banked 不动周期、过期 Normal 无假事件 | 周期契约、三线目标/时间契约与最终全量回归 | 最终离线回归通过 |
+| 代理、日期/范围、未知保真 | 时间表达、相对锚点、legacy 兼容与目标契约回归 | 最终离线回归通过 |
+| Full/Banked 独立、多效果只一次 Full | 三线 pipeline、target、ledger 与合成完整样包 | 最终离线回归通过 |
+| 重复/实质新输入、在途 dirty、旧结果拒收 | 输入快照、共享尝试、迟到拒收与版本链回归 | 最终离线回归通过 |
+| 父帖/祖先 input_versions、未来信息、质量限制 | context/input snapshot 与 export closure 回归 | 最终离线回归通过 |
+| DB raw 到 API、STALE 失效、GET 只读 | API/history 空库 smoke、validation 与只读 CLI 回归 | 最终离线回归通过 |
+| 首次/末次、中间留存、事后与回放隔离 | 固定集合 scorer、可用时钟与合成完整样包 | 最终离线回归通过；真实样本无事前预测 |
+| 同中点宽窄范围、覆盖不能刷分、24/48边界 | scorer 边界回归及第 7 节既定公式 | 最终离线回归通过；公式未变 |
+| 缺真值、无预测、迟到、失败/解析失败/超时 | 互斥分类、truth revision 与失败/拒收尝试回归 | 最终离线回归通过 |
+| 轮转不丢长期记录 | ledger 与五天日志轮转后导出回归 | 最终离线回归通过 |
+| secret/私人信息/私有推理排除、manifest、干净检出 | 安全白名单、哈希/ref、final package 与 clean manifest 审计 | 最终离线回归通过；安全命中未决 0 |
+| Backend/Web/Collector、类型、构建与空库 API/CLI | 最终 manifest `1c7a29ad…`；Backend 318/0/0、Web 17、Collector 18 | 最终离线验收通过 |
 
 ## 9 后续实施顺序
 
-1. 在正式链复用现有存储/快照/事件入口，补长期日志、独立时间、运行身份与真值修订；先保住现有契约和历史。
-2. 实现三条线分离、Full/Banked 结构化日期预测、脱敏导出与固定集合评分，保留未知、全部版本和失败记录。
-3. 执行隔离回归及受控验证，交付证据后由用户逐次确认上线；业务 HTTP/模型调用预算须另行明确，不复用旧剩余授权。
+1. 上述离线实现、冻结源码回归、样包、只读 CLI 及隔离 UI 记录属于历史基线。
+2. Judge v10 时间契约尚未获授权进行受控模型补测；历史预算或余额不构成该版本的调用授权。
+3. 模型语义、实际准确率与生产启用分开验收；部署、迁移、合并 main 仍需各自授权。
 
 不另建 DeepSeek 核查器，不恢复 `CLOSED_NOT_ADOPTED` 实验，不全库重跑。
-本规范定义的产品规则与评价口径保持不变。隔离业务工程回归已通过，但导出器尚未进入生产；生产运行身份核验、生产迁移/启用/部署及准确率评价仍未实施。文档入口见[文档导航](../README.md)，CLI 状态与真实可运行命令见[预测复盘操作指南](prediction-review-operations.md)。
+本规范定义的产品规则与评价口径保持不变。Ledger 历史回归只属于其对应提交；生产仍为 Alpha5，实际日期准确率未验收。CLI 的实际命令与证据见[预测复盘操作指南](prediction-review-operations.md)。

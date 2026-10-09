@@ -33,6 +33,7 @@ from .prediction_ledger import (
 )
 from .review_common import utc_text
 from .runtime_identity import capture_runtime_identity
+from .prediction_contract import PREDICTION_CONTRACT_VERSION, PredictionTargetsError
 
 
 class TranslationStageError(RuntimeError):
@@ -519,7 +520,7 @@ class IntelligencePipeline:
                 reason_code = error.category.upper()
             elif isinstance(error, (ValueError, TypeError)):
                 event_type = "schema_failure"
-                reason_code = "INVALID_JUDGE_RESULT"
+                reason_code = getattr(error, "reason_code", "INVALID_JUDGE_RESULT")
             else:
                 event_type = "request_failure"
                 reason_code = error_type.upper()
@@ -529,6 +530,9 @@ class IntelligencePipeline:
                 "error_type": error_type,
                 "attempt_finished_at": utc_text(),
             }
+            if isinstance(error, PredictionTargetsError):
+                event.update({"structured_output": error.structured_output, "output_available_at": None,
+                              "publication_status": "rejected"})
             if attempt_id:
                 self.prediction_ledger.append_attempt_event(run.run_id, attempt_id, event_type, **event)
             else:
@@ -544,6 +548,10 @@ class IntelligencePipeline:
         context = self.database.judgement_context(as_of=as_of)
         context['pending_inputs'] = self.database.judge_pending_inputs(include_deferred=True) if not as_of else []
         self.database.refresh_input_snapshot(context)
+        self.prediction_ledger.record_normal_baseline(
+            context.get("last_full_reset"), as_of=as_of, is_synthetic=self.is_synthetic,
+            record_kind="replay" if as_of is not None else "baseline",
+        )
         if not context['posts']:
             self.database.set_state('judge', {'status':'insufficient_input', 'reason':'NO_USABLE_POSTS',
                 'recovery':'Waiting for a valid analysis or next scheduled retry', 'updated_at':utc_now()})
@@ -560,6 +568,7 @@ class IntelligencePipeline:
         def request_scope(request_context: dict[str, Any]):
             evidence_sources = self._ledger_evidence_sources(context, as_of)
             frozen_input = {
+                "prediction_contract_version": PREDICTION_CONTRACT_VERSION,
                 "forecast": {
                     "target": "EXTRA_FULL",
                     "scope": {"value": "unknown", "certainty": "not_established_by_ledger"},

@@ -9,11 +9,15 @@ from typing import Any, Callable, Protocol
 
 from .db import ACTION_LEVELS, SPECIAL_TYPES, content_hash, normalise_time, text_language
 from .prediction_ledger import current_attempt_tracker
+from .prediction_contract import (
+    PREDICTION_CONTRACT_VERSION, PREDICTION_PROMPT_EXTENSION,
+    PredictionTargetsError, next_reset_baseline, prediction_schema, safe_target_output, validate_predictions,
+)
 
 
 ANALYSIS_PROMPT_VERSION = "v2-post-semantics-9-context"
 TRANSLATION_PROMPT_VERSION = "v2-zh-translation-2-context"
-JUDGE_PROMPT_VERSION = "v2-reset-judge-8-context-health"
+JUDGE_PROMPT_VERSION = "v2-reset-judge-10-time-contract"
 
 
 class JsonModel(Protocol):
@@ -64,6 +68,7 @@ def _previous_judgement_for_model(value: dict[str, Any] | None) -> dict[str, Any
         "recovery_observed_at", "clock_anomaly", "time_limitation", "ledger_metadata",
         "audit_metadata", "estimated_start_expression", "estimated_end_expression",
         "estimated_start_time_metadata", "estimated_end_time_metadata",
+        "prediction_validation", "prediction_contract_version", "target_refs", "target_outputs",
     }
     for key in tuple(previous):
         if key.startswith("ledger_") or key in audit_fields:
@@ -75,6 +80,15 @@ def _previous_judgement_for_model(value: dict[str, Any] | None) -> dict[str, Any
             if key.startswith("ledger_") or key in audit_fields:
                 clean_raw.pop(key, None)
         previous["raw"] = clean_raw
+    for container in (previous, previous.get("raw")):
+        if isinstance(container, dict) and isinstance(container.get("predictions"), dict):
+            business_fields = {"target", "status", "method", "scope", "predicted_start", "predicted_end",
+                               "prediction_form", "source_timezone", "precision", "time_basis", "expression",
+                               "relative_anchor_at", "unresolved_reason", "reason", "lifecycle"}
+            container["predictions"] = {target: {key: child for key, child in safe_target_output(output).items()
+                                               if key in business_fields}
+                                        for target, output in container["predictions"].items()
+                                        if target in {"EXTRA_FULL", "BANKED"} and isinstance(output, dict)}
     return previous
 
 
@@ -362,12 +376,12 @@ async def judge(
             now = now.replace(tzinfo=UTC)
         now = now.astimezone(UTC)
     last_full = context.get("last_full_reset")
-    default_reference = None
-    if last_full:
-        default_reference = (datetime.fromisoformat(last_full["occurred_at"].replace("Z", "+00:00")) + timedelta(days=7)).isoformat().replace("+00:00", "Z")
+    normal_reference = next_reset_baseline(last_full, as_of=now)
+    default_reference = normal_reference.get("estimated_at")
     allowed_levels = "GREEN|YELLOW|ORANGE|RED|UNKNOWN"
     schema = {"action_level": allowed_levels, "horizon_24h": allowed_levels, "horizon_48h": allowed_levels, "horizon_72h": allowed_levels,
               "estimated_start": None, "estimated_end": None, "estimate_basis": "中文说明", "reason_summary": "简短中文理由", "evidence_post_ids": ["真实 tweet_id"]}
+    schema["predictions"] = prediction_schema()
     historical_cases = [{
         "case_id": item["case_id"], "posted_at": item["posted_at"], "original_text": item["original_text"],
         "context": item.get("context_text") or "", "outcome_type": item["outcome_type"],
@@ -376,8 +390,11 @@ async def judge(
         "pattern_tags": item.get("pattern_tags") or [], "related_tweet_ids": item.get("related_tweet_ids") or [],
     } for item in context.get("historical_cases") or []]
     clean_context = {"judged_at": now.isoformat().replace("+00:00", "Z"), "data_health": data_health,
-                     "default_reference_last_full_plus_7d": default_reference, "posts": context["posts"],
-                     "reset_events": context["reset_events"],
+                     "default_reference_last_full_plus_7d": default_reference,
+                     "normal_reference": {**normal_reference, "reference_only": True, "not_prediction_evidence": True},
+                     "posts": context["posts"],
+                     "reset_events": context["reset_events"], "event_source_posts": context.get("event_source_posts") or [],
+                     "last_full_reset": context.get("last_full_reset"), "current_cycle": context.get("current_cycle"),
                      "previous_judgement": _previous_judgement_for_model(context.get("previous_judgement")),
                      "corpus_version": context.get("corpus_version"), "historical_cases": historical_cases,
                      "pending_inputs": context.get('pending_inputs', [])}
@@ -385,6 +402,7 @@ async def judge(
     user_prefix = "综合判断下一次 Codex 完整额度重置 FULL_RESET 是否临近。主等级、24/48/72h 与预计窗口只回答完整重置，不回答发重置卡。发卡 BANKED/RESET_CARD、部分用户补偿和其他 SPECIAL_RESET 独立提示，不得仅凭其预告或确定性把完整重置主等级升色，也不得把发卡预计时间当作下一次完整重置时间；可在理由中单独说明特殊事件及其不影响完整周期。若同帖同时有完整重置和发卡，只让完整重置的效果用于主等级判断。这个边界不代表遇到发卡就硬降为 GREEN：其余独立完整重置信号仍需综合判断，证据不足可 UNKNOWN。等级含义：GREEN正常、YELLOW关注、ORANGE可能临近、RED近期强信号、UNKNOWN不能可靠判断。24/48/72h 是累计窗口，必须非递减，而且不是把主等级机械复制三次。action_level 回答从当前时点看下一次完整重置的总体行动等级；各 horizon 回答该累计窗口内下一次完整重置的临近程度。 "
     user_prefix += "按以下通用时间语义校准，但仍结合全部上下文自主判断：已经完成的本轮完整重置只作为新周期起点，不能继续当作下一次重置的 RED；若其后没有新的前瞻信号，通常为主等级 GREEN、24h GREEN、48h GREEN、72h YELLOW，其中 72h 的 YELLOW 只是宽窗口关注，不代表有具体时间依据。已经公告或正在执行、但尚未确认完成传播的本轮完整重置同样不等于“下一次”重置；若没有独立的下一轮信号，通常为主等级 GREEN、24h GREEN、48h YELLOW、72h YELLOW，用较长窗口表达当前事件尚在收尾，而不是维持 RED。明确写出将在 24 小时内或当天明确截止时刻前到来的 FULL_RESET 公告是近时强信号，应为主等级与 24/48/72h 全部 RED；这条只适用于明确公告，不适用于玩笑或模糊暗示。明确指向次日的 reset 动作或第一人称 reset button 意图，即使带玩笑、if/can 等条件语气且尚不足以创建正式事件，仍是强前瞻暗示，通常为主等级 ORANGE、24h ORANGE、48h RED、72h RED。多个时间上相邻且相互印证的次日信号（例如一条说 reset 很快但不是今天，另一条说次日里程碑/庆祝并要求用户留意 Codex）也按强次日暗示处理；不要仅因单条缺范围或机制就各自降成普通闲聊。若文本同时说明今天的动作已经发生、又把较模糊的庆祝或另一动作移到明天，必须分别理解已发生与未来部分；未来部分缺少完整重置机制/范围时可作为 YELLOW 关注，并在覆盖明天的较长累计窗口升至 ORANGE，但不能无依据升为 RED。 "
     user_prefix += "不要输出置信度百分比。已确认的过去 Reset 不能作为当前仍为红色的直接理由；相对时间以原帖时间为锚。default_reference_last_full_plus_7d 是界面周期参照，不是统计拟合、固定规律或任何将来 Reset 的证据。不得仅按该参照或旧事件加七天升至 ORANGE/RED；不得以它直接填充 estimated_start/estimated_end。没有独立的新前瞻依据时，两个预计时间均返回 null，区分“暂无新信号”和“数据不足”，仍自主判断等级，不制造精确到分钟的未来事实。historical_cases 是已经过去的类比材料，不是决定颜色的规则，也不是当前事件；必须同时考虑其中的特殊事件、不同含义和结果未知案例，并降低未直接核验或覆盖不足案例的权重。没有依据时不要编造时间。\n"
+    user_prefix += PREDICTION_PROMPT_EXTENSION
     user_text = user_prefix + json.dumps({"required_schema": schema, "context": clean_context}, ensure_ascii=False)
     request_context = {
         "system": system_text, "user": user_text, "user_prefix": user_prefix,
@@ -420,6 +438,12 @@ async def judge(
         result["valid_until"] = (now + timedelta(hours=2)).isoformat().replace("+00:00", "Z")
         result["data_health"] = data_health
         result["context_hash"] = hashlib.sha256(json.dumps(clean_context, ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
+        result["predictions"], result["prediction_validation"] = validate_predictions(result.get("predictions"), clean_context)
+        result["prediction_contract_version"] = PREDICTION_CONTRACT_VERSION
+        if result["prediction_validation"]["status"] == "rejected":
+            raise PredictionTargetsError({key: result.get(key) for key in (
+                *level_fields, "predictions", "prediction_validation", "prediction_contract_version",
+            )})
         result["raw"] = dict(result)
         return result
 
@@ -434,4 +458,6 @@ async def judge(
 def judge_prompt_identity_material() -> dict[str, Any]:
     """Strings loaded in the judge code object; excludes runtime context and output."""
     strings = [value for value in judge.__code__.co_consts if isinstance(value, str)]
-    return {"prompt_version": JUDGE_PROMPT_VERSION, "loaded_string_constants": strings}
+    return {"prompt_version": JUDGE_PROMPT_VERSION, "loaded_string_constants": strings,
+            "prediction_contract_version": PREDICTION_CONTRACT_VERSION,
+            "loaded_prediction_schema": prediction_schema(), "loaded_prediction_prompt": PREDICTION_PROMPT_EXTENSION}
