@@ -1,6 +1,8 @@
-## 当前续验：状态修复与定向回归（2026-10-10）
+## 当前续验：状态修复与四场真实定向补测（2026-10-10）
 
-**当前结论：ENGINEERING_FIXED / WAITING_FOR_CONTROLLED_TEST。** freeze-02 正式源码、Backend/Web 最终离线套件及主方五场隔离 UI 观察均通过。Curie 的 FIX-S1/S3/S4/S5 输入与双时钟 proof 已完成并由主接受；四场尚未运行，用户模型授权仍为 0。实际准确率仍 NOT_EVALUATED，部署仍 NOT_DEPLOYED。源码 13 文件组提交为 `1ccbfaa6ccd91d2d340b2050b49d078f8313a31b`；六文档组的最终 HEAD 与 CI 状态由本地 `docs-git-closeout-01.json` 动态记录，正文不重复嵌入文档 HEAD。
+**当前结论：PARTIAL_CONTROLLED_VALIDATION。** 工程状态修复 FIXED；同一用户授权下四场已完成全部 **8/8** HTTP attempts，四场 Radar/history 主方 CUA 均为 `PASS_IDENTITY_AND_SAFE_DISPLAY`。唯一模型语义阻塞是 FIX-S5 Banked 原生 official 声明被正式校验以 `OFFICIAL_PLAN_NOT_VERIFIED` 拒收：`synthetic_control` 不具官方资格，未取得合法 Banked future 日期。实际准确率 NOT_EVALUATED，部署 NOT_DEPLOYED，不进入全部语义通过或发布就绪状态。
+
+源码 13 文件组为 `1ccbfaa6ccd91d2d340b2050b49d078f8313a31b`；执行时正式 source HEAD 为 `b6d13a9ca82cec811dde2ad1c845cd7999d3a3eb`。此前源码/文档提交及成功 CI 保留为历史证据；**本轮报告文档 HEAD、对应 CI 和 PR 身份由 `runtime/review/prediction-three-lines-v1-20261009/state-fix-and-targeted-retest-v1/final-review-01/git-document-closeout-01.json` 据实际完成情况记录**，正文不嵌自身最终文档 HEAD/CI，未产生的回执不作为完成证明。本轮Git清单仅本报告，实际提交/推送/CI完成状态以该最终回执为准；源码、测试、Prompt、main、tag 与生产未改。
 
 ### 冻结身份与工程验证
 
@@ -17,26 +19,57 @@ Hubble 的 reason-isolation 修补限定为 prediction_ledger.py 与 test_predic
 
 本轮记录的三个 Prompt ID 为 v2-post-semantics-9-context、v2-zh-translation-2-context、v2-reset-judge-10-time-contract；旧 Judge ID v2-reset-judge-9-two-targets 仅保留在历史章节。SHA-256 c5772576a57a690367217f8c6fb9a47cb40011182e26106b6a95f2725f800dbf 仅为 PREDICTION_PROMPT_EXTENSION 的运行时字符串 hash；不是完整 Judge request、组装后 prompt 或 basePrompt 的 hash。本轮 Judge prompt successor 在 freeze-02 前修订一次并冻结，最终测试之后未继续修改。
 
-### 本轮变更摘要
+### 本轮变更与执行边界
 
-正式状态映射修正现代 timeout 与 legacy 状态的区分；Normal 在无可信 business anchor 时不再暗示可计算。Last-known timeout 不再沿用上次 accepted 输出的 reason。S3 的 point 与 start-only 区别通过一次 v10 Judge prompt 后继修订表达，严格校验没有放宽；上述工程与 UI 结果不等于模型语义已验证。
+正式状态映射区分现代 timeout 与 legacy 未实现；Normal 无 business Full anchor 时不再暗示可计算；last-known timeout 不沿用上次 accepted reason。S3 明确点/精度契约通过一次 v10 后继 Prompt 修订表达，校验资格未放宽。以上 360/31 离线证据保持原身份，本次仅文档收口，不重复全套。
 
-### FIX-S1/S3/S4/S5 输入冻结与成本边界（尚未执行模型请求）
+输入 proof SHA-256 `fa93ad14a4f419b75851c8974f68a2667074c81d2b2009537e1c9d2909536a5b`、冻结计划 SHA-256 `d7a4360f9193438a82e09c246e7cd92ac02346c1df4f905dd4ce0bcc9e2efee9` 保持。用户“批准”授权四场最多8次；主分别按 preflight-02 与 preflight-03 精确摘要放行初次执行及仅未开始的 S4/S5 续跑。同一 execution-01/http-budget.sqlite 记账，未 reset 或建第二账；S1/S3 未重跑。
 
-Curie 输入/上下文 proof SHA-256 `fa93ad14a4f419b75851c8974f68a2667074c81d2b2009537e1c9d2909536a5b`；冻结计划 SHA-256 `d7a4360f9193438a82e09c246e7cd92ac02346c1df4f905dd4ce0bcc9e2efee9`。proof 已完成并获主接受。四场总上限为 **8 次 HTTP attempts（不是 runs）**，分配 1/1/3/3、retries=0、timeout=45s；这是计划上限，不是模型授权。四场实际均未运行，真实 provider HTTP=0；离线 MockTransport 实际 4 次（analysis 2、translation 2），另有 1 条作者诊断不属于 HTTP。旧 S2 是独立只读证据，不计入此四场预算。
-
-| 场景 | business as-of（来源） | HTTP attempt 上限 | 已冻结的输入/门禁事实 |
+| FIX 场景 | business as-of / 来源 | 实际 HTTP | 正式目标校验结果（历史 replay，不是当前可用预测） |
 | --- | --- | ---: | --- |
-| FIX-S1 | `2026-10-09T09:16:27.312224Z`；正式 request JSON 的 `context.judged_at` | 1 | synthetic/replay 上游版本匹配；正式 context 的 `previous_judgement=null`，准备库不含 Judge/预测输出。 |
-| FIX-S3 | `2026-10-09T09:40:18.629816Z`；正式 request JSON 的 `context.judged_at` | 1 | 原整库 context 实测会把自己的旧 Judge 带入 `previous_judgement`；新准备库只保留合法上游层并清除旧 Judge/目标行，正式 context 实测为 null，且上游版本匹配。旧库未改。 |
-| FIX-S4 | `2026-10-08T19:48:33.4539Z`；来自原 execution-plan 的 `pre_analysis_as_of`，作为新回放边界，不是当前日期推定 | 3 | acquired real source text；provenance 为 `legacy_undeclared`、`is_synthetic=null`，不升级为完整现代身份或推断为 false；fresh analysis、translation、Judge 各预留 1 次。Judge request hash 为 `POST_ANALYSIS_FREEZE_REQUIRED`。 |
-| FIX-S5 | `2026-10-09T09:00:00Z`；冻结的 synthetic replay business clock | 3 | 合成正文与 `author_handle=synthetic_control`、SYNTHETIC provenance、显式 URN 与 `no_original_url=true` 已进入结构化上下文；但通用 analysis prompt 仍含 Tibo/真实 X 身份冲突，故本场不得作为 official 合格证据，且不放宽资格或新增 prompt。Judge request hash 为 `POST_ANALYSIS_FREEZE_REQUIRED`。 |
+| S1 | `2026-10-09T09:16:27.312224Z`，原 request context.judged_at | 1 Judge | Full KNOWN / official_time_extraction，`2026-10-10T15:00:00Z`，point/second/end=null，scope all_paid；Banked UNKNOWN，两目标 VALID。 |
+| S3 | `2026-10-09T09:40:18.629816Z`，原 request context.judged_at | 1 Judge | Full KNOWN / official_time_extraction，`2026-10-11T15:00:00Z`，point/second/end=null，scope unknown；Banked UNKNOWN，两目标 VALID。原 runner FAILED_TERMINAL 保留。 |
+| S4 | `2026-10-08T19:48:33.453900Z`，原 execution-plan.pre_analysis_as_of 选作新 replay 边界，不伪称当时 Judge | 3：analysis/translation/Judge 各1 | Full、Banked 均 UNKNOWN / model_inference / VALID；不造日期或事件。 |
+| S5 | `2026-10-09T09:00:00Z`，固定 synthetic replay 边界 | 3：analysis/translation/Judge 各1 | Full UNKNOWN / model_inference / VALID；Banked 原生 KNOWN/official 被 OFFICIAL_PLAN_NOT_VERIFIED 拒收，无接受日期、output_available_at=null。 |
 
-四个准备库均 integrity=`ok`、FK violations=0；prepared 库 hash 未变且不含 mock 请求或预填答案。两场 S1/S3 保持原 synthetic/replay 控制性质，不称真实官方验证。proof/plan 原件位于 `state-fix-and-targeted-retest-v1/preparation/targeted-freeze-01/actual-freeze-proof.json` 与 `preparation/fix-four-freeze-and-dry-run-plan.json`。Curie 自有临时 helper/mock 清理被策略拒绝，相关 `_tmp` 文件仍保留；这是 Curie 的清理状态，不与 Parfit 的服务/缓存清理回执混称。
+4 shared Judge commits、8 原生 target：2 个接受 KNOWN、5 个合法 UNKNOWN、1 个拒收，合计7个接受；**实际读取全局 EXPIRED，当前有效输出0**。网络/JSON成功不等于全部语义PASS。所有场景 reset_events=0、reset_cycles=0，Normal 无 business Full anchor，日期为空；未来候选不推进周期。
 
-freeze-01 原声明摘要 516f1438… 保留。排序更正说明：在 PowerShell 7.6.5 / zh-CN 下，将 JSON rows 重建为原脚本的 [ordered] Dictionary 后执行 Sort-Object -Property path，可复现 516f1438…；对同一 JSON 解码为 PSCustomObject 再排序得到 388625b4…，并非源码字节变化。原 OrderedDictionary/Sort-Object 实际序列没有定义为稳定的 ordinal path order，所以 freeze-01 排序口径属 underspecified，不称 ordinal 或跨环境 canonical。freeze-02 才是本次全量套件与 UI 绑定的明确 ordinal 身份。
+S3 原 execution-result.json 与 case-result.json 的 FAILED_TERMINAL / FORMAL_JUDGE_DID_NOT_COMPLETE_SINGLE_RUN 不改：临时 v2 helper 把 run_judge 返回的 judgement_id=2 当 count==1；正式新增仅一 Judge，唯一共享 run/attempt、12 Ledger 行、两目标合法接受，正式终态 event_type=success。preflight-03 已保存未重置 SQLite sequence 的离线正控（ID2、新增1行）及错ID/多行/错attempt/非success反控；正式 success 也可设置 failure_terminal=true，不能凭字段名当业务失败。初次离线误读该flag的失败证据保留。续跑只执行 S4/S5，原失败不是被重标PASS或重试覆盖。
 
-### 主方隔离 UI 五场
+### 输入、来源与 S5 拒收链
+
+S1/S3 仅复用版本匹配的合法持久上游，不冒称完整请求缓存命中；准备库无旧 Judge/目标/真值答案，正式 context previous_judgement=null，history 无待测答案或未来信息。保留 synthetic/replay 控制角色，虽有合法 official method 输出，也不认证真实官方素材。原 S2 Loading 无下一轮计划不重跑；原 S4 NOT_RUN 与旧批次历史保留。
+
+S4 取得的原文本、作者 thsottiaux、父帖与 policy 保持；源 provenance=legacy_undeclared、source_is_synthetic=null。本次 Pipeline/ledger 的 False 仅表示“本次操作未编造输入”，不是对原帖真实性、历史作者或官方资格的认证。S1/S3/S5 本次标记 True；replay 由 selection/record_kind 表达，不以 True 统代 replay。
+
+主对已保存 S4/S5 Judge request 公开 context 的独立解析确认：posts 各1、historical_cases 各0、previous_judgement=null。`post_upstream_context_safety.count=0` 是 check_history 的 history 数，不是输入缺失。S4 作者 thsottiaux、input_hash=`4a5bf6ef6a0d4854d99323f251144664c0936641dc7343b0bb0e689ededa363b`；S5 作者 synthetic_control、input_hash=`791944828dc6876034ccfbb2b9f52b6c37c9d37e17ef8a45326688eb3516d366`。计划通过 posts.analysis/effects 实际暴露；per-post input_hash 绑定内部 input_versions，内部map/候选表ID不是另一份模型输入数组。
+
+S5 DB 与 analysis 结构化 source 保留 SYNTHETIC、固定 SYN ID、synthetic_control、URN 与 no_original_url；最终 Judge post 实际保留 SYN ID/作者和 analysis.canonical_eligible=false，clean post 不直接暴露 metadata/url，不能冒称全量 provenance 字段都直接出现在 final post。通用 analysis Prompt 的 Tibo/真实X开头是已知语言限制，不改 Prompt、不把 synthetic 提升为官方。
+
+S5 原句中的 Banked future 时间经 analysis/effect 保留（future、BANKED、scope banked_only、explicit_text、planned_occurrence、canonical_eligible=false），持久候选为 NEEDS_REVIEW；这些语义进入 shared Judge。最早决定性不匹配是 Judge 选择 official_time_extraction，但实际 source.author=synthetic_control 不在官方白名单。**仅拒收摘要**保留原生 `2026-10-11T18:00:00Z`、point/second/end=null、scope banked_only、source_timezone=Z、time_basis=official_planned；不是接受预测/当前日期。分析未丢弃返回的顶层或effect字段；analysis schema未单列form/precision，不以此声称日期丢失。Full 合法 UNKNOWN 独立保留，不因 Banked 拒收吞掉它。
+
+S4/S5 最终 Judge request 在 fresh analysis/translation 后实际冻结，body SHA-256 分别为 `ad269fa7061919bcb3c7f7091ea6bc34a88391a3270ffab8e1e85fdd66f24963`、`2df47144ec00fb14f94a501514946272be6b4cc08745d42aa4a3f64ba8f26a58`；准备阶段原 POST_ANALYSIS_FREEZE_REQUIRED 不改写成事前已知hash。四个 prepared DB hash不变、integrity ok/FK0，未预装 mock 或 gold 答案。
+
+业务 DB/Pipeline/reply-context eligibility 用明确 replay clock，HTTP/client/tracker/Ledger/实际 availability 用真实钟。四场 valid_until 均在实际 output_available_at 之前已过期；没有事后 UPDATE/backdate/续期，不称当时 online 或当前可用。请求声明 deepseek-v4-flash、8次响应均报告 deepseek-flash，缺权威 checkpoint 映射证据，不声称已核验同一checkpoint。
+
+### 实际账目、读回与当前 UI
+
+统一实际账目：authorized8 / reserved8 / started8 / received8 / HTTP200=8 / client JSON=8 / terminal8 / 网络失败0；analysis2 + translation2 + sharedJudge4，缓存命中0、retries0、timeout45s，新余额0。旧11/13及余2独立封存，old_budget_used=0，无重试/预热/Key探测/额外分析请求。
+
+execution-01 原 execution-result.json 记录初次2HTTP；continuation-result-01.json 记录同账最终8HTTP，两个截点原件均保留。预算库 SHA-256 `bba76268ee2cd6a7ff033d1637a18629fa35deeff5fd2d2720f0c1c1801fc697`。正式 read/export 证据为 final-review-01/read-export-s1-s3-01.json、read-export-s4-s5-01.json；四包均 valid/ref=true、各10个file hash通过，来源/result clone 前后保持，0 truth/evaluation set/assessment。包验证不等于模型语义或准确率，原 S3 评分 N=0/ratio=null 及所有原评分/ZIP 不改。
+
+四场主 CUA 已完成 Radar 与 history，结论 **PASS_IDENTITY_AND_SAFE_DISPLAY**，每场身份/API读回/主观察位于 final-review-01/runs/fix-s{1,3,4,5}-real-01/ui/：
+
+| 场景 | 主已观察的安全展示结论 |
+| --- | --- |
+| FIX-S1 | history 保留合法 Full point/second/end=null 与 Banked UNKNOWN；实时读取 EXPIRED、不把历史日期当当前；Normal无锚点。 |
+| FIX-S3 | history保留 Full合法point/second/scope unknown与Banked UNKNOWN；临时runner失败不抹正式business结果；实时EXPIRED、Normal无锚点。 |
+| FIX-S4 | 两个合法 UNKNOWN 与无日期/无锚点状态明确；实时全局EXPIRED；legacy来源不升级。 |
+| FIX-S5 | Banked拒收/date unavailable、输出可用时间为空，拒收日期不进入当前；Full合法UNKNOWN保留，Normal无锚点，实时全局EXPIRED。 |
+
+Bacon 综合机器receipt已完成：final-review-01/comprehensive-receipt-01.json，SHA-256 `12951d53af555314df50306481f2c16fd00328f318e156cac4d40205c31e4087`。2026-10-09T18:49:01.983534Z 最终只读检查确认108源码hash 0 mismatch、四result/case原件不变、四套CLI各4阶段exit0、四包valid/ref、76条GET audit rows/denied DML-DDL=0。四场均OWNED_SERVICES_STOPPED，隔离18787/15173无监听、生产身份不变；最后S5 stop为 final-review-01/runs/fix-s5-real-01/ui/services-stop-receipt.json（SHA-256 `1fb9807a7090a0107995d4667b566f05b02048346bfa7a3947150e627bba3b21`，18:45:30.456284Z）。UI子进程未留下终态atexit计数receipt，不编造其counter值；隔离证明以实际guard/config/import身份、禁用model pipeline和只读GET audit为准。综合UI/read-export PASS不改变模型PARTIAL；ready.json仅是保留的旧准备截点。
+
+### 工程修复阶段五场 UI（模型补测前的已完成观察）
 
 五场都绑定 freeze-02 manifest 312868b4…924c9fc 与 Backend Ledger SHA-256 ac799856…09e5c3；逐场 ready identity、main-browser-observation / main-ax-observation 和 final-freeze02-association 保存在 runtime/review/prediction-three-lines-v1-20261009/state-fix-and-targeted-retest-v1/ui-isolation/ui-acceptance-01/。观察时间是窗口，不冒称精确导航或截图时刻：
 
@@ -50,15 +83,15 @@ freeze-01 原声明摘要 516f1438… 保留。排序更正说明：在 PowerShe
 
 截图按原 receipt 仅 inline 观察、未保存本地图片。Parfit 的 services-stop-receipt 记录只停止其隔离 18787/15173；cache-cleanup-receipt 仅移除精确归属的 2 个 Vite cache 文件及已验证为空的 env 目录。5 个 guard JSON 与其他 _tmp 遗留项受策略阻止而保留，不能概括为全部已清理。Alpha5 8787/PID 18612 与 5173/PID 6488 未被本任务启停。
 
-### 旧读回、当前安全计数与授权边界
+### 保护、生产时点与文档停点
 
-S1/S2/S3/EMPTY 的 API GET readback、empty CLI、S1/S2/S3 CLI export/verify 属旧 freeze-01 证据；不可说它们覆盖 freeze-02 或验证了 Hubble 新修补。API readback 只保存路由状态/保护摘要，不保存 API body 或 DB payload rows；source DB/WAL/SHM 与 clone snapshots 在 GET 前后不变。S1/S2/S3 导出包 verify valid=true、各 10 个包内文件 hash 通过。Empty DB 前后 SHA-256 为 f6d0e290a0afaa550d10cd4a98f0100fac580ff888ef5d0fc2439aec92115c78，22 tables、8 rows、integrity ok、FK violations 0。主方 2026-10-09T16:49:59.4770868Z 只读复核 freeze-02 全 108 项 0 mismatch、P-main 原有 13 个 untracked 用户文件 13/13 hash match；该保护快照未重跑测试，逐项原始路径和哈希仍在 preparation/preparation-receipt.json。
+主只读复核：2026-10-09T18:34:18.8403068Z 的108项代码manifest 0 mismatch；18:34:34.9516357Z 的13个P-main用户原件0 mismatch，P-main HEAD仍1e865c37d1643f429162adeb0fab61bb7371a47b。仅复用该已保存保护快照，不重跑源码/全库审查。
 
-主方 2026-10-09T16:41:47.4845104Z（Asia/Shanghai 本地日期 2026-10-10）对生产 /api/v2/health 做过一次只读 GET：version 2.0.0-alpha.5，status healthy，data_health HEALTHY，database.status ready。Profile 16:41:34.043Z、Replies 16:41:34.023Z、Search 16:41:34.046Z，age 13.4s、state healthy、reason FRESH。它只是该时点快照，不是持续健康验收；GET 未触发 POST 或模型任务，不用旧 counts 固定分母。本任务主动 DeepSeek HTTP/Laya/微信/邮件 = 0；生产迁移/启停 = 0。该主动操作计数不代表生产自然调度为零。
+主在2026-10-09T18:41:16.8100020Z只读GET /api/v2/health观察 version=2.0.0-alpha.5、status=healthy、data_health=HEALTHY、database.status=ready；**collector**中的 Profile/Replies/Search last_seen 分别18:40:34.072Z/.092Z/.068Z，age42.7/42.6/42.7s、FRESH。这是单时点snapshot，不是持续验收；GET触发POST/模型=0。本任务真实DeepSeek为已批准8次，Laya/微信/邮件/生产主动写入迁移启停=0；不概括生产自然后台活动为零。
 
-旧 2026-10-09 模型账本 13 HTTP budget / 11 used / 2 remaining 独立保留；旧剩余 2 未获授权。新计划上限 8 次 HTTP attempt（非 8 runs），四场分配 1/1/3/3；输入/context proof 已完成并接受，但四场尚未运行，且模型授权只能由用户给出，目前为 0。S4 的 provenance 仍为 legacy undeclared、`is_synthetic=null`；S5 结构化输入是 synthetic_control，但通用 analysis prompt 的 Tibo/真实 X 冲突使其 official 不合格。S4/S5 最终 Judge request hash 在 analysis 前均为 `POST_ANALYSIS_FREEZE_REQUIRED`。
+执行器长期本地有用副本已逐文件保存 execution-01/runner-snapshots/：actual-freeze-proof.py、fix_four_execution_v2.py、fix_four_continuation_01.py，源/副本SHA一致；不复制env/log/request/private数据、不ship。acceptance更新前的原字节快照为 execution-01/acceptance-before-document-closeout-01.json，SHA-256 `9c5d40899ef4bf73cb78d41344289778310cd0388ed570bfc38d13b184c8b506`。四结果库闭合复制入口及SHA见同一 acceptance.json/targeted-retest-results.md；原prepared、请求/response、release、preflight及原终态结果保持。所有先前policy拒绝清理项与_tmp材料按实际保留，不再尝试或换法清理。
 
-Backend4+tests4+Web5 源码组已提交并普通推送，commit 1ccbfaa6ccd91d2d340b2050b49d078f8313a31b；PR #11 仍 OPEN。文档六文件组随后独立提交并普通推送；最终文档 HEAD 与对应 CI 三项结果以 `state-fix-and-targeted-retest-v1/preparation/docs-git-closeout-01.json` 为准，正文不自嵌文档 HEAD。未 merge/tag。不得将旧 11 HTTP 历史与本轮零模型执行混为一账。
+剩余模型阻塞仅S5 Banked正控制未取得合法日期；不调Prompt、不放宽official、不增调用/预算。结果收口只更新本报告当前顶段与两个既有本地文件，保留下面旧批次全部PASS/FAIL；本轮doc-only Git显式清单仅 `docs/maintenance/prediction-three-lines-v1-report.md`，acceptance、运行/模型/helper材料不ship。最终文档Git/CI以 `state-fix-and-targeted-retest-v1/final-review-01/git-document-closeout-01.json` 的实际回执为准，仅在主审查后普通提交/推送并更新既有PR11，不merge/tag/部署；工程、模型、准确率、部署四层不合并成“全通过”。
 
 ---
 
