@@ -1358,6 +1358,43 @@ class Database:
             if not isinstance(version,str) or not re.fullmatch(r'[0-9a-f]{64}',version):
                 raise ValueError(f'INPUT_VERSION_MISSING:{tweet_id}')
             input_versions[tweet_id] = version
+        # A reply's model-visible context can contain canonical Tibo posts that
+        # have not yet been analysed. Freeze only those actual nodes; IDs that
+        # appear solely in previous judgements or historical metadata are not
+        # evidence of content exposed in this request.
+        for post in posts:
+            reply_context = post.get('reply_context')
+            nodes = reply_context.get('nodes') if isinstance(reply_context, dict) else None
+            if not isinstance(nodes, list):
+                continue
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                canonical_post_id = node.get('canonical_post_id')
+                tweet_id = node.get('tweet_id')
+                if type(canonical_post_id) is not int or not isinstance(tweet_id, str):
+                    continue
+                canonical = self.get_post(canonical_post_id)
+                if not canonical or str(canonical.get('tweet_id')) != tweet_id:
+                    continue
+                exposed_author = node.get('author')
+                canonical_author = canonical.get('author_handle') or 'thsottiaux'
+                if (not isinstance(exposed_author, str)
+                        or exposed_author.casefold() != str(canonical_author).casefold()
+                        or exposed_author.casefold() != 'thsottiaux'):
+                    continue
+                if not self.content_use_allowed(canonical, 'judge_evidence'):
+                    continue
+                canonical_input = self._post_input_at(canonical, as_of)
+                if canonical_input is None or canonical_input.get('original_text') != node.get('text'):
+                    continue
+                version = canonical_input.get('input_hash')
+                if not isinstance(version, str) or not re.fullmatch(r'[0-9a-f]{64}', version):
+                    continue
+                existing = input_versions.get(tweet_id)
+                if existing is not None and existing != version:
+                    raise ValueError(f'INPUT_VERSION_CONFLICT:{tweet_id}')
+                input_versions[tweet_id] = version
         event_candidates: list[tuple[dict[str,Any],dict[str,str]]] = []
         for event in self.list_reset_events(200, as_of=as_of):
             original_evidence = [str(item) for item in event.get("evidence_post_ids") or []]

@@ -255,9 +255,11 @@ def create_app(settings: Settings | None = None, intelligence_client: JsonModel 
     @application.post('/api/v2/context/result')
     async def context_result(payload: dict) -> dict:
         # Compare semantic inputs, not receipt times: an identical cached reply
-        # must not schedule another paid analysis or Judge call.
+        # must not schedule another paid analysis or Judge call. Include recent
+        # canonical Tibo roots: a newly observed parent body can invalidate a
+        # reply even when the parent itself is not a reply.
         with database.connect() as c:
-            rows=c.execute("SELECT id FROM tibo_posts WHERE is_reply=1 AND posted_at>=datetime('now','-7 days') AND ingestion_mode!='historical'").fetchall()
+            rows=c.execute("SELECT id FROM tibo_posts WHERE posted_at>=datetime('now','-7 days') AND ingestion_mode!='historical'").fetchall()
         before={row['id']:database.contexts.input(database.get_post(row['id']))['input_hash'] for row in rows}
         try:
             accepted = database.contexts.complete(int(payload['id']),str(payload['lease']),payload.get('nodes',[]),payload.get('reason'))
