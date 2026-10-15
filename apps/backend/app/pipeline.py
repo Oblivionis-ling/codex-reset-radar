@@ -340,6 +340,15 @@ class IntelligencePipeline:
         result['raw']['input_snapshot_id'] = self.database._snapshot_digest(input_snapshot)
         result['raw']['triggers'] = triggers
         result['raw']['pending_inputs'] = context['pending_inputs']
+        result['status'] = 'COMPLETED'
+        validation = self.database.validate_judgement(result, at=as_of)
+        if not validation['valid']:
+            details = f"tweet_id={validation['tweet_id']}" if validation.get('tweet_id') else ''
+            self.runtime_log.write('llm', 'RADAR_JUDGE_REJECTED', result='failure', metadata={
+                'reason': validation['reason'], 'tweet_id': validation.get('tweet_id'),
+            })
+            suffix = f': {details}' if details else ''
+            raise ValueError(f"Judge result rejected before save: {validation['reason']}{suffix}")
         judgement_id = self.database.add_judgement(result)
         self.database.set_state("judge", {"status": "ready", "judgement_id": judgement_id, "completed_at": utc_now(), "model": self.model, "last_error": None})
         self.database.set_state("pipeline", {"status": "ready", "enabled": True, "model": self.model, "last_error": None, "updated_at": utc_now()})
