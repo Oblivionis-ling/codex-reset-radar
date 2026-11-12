@@ -217,7 +217,7 @@ def test_pipeline_keeps_archive_but_blocks_analysis_or_event_promotion(settings)
     database.upsert_content_policy(policy("policy-incomplete-context", incomplete["content_hash"]))
 
     fake = PolicyFakeDeepSeek()
-    with TestClient(create_app(settings, intelligence_client=fake)) as client:
+    with TestClient(create_app(settings, intelligence_client=fake, is_synthetic=True)) as client:
         wait_until(lambda: client.get("/api/v2/health").json()["database"]["counts"]["processing_jobs"] == 2)
         wait_until(lambda: all(
             item["analysis_status"] in {"INPUT_RESTRICTED", "COMPLETED"}

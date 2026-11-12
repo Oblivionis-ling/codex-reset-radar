@@ -63,10 +63,11 @@ class SourceJudge:
 
 
 class CitationFake(CaptureFake):
-    def __init__(self, evidence_post_ids, *, on_judge=None):
+    def __init__(self, evidence_post_ids, *, on_judge=None, status=None):
         super().__init__()
         self.evidence_post_ids = [str(value) for value in evidence_post_ids]
         self.on_judge = on_judge
+        self.status = status
 
     async def complete_json(self, *, operation, system, user):
         result = await super().complete_json(operation=operation, system=system, user=user)
@@ -74,6 +75,8 @@ class CitationFake(CaptureFake):
             if self.on_judge:
                 self.on_judge()
             result["evidence_post_ids"] = self.evidence_post_ids
+            if self.status is not None:
+                result["status"] = self.status
         return result
 
 
@@ -88,6 +91,7 @@ def _pipeline(db, model, tmp_path):
         runtime_log=RuntimeLog(tmp_path / "logs", 5, 1_048_576),
         collector_state={},
         repository_root=ROOT,
+        is_synthetic=True,
     )
 
 
@@ -101,6 +105,18 @@ def _api_snapshot(db, settings, tmp_path):
                 "component": component, "instance_id": f"{component}-fixture", "sequence": 1,
             })
         return client.get("/api/v2/radar").json()
+
+
+def _ledger_records(db, kind):
+    with db.connect() as connection:
+        rows = connection.execute(
+            "SELECT judgement_id, payload_json FROM prediction_ledger WHERE kind=? ORDER BY seq",
+            (kind,),
+        ).fetchall()
+    return [
+        {"judgement_id": row["judgement_id"], "payload": json.loads(row["payload_json"])}
+        for row in rows
+    ]
 
 
 def _context_node(tweet_id, author, text, posted_at, parent_id=None):
@@ -219,7 +235,7 @@ def test_judge_snapshot_closes_over_exposed_unanalysed_tibo_parent_and_ancestor(
     db = Database(tmp_path / "exposed-parent-version.db")
     db.initialize()
     ids = _seed_unanalysed_tibo_parent_chain(db)
-    model = CitationFake([ids["parent_id"]])
+    model = CitationFake([ids["parent_id"]], status="PROVIDER_REJECTED")
     pipeline = _pipeline(db, model, tmp_path)
 
     async def run_product_path():
@@ -252,10 +268,16 @@ def test_judge_snapshot_closes_over_exposed_unanalysed_tibo_parent_and_ancestor(
     assert stored["raw"]["input_versions"][ids["parent_id"]] == db._post_input_version(ids["parent_id"], as_of=as_of)
     assert stored["raw"]["input_versions"][ids["ancestor_id"]] == db._post_input_version(ids["ancestor_id"], as_of=as_of)
     assert stored["id"] == judgement_id
+    assert stored["status"] == "COMPLETED"
     assert validation["reason"] == "VALID"
     assert api["validation"]["reason"] == "VALID"
     assert api["judgement_id"] == judgement_id
     assert api["action_level"] == stored["action_level"]
+    committed = _ledger_records(db, "output_committed")
+    observed = _ledger_records(db, "output_observed")
+    assert len(committed) == len(observed) == 1
+    assert committed[0]["judgement_id"] == observed[0]["judgement_id"] == judgement_id
+    assert committed[0]["payload"]["output_id"] == observed[0]["payload"]["output_id"] == str(judgement_id)
 
 
 def test_judge_does_not_persist_citation_to_existing_unexposed_post(tmp_path, settings):
@@ -295,6 +317,18 @@ def test_judge_does_not_persist_citation_to_existing_unexposed_post(tmp_path, se
     assert api["judgement_id"] is None
     assert api["action_level"] == "UNKNOWN"
     assert api["display_mode"] == "unavailable"
+    assert db.counts()["radar_judgements"] == 0
+    assert _ledger_records(db, "output_committed") == []
+    assert _ledger_records(db, "output_observed") == []
+    failures = [
+        record["payload"] for record in _ledger_records(db, "attempt_event")
+        if record["payload"].get("failure_terminal")
+        and record["payload"].get("event_type") == "schema_failure"
+    ]
+    assert len(failures) == 1
+    assert failures[0]["reason_code"] == "INVALID_JUDGE_RESULT"
+    assert db.get_state("judge")["status"] != "ready"
+    assert db.get_state("pipeline", {}).get("status") != "ready"
 
 
 def test_judge_does_not_close_over_previous_judgement_id_without_exposed_body(tmp_path):
