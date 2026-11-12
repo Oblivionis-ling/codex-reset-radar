@@ -7,7 +7,7 @@ import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from .db import JudgementReferenceError
 from .review_common import canonical_bytes, sha256_json, utc_text
@@ -944,7 +944,14 @@ class PredictionLedger:
                 (run_id, attempt_id, *sorted(ATTEMPT_TERMINAL_EVENTS)),
             ).fetchone() is not None
 
-    def commit_judge(self, run_id: str, accepted_attempt_id: str, result: dict[str, Any]) -> OutputRef:
+    def commit_judge(
+        self,
+        run_id: str,
+        accepted_attempt_id: str,
+        result: dict[str, Any],
+        *,
+        validation_callback: Callable[[dict[str, Any]], None] | None = None,
+    ) -> OutputRef:
         run = self._run_row(run_id)
         run_payload = run["payload"]
         frozen_input = self._load_artifact(run_payload["input_snapshot_artifact_ref"]["artifact_id"])
@@ -1021,6 +1028,11 @@ class PredictionLedger:
                     connection.commit()
                     reference_error = error
                 else:
+                    # Keep freshness rejection above first. This callback runs before COMMIT and
+                    # publication; if it raises, the tentative row rolls back and the pipeline
+                    # records the failure after this transaction exits.
+                    if validation_callback is not None:
+                        validation_callback(result)
                     finished_at = utc_text()
                     success_payload = {
                         "event_type": "success", "failure_terminal": True,

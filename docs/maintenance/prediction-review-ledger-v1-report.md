@@ -1,5 +1,17 @@
 # Prediction Review Ledger v1 验收报告
 
+## 2026-11-12 更新：PR #10 源码集成
+
+PR #10 源码整合验收已通过，基线为 `origin/main c0509170a5fb34ead5b383589c18673a1228ee40`。唯一冲突位于 `pipeline.py` 的结果保存流程：完整 `Database.validate_judgement` 在账本发布事务内、基础引用检查之后及提交之前执行；输入变化拒收和引用失败的持久记录均保留。本节记录源码整合验收；最终合并提交及 CI 状态以 [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 为准。
+
+测试结果：focused `9 passed in 33.16s`；Backend `145 passed in 190.00s`，比此前 140 项多出的 5 项为 main 的回归测试，未删除或排除测试；Web 7、Collector 18，npm test、typecheck、build 均 exit 0。
+
+生产仍暂停：8787/5173 端口未监听，未执行生产迁移或数据库写入；生产数据库文件在本轮前后的 SHA256 均为 `967EC8A4F8365DB11C2BFB95C578AB3ED4A31CF5F0D9B36AAE72D594419E27B5`。模型、微信、SMTP 调用均为 0；未重启服务、修改标签或部署。PR #7 Laya 与 PR #11 三线预测草稿不在本次范围；本轮没有新增 Banked 预测、评分或准确率验收结论。
+
+本文旧 `2026-10-07`“禁止 main 合并”作为当时记录保留；本次用户授权仅替代其中关于 PR #10 源码合并的限制，项目暂停要求继续有效。
+
+## 2026-10-07 历史验收记录
+
 状态：`READY_FOR_ACCEPTANCE`（本地与 CI 实现验收完成；开发分支提交已同步并通过 PR checks；本轮两份文档的 metadata 收口由 A 后续单独同步；不构成 main 合并、tag 或部署许可）
 更新：2026-10-07，`Asia/Shanghai`；A 最终回执时间 `2026-10-06T22:37:18Z`
 源码基线：`1e865c37d1643f429162adeb0fab61bb7371a47b`（基线别称，不是当前 worktree HEAD）。开发分支：`codex/prediction-ledger-v1-20261007`；源码提交 `4f9951f2d938e5ea30aa38ab20ec5160f8b6ee50`（23 个白名单文件）、纯 EOF 格式提交 `48c3b3d7e3305b86f84a912c66ef3b8e98eee3a0` 与初次七文档提交 `65ce2c71931d3c82d8f662c7953949be48bb92ce` 均已在开发分支；65ce 已 push，PR #10 已创建，三项 checks 通过。

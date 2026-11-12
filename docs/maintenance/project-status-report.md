@@ -1,6 +1,14 @@
 # CRR 项目阶段与功能现状报告
 
-## 当前专项验收状态（2026-10-07）
+## 最新专项状态（2026-11-12）
+
+PR #10 已完成与 `origin/main c0509170a5fb34ead5b383589c18673a1228ee40` 的源码整合验收。唯一冲突位于 `pipeline.py` 的结果保存流程：完整 Judge 校验在账本发布事务内执行，输入变化拒收与引用失败的持久记录均保留。最终合并提交及 CI 状态以 [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 为准。
+
+Backend 全量 `145 passed in 190.00s`（较原 140 项增加 main 的 5 个回归测试，无测试被删除或排除）；focused `9 passed in 33.16s`。Web 7、Collector 18；npm test、typecheck、build 均 exit 0。
+
+生产仍暂停：8787/5173 未监听，无生产迁移或数据库写入；生产数据库文件前后 SHA256 均为 `967EC8A4F8365DB11C2BFB95C578AB3ED4A31CF5F0D9B36AAE72D594419E27B5`。模型/微信/SMTP 调用为 0，未重启服务、修改标签或部署。PR #7 Laya 与 PR #11 三线预测草稿排除在外；本次没有新增 Banked 预测、评分或准确率结论。本次用户授权只替代 2026-10-07 记录中关于 PR #10 源码合并的限制，项目暂停要求继续有效。
+
+## 历史专项验收状态（2026-10-07）
 
 **Prediction Review Ledger v1：`READY_FOR_ACCEPTANCE`（本地与 CI 实现验收完成；开发 PR #10 的三项 checks 已通过）。** 当前唯一验收报告为[Prediction Review Ledger v1 验收报告](prediction-review-ledger-v1-report.md)；此状态不是生产迁移、上线或发布批准。
 

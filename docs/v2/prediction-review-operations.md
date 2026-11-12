@@ -1,6 +1,12 @@
 # 预测复盘只读操作指南
 
-## 当前状态与边界
+## 2026-11-12 源码集成状态与操作边界
+
+PR #10 已完成与 `origin/main c0509170a5fb34ead5b383589c18673a1228ee40` 的源码整合验收。结果保存冲突已解决：完整 Judge 校验在账本发布事务内执行，输入变化拒收与引用失败的持久记录均保留。定向测试为 `9 passed in 33.16s`，Backend 为 `145 passed in 190.00s`（较此前 140 项多出的 5 项是 main 回归测试，没有删除或排除测试）；Web 7、Collector 18，npm test/typecheck/build 均 exit 0。最终合并提交及 CI 状态以 [PR #10](https://github.com/Oblivionis-ling/codex-reset-radar/pull/10) 为准。
+
+下方的旧 worktree 路径、CLI 示例、样包路径与哈希保留为历史验收记录，未重新生成。Schema 8 未应用到生产，项目保持暂停，8787/5173 未监听；生产数据库文件前后 SHA256 均为 `967EC8A4F8365DB11C2BFB95C578AB3ED4A31CF5F0D9B36AAE72D594419E27B5`。模型、微信、SMTP 调用均为 0，未重启服务、修改标签或部署。PR #7 Laya、PR #11 三线预测草稿不在本次范围；没有新增 Banked 预测、评分或准确率通过声明。本次授权只替代旧文关于 PR #10 源码合并的限制，项目暂停要求继续有效。
+
+## 2026-10-07 隔离验收与操作记录
 
 本指南对应隔离开发 worktree：
 

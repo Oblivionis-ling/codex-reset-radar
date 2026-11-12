@@ -1,10 +1,12 @@
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from fastapi.testclient import TestClient
 
-from app.db import Database
+from app.db import Database, utc_now
+from app.main import create_app
 from app.pipeline import IntelligencePipeline
 from app.logging_runtime import RuntimeLog
 from app.reply_context import ReplyContexts
@@ -189,6 +191,55 @@ def test_durable_context_job_to_actual_pipeline_and_api(settings):
         assert client.post('/api/v2/context/result',json={**repeated,'nodes':[n1,n2]}).json()['accepted']
         assert 'reply_context_updated' not in triggers
         assert client.app.state.database.pending_job_count()==0
+
+
+def test_context_result_requeues_changed_recent_main_post_once(settings):
+    fake=ContextModel()
+    with TestClient(create_app(settings,intelligence_client=fake)) as client:
+        db=client.app.state.database;pipe=client.app.state.pipeline
+        assert pipe is not None
+        # Keep the durable job pending while the API contract is inspected.
+        db.claim_post_job=lambda:None
+        triggers=[];pipe.request_judge=triggers.append
+        stamp=utc_now();posted=(datetime.now(UTC)-timedelta(minutes=2)).isoformat().replace('+00:00','Z')
+        parent_id,reply_id='990000000000000301','990000000000000302'
+        inserted=db.upsert_posts_detailed([
+            {'tweet_id':parent_id,'text':'Original Tibo main post.','posted_at':posted,'collected_at':stamp,'source':'offline_fixture'},
+            {'tweet_id':reply_id,'text':'A reply to that post.','posted_at':posted,'collected_at':stamp,
+             'is_reply':True,'reply_to_tweet_id':parent_id,'source':'offline_fixture'},
+        ])
+        parent_post_id=next(row['post_id'] for row in inserted if row['tweet_id']==parent_id)
+        reply_post_id=next(row['post_id'] for row in inserted if row['tweet_id']==reply_id)
+        db.contexts.record_observation(node(parent_id,None,'thsottiaux','Original Tibo main post.')|{'posted_at':posted},stamp)
+        db.contexts.record_observation(node(reply_id,parent_id,'thsottiaux','A reply to that post.')|{'posted_at':posted},stamp)
+        old_identity=pipe.identity(db.get_post(parent_post_id))
+        assert db.enqueue_post(parent_post_id,old_identity)
+        with db.connect() as c:
+            c.execute("UPDATE processing_jobs SET status='COMPLETED' WHERE job_type='POST_PROCESSING' AND entity_key=?",(old_identity,))
+
+        db.contexts.ensure(reply_id);job=db.contexts.claim();assert job
+        nodes=[
+            node(reply_id,parent_id,'thsottiaux','A reply to that post.')|{'posted_at':posted},
+            node(parent_id,None,'thsottiaux','Corrected Tibo main post.')|{'posted_at':posted},
+        ]
+        assert client.post('/api/v2/context/result',json={**job,'nodes':nodes}).json()['accepted']
+        new_identity=pipe.identity(db.get_post(parent_post_id))
+        with db.connect() as c:
+            jobs={row['entity_key']:row['status'] for row in c.execute(
+                "SELECT entity_key,status FROM processing_jobs WHERE job_type='POST_PROCESSING'"
+            ).fetchall()}
+        assert new_identity!=old_identity
+        assert jobs[old_identity]=='COMPLETED'
+        assert jobs[new_identity]=='PENDING'
+        assert triggers==['reply_context_updated']
+
+        assert client.post('/api/v2/context/retry/'+reply_id).json()['queued']
+        repeated=db.contexts.claim();assert repeated
+        assert client.post('/api/v2/context/result',json={**repeated,'nodes':nodes}).json()['accepted']
+        with db.connect() as c:
+            assert c.execute("SELECT count(*) FROM processing_jobs WHERE job_type='POST_PROCESSING' AND entity_key=?",(new_identity,)).fetchone()[0]==1
+        assert triggers==['reply_context_updated']
+        assert fake.calls==[]
 
 
 def test_missing_context_cannot_promote_even_model_suggests_event(db,tmp_path):

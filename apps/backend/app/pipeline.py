@@ -643,7 +643,22 @@ class IntelligencePipeline:
             accepted_attempt_id = tracker.latest_attempt_id
             if accepted_attempt_id is None:
                 raise RuntimeError("Judge result has no durable request attempt")
-            output_ref = self.prediction_ledger.commit_judge(run.run_id, accepted_attempt_id, result)
+            result["status"] = "COMPLETED"
+
+            def validate_judgement(candidate: dict[str, Any]) -> None:
+                validation = self.database.validate_judgement(candidate, at=as_of)
+                if not validation["valid"]:
+                    details = f"tweet_id={validation['tweet_id']}" if validation.get("tweet_id") else ""
+                    self.runtime_log.write("llm", "RADAR_JUDGE_REJECTED", result="failure", metadata={
+                        "reason": validation["reason"], "tweet_id": validation.get("tweet_id"),
+                    })
+                    suffix = f": {details}" if details else ""
+                    raise ValueError(f"Judge result rejected before save: {validation['reason']}{suffix}")
+
+            output_ref = self.prediction_ledger.commit_judge(
+                run.run_id, accepted_attempt_id, result,
+                validation_callback=validate_judgement,
+            )
         except asyncio.CancelledError as error:
             self._record_judge_failure(request_state, error)
             raise
